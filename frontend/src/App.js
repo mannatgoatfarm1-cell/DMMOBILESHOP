@@ -17,7 +17,7 @@ const money = (n) => `₹${n.toLocaleString("en-IN")}`;
 
 function Brand({ light = false }) { return <div className={`brand ${light ? "brand-light" : ""}`}><span className="brand-mark">D</span><span><b>DEALKR</b><small>Smart Deals. AI Driven.</small></span></div>; }
 
-function Topbar({ cartCount, onCart, onMenu }) {
+function Topbar({ cartCount, onCart = () => { window.location.href = "/cart" }, onMenu }) {
   return <header className="topbar"><button className="icon-btn mobile-only" onClick={onMenu} data-testid="mobile-menu-button"><Menu size={20}/></button><Link to="/" data-testid="brand-home-link"><Brand/></Link><div className="location"><MapPin size={15}/> New Delhi <ChevronRight size={13}/></div><label className="search"><Search size={17}/><input data-testid="store-search-input" placeholder="Search mobiles, laptops, accessories..."/><span>⌘ K</span></label><div className="top-actions"><button className="round-action" data-testid="ai-header-button"><Sparkles size={18}/></button><button className="round-action" data-testid="notifications-button"><Bell size={18}/><i>3</i></button><button className="round-action cart-action" onClick={onCart} data-testid="cart-header-button"><ShoppingCart size={18}/><i>{cartCount}</i></button><button className="avatar" data-testid="account-header-button">AS</button></div></header>;
 }
 
