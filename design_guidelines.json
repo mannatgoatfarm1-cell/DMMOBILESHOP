@@ -1,0 +1,48 @@
+{
+  "typography": {
+    "font_family_headings": "Outfit, sans-serif",
+    "font_family_body": "Plus Jakarta Sans, sans-serif",
+    "hierarchy": {
+      "h1": "text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight",
+      "h2": "text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight",
+      "h3": "text-xl sm:text-2xl font-bold",
+      "h4": "text-lg sm:text-xl font-semibold",
+      "body": "text-base font-normal leading-relaxed",
+      "small": "text-sm text-slate-400"
+    }
+  },
+  "colors": {
+    "background_primary": "#0A0F1D",
+    "background_secondary": "#111827",
+    "surface_card": "#161F33",
+    "accent_purple": "#7C3AED",
+    "accent_purple_glow": "#8B5CF6",
+    "accent_indigo": "#4F46E5",
+    "text_primary": "#F8FAFC",
+    "text_secondary": "#94A3B8",
+    "border_color": "#1E293B",
+    "success": "#10B981",
+    "warning": "#F59E0B",
+    "error": "#EF4444"
+  },
+  "visual_enhancers": {
+    "glassmorphism": "backdrop-blur-xl bg-[#111827]/80 border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.37)]",
+    "glow_effect": "shadow-[0_0_25px_rgba(124,58,237,0.3)]",
+    "card_hover": "transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:border-purple-500/50"
+  },
+  "component_path": "/app/frontend/src/components/",
+  "instructions_to_main_agent": "Build the complete dual-mode application for DEALKR (Customer Storefront + Dark Admin Panel). Follow exact color spec: Deep Navy (#0A0F1D) and Royal/Electric Purple (#7C3AED) with INR currency formatting and all requested features: product browsing, cart, checkout demo, live auctions with bidding, AI deals negotiation/generator, categories, account orders, bulk-buy deals, and complete 11-section admin panel (dashboard, products, orders, vendors, campaigns, users, payments, auctions, coupons, categories, settings). Ensure all interactive elements have data-testid attributes.",
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
+    "You MUST NOT apply universal transition like transition: all.",
+    "Every interactive element must include data-testid attribute.",
+    "Use sonner for toasts.",
+    "Ensure high contrast and readability on dark surfaces."
+  ],
+  "image_urls": {
+    "banner": "https://images.unsplash.com/photo-1764083281132-a29cca6918df?crop=entropy&cs=srgb&fm=jpg&q=85",
+    "gadget_flatlay": "https://images.pexels.com/photos/7989740/pexels-photo-7989740.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+    "smartwatch": "https://images.pexels.com/photos/18597524/pexels-photo-18597524.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+    "admin_dashboard": "https://images.unsplash.com/photo-1551288049-bebda4e38f71?crop=entropy&cs=srgb&fm=jpg&q=85",
+    "abstract_blue": "https://images.unsplash.com/photo-1776875479148-e51ea920282c?crop=entropy&cs=srgb&fm=jpg&q=85"
+  }
+}
