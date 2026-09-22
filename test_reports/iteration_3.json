@@ -1,0 +1,35 @@
+{
+  "summary": "Frontend-only regression testing on MobileCart rebrand (previously DEALKR). Verified all storefront + admin flows against the public preview URL. Core storefront pages, register/login, add-to-cart, wishlist, category browsing, full checkout with address+payment+order placement (order #MC-733949 confirmed), and admin dashboard/sections all work correctly with MobileCart branding. CRITICAL FRONTEND BUG: /auctions page crashes with a React runtime error 'Cannot read properties of null (reading id)' making the entire auctions route unusable (bid button never rendered).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Auctions page (src/App.js line 466)",
+        "issue": "Runtime error 'Cannot read properties of null (reading id)' crashes the entire /auctions route. Root cause: `auctions.slice(1).map((entry) => <ProductCard product={entry.product} ... />)` passes `entry.product` even when it is null (refreshAuctions explicitly sets product to null when the backend response has no product). ProductCard then dereferences product.id and throws. Result: place-bid-button never renders, and the auction feature is completely broken.",
+        "selector": "route:/auctions, [data-testid='place-bid-button']",
+        "priority": "CRITICAL"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/test_reports/screens/home.png", "/app/test_reports/screens/pdp.png", "/app/test_reports/screens/cart.png", "/app/test_reports/screens/checkout_step2.png", "/app/test_reports/screens/order_result.png", "/app/test_reports/screens/admin.png", "/app/test_reports/screens/auctions.png"],
+  "action_items": [
+    "FIX /auctions crash: In Auctions component (App.js ~line 466), filter out entries with null product before mapping to ProductCard, e.g. `auctions.slice(1).filter(e => e.product).map(...)`. Alternatively, guard ProductCard to early-return when product is null. Also consider the same fix around line 455 `auction.product?.name` (safe) but ensure header/product image also guards nulls.",
+    "Optional: Add a React error boundary around routed pages so a single bad entry does not blank out the whole page with the Emergent runtime overlay."
+  ],
+  "critical_code_review_comments": [
+    "App.js ProductCard directly accesses product.id and product.image with no null guard; combined with refreshAuctions() setting product=null when missing, this is a guaranteed crash for any auction whose product is unresolved.",
+    "Login page uses HTML5 required + type=email; when a user enters an invalid email domain (e.g. .test TLD), backend returns 422 but UI stays on /login without visible toast in some cases. Consider surfacing 422 detail messages explicitly.",
+    "Detail page uses data-testid `detail-add-to-cart` / `detail-buy-now` while grid cards use `add-product-<id>` / `hot-add-<id>`. Inconsistent naming; consider unifying to `add-product-*` everywhere for easier automation.",
+    "Auctions grid does not paginate or handle empty state cleanly; when only one auction exists, the 'More Live Auctions' section still renders an empty grid heading."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not tested (frontend-only run)", "frontend": "~90% (9/10 flows PASS; auctions FAIL)"},
+  "test_credentials": "Admin: admin@dealkr.example.com / 3Bw-zdq91GXPTEO1NyzQyfCa. Customer created during test: tuser_j0lgyo@example.com / TestPass123! (order MC-733949).",
+  "seed_data_creation": "Registered two fresh customer accounts (tuser_xnsoox@example.com, tuser_j0lgyo@example.com) and placed one real order MC-733949 via UPI on the preview backend.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Confirmed working: home page, MobileCart branding, hero, hot deals, category circles, trending tabs (all/mobiles/laptops), product detail (uses `detail-add-to-cart`/`detail-buy-now` testids), register (use a real TLD like example.com; .test is rejected by pydantic EmailStr), add-to-cart badge update, cart page with proceed-checkout-button, wishlist heart, category browsing, full checkout (address form testids `address-recipient_name-input`,`address-phone-input`,`address-line1-input`,`address-city-input`,`address-state-input`,`address-postal_code-input`,`save-address-button`; payment options `payment-upi|card|net_banking|wallet|cod`; `place-order-button`), admin login redirect to /admin, admin nav sections vendors/coupons/categories. FAILING: /auctions page throws React runtime error and does not render bid button. Retest bidding after main agent adds a null-product guard in Auctions grid.",
+  "rca of the issue": "Reproduction: navigate to https://dashboard-design-20.preview.emergentagent.com/auctions. Observed: Emergent 'Runtime error' overlay with 'Cannot read properties of null (reading id)' at bundle.js:1000. Console also logs 'An error occurred in the <ProductCard> component'. Root cause in /app/frontend/src/App.js line 466: `{auctions.slice(1).map((entry) => <ProductCard product={entry.product} ... />)}`. refreshAuctions (line 579) intentionally maps entries to product:null when the backend does not include a product, and ProductCard (line 113+) reads product.id and product.image unconditionally. Mitigation: filter null products before mapping (or return null from ProductCard when product is falsy)."
+}

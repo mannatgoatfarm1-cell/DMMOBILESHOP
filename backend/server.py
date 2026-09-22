@@ -74,11 +74,22 @@ class RegisterInput(BaseModel):
     name: str = Field(min_length=2, max_length=100)
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
+    confirm_password: str = Field(min_length=8, max_length=128)
 
 
 class LoginInput(BaseModel):
-    email: EmailStr
+    identifier: str = Field(min_length=1, max_length=255)
     password: str = Field(min_length=1, max_length=128)
+
+
+class ForgotPasswordInput(BaseModel):
+    identifier: str = Field(min_length=1, max_length=255)
+
+
+class ResetPasswordInput(BaseModel):
+    token: str = Field(min_length=20, max_length=255)
+    new_password: str = Field(min_length=8, max_length=128)
+    confirm_password: str = Field(min_length=8, max_length=128)
 
 
 class ProfileUpdate(BaseModel):
@@ -371,6 +382,11 @@ async def seed_data() -> None:
     elif not verify_password(ADMIN_PASSWORD, admin["password_hash"]):
         await db.users.update_one({"email": ADMIN_EMAIL}, {"$set": {"password_hash": hash_password(ADMIN_PASSWORD)}})
     await db.users.update_one({"email": ADMIN_EMAIL}, {"$set": {"admin_level": "super", "active": True}})
+    deepak = await db.users.find_one({"username": "deepak143"})
+    if not deepak:
+        await db.users.insert_one({"id": str(uuid.uuid4()), "email": "deepak143@mobilecart.com", "username": "deepak143", "name": "Deepak", "role": "admin", "admin_level": "super", "active": True, "phone": None, "addresses": [], "password_hash": hash_password("deepak143"), "created_at": now()})
+    else:
+        await db.users.update_one({"username": "deepak143"}, {"$set": {"password_hash": hash_password("deepak143"), "role": "admin", "admin_level": "super", "active": True}})
     catalog = [
         ("iphone", "iPhone 15 Pro Max", "256GB · Natural Titanium", "mobiles", 109900, 134900, "AI PICK", "https://static.prod-images.emergentagent.com/jobs/4d8ba7d6-4cc2-48fd-a329-88470c3b0d75/images/29f5c8a586dbdda9921a2bd753139bccf4cd74c5f0004bb94e7b3148cb72b303.jpeg"),
         ("samsung", "Samsung S23 Ultra", "256GB · Phantom Black", "mobiles", 64999, 89999, "BESTSELLER", "https://images.unsplash.com/photo-1678911820864-e2c567c655d7?auto=format&fit=crop&w=800&q=85"),
@@ -381,6 +397,10 @@ async def seed_data() -> None:
         ("apple-watch-9", "Apple Watch Series 9", "45mm · Midnight", "smartwatch", 37900, 45900, "BESTSELLER", "https://images.unsplash.com/photo-1546868871-7041f2a55e12?auto=format&fit=crop&w=800&q=85"),
         ("dualsense", "Sony DualSense Controller", "PS5 · Midnight Black", "gaming", 5490, 6990, "HOT DEAL", "https://images.unsplash.com/photo-1633499737221-5e3406d4d952?auto=format&fit=crop&w=800&q=85"),
         ("sony-camera", "Sony Alpha Mirrorless", "24MP · Body + Lens", "cameras", 71999, 89999, "TOP RATED", "https://images.unsplash.com/photo-1486492440844-ebc195542a40?auto=format&fit=crop&w=800&q=85"),
+        ("oneplus-12r", "OnePlus 12R", "256GB · Iron Gray", "mobiles", 39999, 45999, "NEW", "https://images.unsplash.com/photo-1598327105666-5b89351aff97?auto=format&fit=crop&w=800&q=85"),
+        ("redmi-note-13", "Redmi Note 13 Pro", "256GB · Aurora Purple", "mobiles", 24999, 29999, "VALUE", "https://images.unsplash.com/photo-1678911820864-e2c567c655d7?auto=format&fit=crop&w=800&q=85"),
+        ("dell-xps-13", "Dell XPS 13", "16GB · 512GB SSD", "laptops", 99900, 119900, "TOP RATED", "https://images.unsplash.com/photo-1650661926447-9efb2610f64c?auto=format&fit=crop&w=800&q=85"),
+        ("sony-wh1000", "Sony WH-1000XM5", "Wireless · Silver", "audio", 26990, 34990, "BESTSELLER", "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?auto=format&fit=crop&w=800&q=85"),
     ]
     for name in ["mobiles", "laptops", "tablets", "smartwatch", "accessories", "audio", "gaming", "cameras", "home-living"]:
         title = "Smart Watches" if name == "smartwatch" else name.replace("-", " & ").title()
@@ -416,6 +436,7 @@ async def initialise() -> None:
     await db.command("ping")
     await db.users.create_index("email", unique=True)
     await db.products.create_index("slug", unique=True)
+    await db.users.create_index("username", unique=True, sparse=True)
     await db.categories.create_index("slug", unique=True)
     await db.products.create_index([("name", "text"), ("description", "text"), ("sub", "text")])
     await db.products.create_index([("active", 1), ("category_slug", 1), ("price", 1)])
@@ -425,6 +446,7 @@ async def initialise() -> None:
     await db.auctions.create_index([("status", 1), ("ends_at", 1)])
     await db.bids.create_index([("auction_id", 1), ("created_at", -1)])
     await db.login_attempts.create_index("identifier", unique=True)
+    await db.password_reset_tokens.create_index("expires_at", expireAfterSeconds=0)
     await db.returns.create_index([("user_id", 1), ("created_at", -1)])
     await db.support_tickets.create_index([("user_id", 1), ("created_at", -1)])
     for resource in MANAGED_RESOURCES:
@@ -456,6 +478,8 @@ async def health() -> dict[str, str]:
 
 @api.post("/auth/register", response_model=UserPublic, status_code=201)
 async def register(input: RegisterInput, response: Response) -> UserPublic:
+    if input.password != input.confirm_password:
+        raise HTTPException(422, "Passwords do not match")
     email = str(input.email).lower()
     if await db.users.find_one({"email": email}, {"_id": 0, "id": 1}):
         raise HTTPException(409, "An account with this email already exists")
@@ -467,12 +491,11 @@ async def register(input: RegisterInput, response: Response) -> UserPublic:
 
 @api.post("/auth/login", response_model=UserPublic)
 async def login(input: LoginInput, request: Request, response: Response) -> UserPublic:
-    email = str(input.email).lower()
-    identifier = email
+    identifier = input.identifier.strip().lower()
     attempt = await db.login_attempts.find_one({"identifier": identifier}, {"_id": 0})
     if attempt and attempt.get("locked_until", "") > now():
         raise HTTPException(429, "Too many sign-in attempts. Please try again in 15 minutes")
-    user = await db.users.find_one({"email": email}, {"_id": 0})
+    user = await db.users.find_one({"$or": [{"email": identifier}, {"username": identifier}]}, {"_id": 0})
     if not user or not verify_password(input.password, user["password_hash"]):
         failures = (attempt or {}).get("failures", 0) + 1
         update: dict[str, Any] = {"failures": failures, "updated_at": now()}
@@ -509,6 +532,38 @@ async def logout() -> Response:
     response.delete_cookie("access_token", path="/", secure=True, samesite="none")
     response.delete_cookie("refresh_token", path="/", secure=True, samesite="none")
     return response
+
+
+@api.post("/auth/forgot-password")
+async def forgot_password(input: ForgotPasswordInput) -> dict[str, Any]:
+    identifier = input.identifier.strip().lower()
+    user = await db.users.find_one({"$or": [{"email": identifier}, {"username": identifier}]}, {"_id": 0, "id": 1})
+    if user:
+        token = secrets.token_urlsafe(32)
+        expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
+        await db.password_reset_tokens.insert_one({"token": token, "user_id": user["id"], "used": False, "expires_at": expires_at})
+        print(f"MobileCart password reset link: {FRONTEND_URL}/login?reset_token={token}")
+    return {"message": "If this account exists, password reset instructions have been created."}
+
+
+@api.post("/auth/reset-password", response_model=UserPublic)
+async def reset_password(input: ResetPasswordInput) -> UserPublic:
+    if input.new_password != input.confirm_password:
+        raise HTTPException(422, "Passwords do not match")
+    reset = await db.password_reset_tokens.find_one({"token": input.token, "used": False, "expires_at": {"$gt": datetime.now(timezone.utc)}}, {"_id": 0})
+    if not reset:
+        raise HTTPException(400, "This password reset link is invalid or has expired")
+    user = await db.users.find_one({"id": reset["user_id"]}, {"_id": 0})
+    if not user:
+        raise HTTPException(404, "Account not found")
+    await db.users.update_one({"id": user["id"]}, {"$set": {"password_hash": hash_password(input.new_password), "updated_at": now()}})
+    await db.password_reset_tokens.update_one({"token": input.token}, {"$set": {"used": True, "used_at": now()}})
+    identifiers = [user["email"].lower()]
+    if user.get("username"):
+        identifiers.append(user["username"].lower())
+    await db.login_attempts.delete_many({"identifier": {"$in": identifiers}})
+    updated = await db.users.find_one({"id": user["id"]}, {"_id": 0})
+    return public_user(updated)
 
 
 @api.get("/auth/me", response_model=UserPublic)
@@ -1046,4 +1101,11 @@ async def update_ticket(ticket_id: str, input: ManagedRecordInput, _: Annotated[
 
 
 app.include_router(api)
-app.add_middleware(CORSMiddleware, allow_origins=[FRONTEND_URL], allow_credentials=True, allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"], allow_headers=["Content-Type", "Authorization"])
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[FRONTEND_URL.rstrip("/")],
+    allow_origin_regex=r"^https://[a-z0-9-]+\.preview\.emergentagent\.com$",
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+    allow_headers=["Content-Type", "Authorization"],
+)

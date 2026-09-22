@@ -5,7 +5,7 @@ import {
   Search, ShoppingCart, MapPin, ChevronRight, ChevronLeft, ChevronDown, Sparkles, Gavel, Heart, UserRound,
   Menu, X, Plus, ArrowLeft, Minus, Trash2, Check, Star, Store, Zap, Clock, Download, Apple as AppleIcon,
   Smartphone, Laptop, Watch, Tablet, Headphones, Gamepad2, Camera, Home as HomeIcon, Percent, LayoutGrid,
-  Truck, RotateCcw, ShieldCheck, BadgeCheck, LoaderCircle, LogOut, Wallet, Tag,
+  Truck, RotateCcw, ShieldCheck, BadgeCheck, LoaderCircle, LogOut, Wallet, Tag, ZoomIn,
 } from "lucide-react";
 import { api, apiError, cardProduct } from "@/api";
 import AdminWorkspace from "@/components/AdminWorkspace";
@@ -77,7 +77,7 @@ function Topbar({ cartCount, wishCount = 0, user, onSearch, onLogout, onMenu }) 
           <button className="top-link" onClick={() => navigate("/account")} data-testid="wishlist-button"><span className="ic"><Heart size={20} />{wishCount > 0 && <i>{wishCount}</i>}</span></button>
           <Link className="top-link" to="/cart" data-testid="cart-header-button"><span className="ic"><ShoppingCart size={20} />{cartCount > 0 && <i>{cartCount}</i>}</span></Link>
           {user
-            ? <button className="top-link acct" onClick={onLogout} data-testid="account-logout-button"><UserRound size={20} /><span className="acct-copy"><small>Hi,</small><b>{user.name.split(" ")[0]}</b></span></button>
+            ? <Link className="top-link acct" to="/account" data-testid="account-profile-link"><UserRound size={20} /><span className="acct-copy"><small>Hi,</small><b>{user.name.split(" ")[0]}</b></span></Link>
             : <Link className="top-link acct" to="/login" data-testid="account-login-link"><UserRound size={20} /><span className="acct-copy"><small>Login /</small><b>Register</b></span></Link>}
           <Link className="sell-btn" to="/sell" data-testid="sell-button">Sell on MobileCart</Link>
         </div>
@@ -111,6 +111,7 @@ function FooterBar() {
 }
 
 function ProductCard({ product, onAdd, onWish, badge }) {
+  if (!product) return null;
   const rating = rateFor(product.id);
   return (
     <article className="product-card" data-testid={`product-card-${product.id}`}>
@@ -302,8 +303,18 @@ function BottomNav({ active = "Home" }) {
 function ProductPage({ onAdd, onWish, common }) {
   const { id } = useParams();
   const [product, setProduct] = useState(null);
+  const [similarProducts, setSimilarProducts] = useState([]);
+  const [zoomed, setZoomed] = useState(false);
   const [loading, setLoading] = useState(true);
-  useEffect(() => { setLoading(true); api.get(`/api/products/${id}`).then(({ data }) => setProduct(cardProduct(data))).catch(() => toast.error("Product could not be found")).finally(() => setLoading(false)); }, [id]);
+  useEffect(() => {
+    setLoading(true); setSimilarProducts([]); setZoomed(false);
+    api.get(`/api/products/${id}`).then(async ({ data }) => {
+      const selected = cardProduct(data);
+      setProduct(selected);
+      const response = await api.get(`/api/products?category=${encodeURIComponent(selected.category_slug)}&page_size=8`);
+      setSimilarProducts(response.data.items.map(cardProduct).filter((item) => item.id !== selected.id).slice(0, 4));
+    }).catch(() => toast.error("Product could not be found")).finally(() => setLoading(false));
+  }, [id]);
   if (loading) return <><Topbar {...common} /><main className="detail-page"><Loading /></main><FooterBar /></>;
   if (!product) return <Navigate to="/" replace />;
   const rating = rateFor(product.id);
@@ -313,7 +324,7 @@ function ProductPage({ onAdd, onWish, common }) {
       <main className="detail-page">
         <Link to="/" className="back-link" data-testid="product-back-link"><ArrowLeft size={16} /> Back to store</Link>
         <div className="detail-grid">
-          <div className="detail-image"><img src={product.image} alt={product.name} /><button onClick={() => onWish(product.id)} data-testid="detail-wishlist" aria-label="Save product"><Heart /></button></div>
+          <div className="detail-image"><button className="image-zoom-trigger" onClick={() => setZoomed(true)} data-testid="detail-image-zoom-button" aria-label={`Zoom ${product.name}`}><img src={product.image} alt={product.name} /><span><ZoomIn size={18} /> Zoom image</span></button><button onClick={() => onWish(product.id)} data-testid="detail-wishlist" aria-label="Save product"><Heart /></button></div>
           <div className="detail-copy">
             <span className="eyebrow">MOBILECART ASSURED</span>
             <h1>{product.name}</h1>
@@ -330,7 +341,9 @@ function ProductPage({ onAdd, onWish, common }) {
             </div>
           </div>
         </div>
+        {similarProducts.length > 0 && <section className="similar-products" data-testid="similar-products-section"><SectionTitle title="Similar Products" action="View All" to={`/category?category=${product.category_slug}`} /><div className="product-grid grid-4">{similarProducts.map((item, index) => <ProductCard product={item} onAdd={onAdd} onWish={onWish} badge={BADGES[index % BADGES.length]} key={item.id} />)}</div></section>}
       </main>
+      {zoomed && <div className="image-lightbox" role="dialog" aria-modal="true" aria-label={`${product.name} image preview`} data-testid="product-image-zoom-modal"><button className="lightbox-backdrop" onClick={() => setZoomed(false)} aria-label="Close image preview" data-testid="product-image-zoom-backdrop" /><div className="lightbox-content"><img src={product.image} alt={`${product.name} enlarged`} /><button className="lightbox-close" onClick={() => setZoomed(false)} aria-label="Close image preview" data-testid="product-image-zoom-close"><X size={20} /></button></div></div>}
       <FooterBar />
       <BottomNav active="" />
     </>
@@ -462,8 +475,7 @@ function Auctions({ auctions, user, refreshAuctions, common }) {
             </div>
           </div>
         )}
-        <SectionTitle title="More Live Auctions" action="View all" />
-        <div className="product-grid grid-4">{auctions.slice(1).map((entry) => <ProductCard product={entry.product} onAdd={() => {}} onWish={() => {}} key={entry.id} />)}</div>
+        {auctions.slice(1).some((entry) => entry.product) && <><SectionTitle title="More Live Auctions" action="View all" /><div className="product-grid grid-4">{auctions.slice(1).filter((entry) => entry.product).map((entry) => <ProductCard product={entry.product} onAdd={() => {}} onWish={() => {}} key={entry.id} />)}</div></>}
       </main>
       <FooterBar />
       <BottomNav active="Auction" />
@@ -492,30 +504,38 @@ function SellPage({ common }) {
 
 function Login({ setUser }) {
   const navigate = useNavigate(); const location = useLocation();
-  const [register, setRegister] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const isAdminLogin = new URLSearchParams(location.search).get("next")?.startsWith("/admin");
+  const [mode, setMode] = useState("login");
+  const [form, setForm] = useState({ name: "", identifier: "", password: "", confirmPassword: "", resetToken: new URLSearchParams(location.search).get("reset_token") || "", newPassword: "", newPasswordConfirm: "" });
   const [busy, setBusy] = useState(false);
   const submit = async (event) => {
     event.preventDefault(); setBusy(true);
     try {
-      const endpoint = register ? "/api/auth/register" : "/api/auth/login";
-      const payload = register ? form : { email: form.email, password: form.password };
+      if (mode === "register" && form.password !== form.confirmPassword) throw new Error("Passwords do not match");
+      if (mode === "reset" && form.newPassword !== form.newPasswordConfirm) throw new Error("Passwords do not match");
+      if (mode === "forgot") { await api.post("/api/auth/forgot-password", { identifier: form.identifier }); toast.success("Reset instructions requested"); setMode("reset"); return; }
+      if (mode === "reset") { await api.post("/api/auth/reset-password", { token: form.resetToken, new_password: form.newPassword, confirm_password: form.newPasswordConfirm }); toast.success("Password updated. Please sign in."); setMode("login"); return; }
+      const endpoint = mode === "register" ? "/api/auth/register" : "/api/auth/login";
+      const payload = mode === "register" ? { name: form.name, email: form.identifier, password: form.password, confirm_password: form.confirmPassword } : { identifier: form.identifier, password: form.password };
       const { data } = await api.post(endpoint, payload);
-      setUser(data); toast.success(register ? "Account created" : "Welcome back");
+      setUser(data); toast.success(mode === "register" ? "Account created" : "Welcome back");
       navigate(data.role === "admin" ? "/admin" : new URLSearchParams(location.search).get("next") || "/");
-    } catch (error) { toast.error(apiError(error)); } finally { setBusy(false); }
+    } catch (error) { toast.error(error.message === "Passwords do not match" ? error.message : apiError(error)); } finally { setBusy(false); }
   };
+  const heading = mode === "register" ? "Create your account" : mode === "forgot" ? "Reset your password" : mode === "reset" ? "Choose a new password" : isAdminLogin ? "Admin sign in" : "Welcome back";
   return (
     <main className="auth-page">
       <Link to="/" data-testid="login-brand-link"><Brand /></Link>
       <form className="auth-card" onSubmit={submit} data-testid="auth-form">
         <span className="eyebrow">MOBILECART ACCOUNT</span>
-        <h1>{register ? "Create your account" : "Welcome back"}</h1>
-        {register && <input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Full name" required data-testid="register-name-input" />}
-        <input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} placeholder="Email address" required data-testid="auth-email-input" />
-        <input type="password" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} placeholder="Password" minLength="8" required data-testid="auth-password-input" />
-        <button className="primary-btn full" disabled={busy} data-testid="auth-submit-button">{busy ? "Please wait…" : register ? "Create account" : "Sign in"}</button>
-        <button type="button" className="auth-switch" onClick={() => setRegister(!register)} data-testid="auth-switch-button">{register ? "Already have an account? Sign in" : "New to MobileCart? Create account"}</button>
+        <h1>{heading}</h1>
+        {mode === "forgot" && <p className="auth-help" data-testid="forgot-password-help">Enter your account email or admin username to request a secure reset link.</p>}
+        {mode === "reset" && <p className="auth-help" data-testid="reset-password-help">Paste the reset code from your secure reset link, then choose a new password.</p>}
+        {mode === "register" && <input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Full name" required data-testid="register-name-input" />}
+        {mode === "reset" ? <><input type="text" value={form.resetToken} onChange={(event) => setForm({ ...form, resetToken: event.target.value })} placeholder="Reset code" required data-testid="reset-token-input" /><input type="password" value={form.newPassword} onChange={(event) => setForm({ ...form, newPassword: event.target.value })} placeholder="New password" minLength="8" required data-testid="reset-password-input" /><input type="password" value={form.newPasswordConfirm} onChange={(event) => setForm({ ...form, newPasswordConfirm: event.target.value })} placeholder="Re-enter new password" minLength="8" required data-testid="reset-confirm-password-input" /></> : <>{<input type={isAdminLogin && mode === "login" ? "text" : "email"} value={form.identifier} onChange={(event) => setForm({ ...form, identifier: event.target.value })} placeholder={isAdminLogin && mode === "login" ? "Admin username or email" : "Email address"} required data-testid="auth-email-input" />}{mode !== "forgot" && <input type="password" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} placeholder="Password" minLength="8" required data-testid="auth-password-input" />}{mode === "register" && <input type="password" value={form.confirmPassword} onChange={(event) => setForm({ ...form, confirmPassword: event.target.value })} placeholder="Re-enter password" minLength="8" required data-testid="register-confirm-password-input" />}</>}
+        <button className="primary-btn full" disabled={busy} data-testid="auth-submit-button">{busy ? "Please wait…" : mode === "register" ? "Create account" : mode === "forgot" ? "Request reset" : mode === "reset" ? "Save new password" : "Sign in"}</button>
+        {mode === "login" && <button type="button" className="auth-switch" onClick={() => setMode("forgot")} data-testid="forgot-password-button">Forgot password?</button>}
+        {mode === "forgot" || mode === "reset" ? <button type="button" className="auth-switch" onClick={() => setMode("login")} data-testid="auth-back-to-login-button">Back to sign in</button> : !isAdminLogin && <button type="button" className="auth-switch" onClick={() => setMode(mode === "register" ? "login" : "register")} data-testid="auth-switch-button">{mode === "register" ? "Already have an account? Sign in" : "New to MobileCart? Create account"}</button>}
       </form>
     </main>
   );
@@ -587,7 +607,7 @@ function App() {
   const remove = async (id) => { try { await api.delete(`/api/cart/items/${id}`); await refreshCart(); toast.success("Removed from cart"); } catch (error) { toast.error(apiError(error)); } };
   const wish = async (id) => { if (!user) { navigate("/login"); return; } try { await api.put(`/api/wishlist/${id}`); await refreshWish(); toast.success("Saved to wishlist"); } catch (error) { toast.error(apiError(error)); } };
   const logout = async () => { try { await api.post("/api/auth/logout"); } finally { setUser(null); setCart([]); setWishCount(0); navigate("/"); toast.success("Signed out"); } };
-  const common = { cartCount: cart.reduce((sum, item) => sum + item.quantity, 0), wishCount, user, onSearch: (query) => refreshProducts(`?query=${encodeURIComponent(query)}`), onLogout: logout, onMenu: () => navigate("/account") };
+  const common = { cartCount: cart.reduce((sum, item) => sum + item.quantity, 0), wishCount, user, onSearch: (query) => refreshProducts(`?query=${encodeURIComponent(query)}`), onMenu: () => navigate("/account") };
   if (authLoading) return <Loading label="Connecting to MobileCart…" />;
   return (
     <>

@@ -1,14 +1,14 @@
-# DEALKR Product Record
+# MobileCart Product Record
 
 ## Original Problem Statement
-Build the same design website and web admin panel as the provided DEALKR reference screens.
+Build a production-ready MobileCart storefront and web admin panel with product browsing, cart, checkout, auctions, and marketplace administration in a dark luxury visual style.
 
 ## Architecture Decisions
 - Responsive React single-page experience with customer storefront routes and `/admin` dashboard route.
 - React storefront and admin dashboard use FastAPI APIs at `REACT_APP_BACKEND_URL`; MongoDB is the source of truth for catalog, customers, carts, orders, auctions, and admin metrics.
 - JWT access and refresh cookies secure customer and administrator sessions. All admin routes require the server-side `admin` role.
 - Image uploads are validated and stored behind an authenticated API endpoint. Payment records use provider-ready fields for a later Razorpay integration.
-- Visual system follows the reference: deep navy surfaces, electric purple/blue accents, INR formatting, product photography, compact data-dense admin panels.
+- Visual system follows the MobileCart direction: deep navy surfaces, electric purple/blue accents, INR formatting, product photography, compact data-dense admin panels.
 
 ## User Personas
 - Deal-focused customer browsing electronics, auctions, AI deals, and bulk-buy offers.
@@ -21,7 +21,7 @@ Build the same design website and web admin panel as the provided DEALKR referen
 - Match reference styling, shading, spacing, imagery, DEALKR branding, and ₹ currency examples.
 
 ## Implemented — 2026-09-22
-- Replaced the starter splash screen with a complete DEALKR storefront and responsive admin dashboard.
+- Replaced the starter splash screen with a complete MobileCart storefront and responsive admin dashboard.
 - Added functional demo routes: storefront, category browsing, product detail, cart, checkout success, auctions, and `/admin`.
 - Added local cart state, quantity/remove behavior, checkout payment selection, order confirmation, auction bid increment, toast feedback, responsive bottom navigation, and mobile admin menu.
 - Added descriptive `data-testid` attributes throughout interactive flows and verified production build plus desktop/mobile screens.
@@ -30,16 +30,26 @@ Build the same design website and web admin panel as the provided DEALKR referen
 - Added customer signup/login, httpOnly JWT sessions, addresses, profile management, seeded administrator access, role checks, brute-force sign-in lockout, and structured API validation/error responses.
 - Added MongoDB indexes, data validation, protected image upload support, order tracking/payment architecture, and live admin dashboard metrics.
 - Validated real customer and administrator journeys end-to-end. Fixed auth lockout keying and stable logout response handling; backend regression suite now passes 10/10 and production frontend build passes.
+- Rebranded storefront/admin visuals and product imagery for MobileCart.
+- Seeded the requested administrator account: username `deepak143`, password `deepak143`, super-admin role.
+- Added username-or-email sign-in, customer-only registration, matching re-enter-password validation, and one-time password-reset tokens with one-hour expiry.
+- Added Forgot Password controls to customer and administrator login views; admin login has no registration control.
+- Fixed the header profile action so it opens `/account`; sign-out remains available only in Account.
+- Fixed null-product handling on `/auctions`, preventing the prior route crash.
+- Added product image zoom/lightbox and category-based Similar Products to product detail pages.
+- Iteration 4 validation: requested frontend flows passed, 7/8 backend checks passed. Local credentialed CORS preflight passes; external preview OPTIONS preflight is rejected by the gateway although same-origin browser authentication and direct login work.
 
 ## Prioritized Backlog
-- P0: Keep storefront, customer account, and role-protected admin flows stable against the live API.
+- P0: Validate external preview gateway CORS behavior if a separate-origin client must access APIs; current MobileCart frontend uses same-origin API calls and works.
+- P0: Configure outbound email delivery for customer-facing password-reset links; reset tokens are generated securely but currently logged by the backend because no email provider is configured.
 - P1: Add full admin management screens for product/category/order/auction CRUD and connect the remaining dashboard navigation sections.
 - P1: Move uploads to managed object storage before scaling beyond a single application instance.
 - P2: Integrate Razorpay payment creation, verification, webhooks, refunds, and reconciliation.
 - P2: Add auction closing scheduler and live bid synchronization.
 
 ## Next Tasks
-1. Build the remaining admin management screens using the completed protected APIs.
-2. Configure the custom domain `www.mobilecart.com`; `/admin` already routes to the secure admin panel.
-3. Integrate Razorpay with server-side order verification and webhooks.
-4. Add managed object storage plus scheduled/live auction lifecycle processing.
+1. Add wallet add/spend, Gold membership, referrals, coupons, bulk-buy, and price tracking.
+2. Integrate an outbound email provider for production password-reset link delivery.
+3. Add AI Assistant / Deal Engine through the approved LLM integration flow.
+4. Integrate Razorpay with server-side order verification and webhooks.
+5. Add managed object storage plus scheduled/live auction lifecycle processing.
