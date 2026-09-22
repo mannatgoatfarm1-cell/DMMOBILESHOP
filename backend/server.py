@@ -35,7 +35,7 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 client = AsyncIOMotorClient(MONGO_URL, serverSelectionTimeoutMS=5000)
 db = client[DB_NAME]
-app = FastAPI(title="DEALKR API", version="1.0.0")
+app = FastAPI(title="MobileCart API", version="1.0.0")
 api = APIRouter(prefix="/api")
 app.mount("/api/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
@@ -230,6 +230,56 @@ class Dashboard(BaseModel):
     activities: list[dict[str, str]]
 
 
+class ManagedRecordInput(BaseModel):
+    title: str = Field(min_length=2, max_length=160)
+    status: str = Field(default="active", pattern=r"^[a-z_ -]{2,32}$")
+    description: str = Field(default="", max_length=2000)
+    data: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("data")
+    @classmethod
+    def validate_data(cls, data: dict[str, Any]) -> dict[str, Any]:
+        if len(data) > 24 or any(not re.fullmatch(r"[a-zA-Z0-9_-]{1,64}", key) for key in data):
+            raise ValueError("Data fields are invalid")
+        return data
+
+
+class ManagedRecord(ManagedRecordInput):
+    id: str
+    resource: str
+    created_at: str
+    updated_at: str
+
+
+class ManagedRecordList(BaseModel):
+    items: list[ManagedRecord]
+    total: int
+    page: int
+    page_size: int
+
+
+class UserManagementUpdate(BaseModel):
+    active: bool
+
+
+class AdminUserCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=100)
+    email: EmailStr
+    password: str = Field(min_length=12, max_length=128)
+
+
+class PaymentUpdate(BaseModel):
+    status: Literal["pending", "captured", "failed", "refunded", "cash_on_delivery"]
+    transaction_id: str | None = Field(default=None, max_length=120)
+
+
+MANAGED_RESOURCES = {
+    "vendors", "brands", "campaigns", "coupons", "subscriptions", "app-manager",
+    "banners", "notifications", "wallet-withdrawals", "shipping", "gst-tax", "settings",
+}
+PUBLIC_RESOURCES = {"brands", "campaigns", "coupons", "banners", "shipping"}
+
+
 def now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -290,7 +340,7 @@ async def current_user(request: Request) -> dict[str, Any]:
     except (jwt.InvalidTokenError, ValueError):
         raise HTTPException(401, "Invalid or expired session")
     user = await db.users.find_one({"id": payload["sub"]}, {"_id": 0})
-    if not user or user.get("role") != payload.get("role"):
+    if not user or not user.get("active", True) or user.get("role") != payload.get("role"):
         raise HTTPException(401, "Session is no longer valid")
     return user
 
@@ -301,31 +351,64 @@ async def admin_user(user: Annotated[dict[str, Any], Depends(current_user)]) -> 
     return user
 
 
+async def super_admin_user(user: Annotated[dict[str, Any], Depends(admin_user)]) -> dict[str, Any]:
+    if user.get("admin_level") != "super":
+        raise HTTPException(403, "Super admin access required")
+    return user
+
+
 async def require_customer(user: Annotated[dict[str, Any], Depends(current_user)]) -> dict[str, Any]:
     return user
 
 
 async def seed_data() -> None:
+    legacy_admins = await db.users.find({"email": {"$regex": r"@dealkr\.local$"}}, {"_id": 0, "id": 1}).to_list(20)
+    for legacy in legacy_admins:
+        await db.users.update_one({"id": legacy["id"]}, {"$set": {"email": f"legacy-{legacy['id'][:8]}@dealkr.example.com", "active": False, "updated_at": now()}})
     admin = await db.users.find_one({"email": ADMIN_EMAIL})
     if not admin:
-        await db.users.insert_one({"id": str(uuid.uuid4()), "email": ADMIN_EMAIL, "name": "DEALKR Admin", "role": "admin", "phone": None, "addresses": [], "password_hash": hash_password(ADMIN_PASSWORD), "created_at": now()})
+        await db.users.insert_one({"id": str(uuid.uuid4()), "email": ADMIN_EMAIL, "name": "MobileCart Admin", "role": "admin", "admin_level": "super", "active": True, "phone": None, "addresses": [], "password_hash": hash_password(ADMIN_PASSWORD), "created_at": now()})
     elif not verify_password(ADMIN_PASSWORD, admin["password_hash"]):
         await db.users.update_one({"email": ADMIN_EMAIL}, {"$set": {"password_hash": hash_password(ADMIN_PASSWORD)}})
+    await db.users.update_one({"email": ADMIN_EMAIL}, {"$set": {"admin_level": "super", "active": True}})
     catalog = [
-        ("iphone", "iPhone 15 Pro Max", "256GB · Natural Titanium", "mobiles", 109900, 134900, "AI PICK", "https://images.unsplash.com/photo-1696446701796-da61225697cc?auto=format&fit=crop&w=800&q=85"),
+        ("iphone", "iPhone 15 Pro Max", "256GB · Natural Titanium", "mobiles", 109900, 134900, "AI PICK", "https://static.prod-images.emergentagent.com/jobs/4d8ba7d6-4cc2-48fd-a329-88470c3b0d75/images/29f5c8a586dbdda9921a2bd753139bccf4cd74c5f0004bb94e7b3148cb72b303.jpeg"),
         ("samsung", "Samsung S23 Ultra", "256GB · Phantom Black", "mobiles", 64999, 89999, "BESTSELLER", "https://images.unsplash.com/photo-1678911820864-e2c567c655d7?auto=format&fit=crop&w=800&q=85"),
-        ("macbook", "MacBook Air M2", "13-inch · 8GB RAM", "laptops", 89900, 114900, "TOP RATED", "https://images.pexels.com/photos/20828488/pexels-photo-20828488.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"),
+        ("macbook", "MacBook Air M2", "13-inch · 8GB RAM", "laptops", 89900, 114900, "TOP RATED", "https://static.prod-images.emergentagent.com/jobs/4d8ba7d6-4cc2-48fd-a329-88470c3b0d75/images/75c5dc30a6aeec454c376afa972e9fe1b132b2ab74a220483c2294f0d13ce72a.jpeg"),
         ("nothing-phone-2", "Nothing Phone (2)", "256GB · White", "mobiles", 32999, 39999, "NEW", "https://images.unsplash.com/photo-1598327105666-5b89351aff97?auto=format&fit=crop&w=800&q=85"),
         ("boat-airdopes-141", "boAt Airdopes 141", "TWS Wireless · Black", "audio", 1299, 2999, "DEAL", "https://images.unsplash.com/photo-1606220945770-b5b6c2c55bf1?auto=format&fit=crop&w=800&q=85"),
         ("pixel-7", "Google Pixel 7", "128GB · Snow", "mobiles", 28999, 49999, "VALUE", "https://images.unsplash.com/photo-1598327105666-5b89351aff97?auto=format&fit=crop&w=800&q=85"),
+        ("apple-watch-9", "Apple Watch Series 9", "45mm · Midnight", "smartwatch", 37900, 45900, "BESTSELLER", "https://images.unsplash.com/photo-1546868871-7041f2a55e12?auto=format&fit=crop&w=800&q=85"),
+        ("dualsense", "Sony DualSense Controller", "PS5 · Midnight Black", "gaming", 5490, 6990, "HOT DEAL", "https://images.unsplash.com/photo-1633499737221-5e3406d4d952?auto=format&fit=crop&w=800&q=85"),
+        ("sony-camera", "Sony Alpha Mirrorless", "24MP · Body + Lens", "cameras", 71999, 89999, "TOP RATED", "https://images.unsplash.com/photo-1486492440844-ebc195542a40?auto=format&fit=crop&w=800&q=85"),
     ]
-    for name in ["mobiles", "laptops", "tablets", "smartwatch", "accessories", "audio"]:
-        await db.categories.update_one({"slug": name}, {"$setOnInsert": {"id": str(uuid.uuid4()), "name": name.title(), "slug": name, "image": None, "active": True}}, upsert=True)
+    for name in ["mobiles", "laptops", "tablets", "smartwatch", "accessories", "audio", "gaming", "cameras", "home-living"]:
+        title = "Smart Watches" if name == "smartwatch" else name.replace("-", " & ").title()
+        await db.categories.update_one({"slug": name}, {"$setOnInsert": {"id": str(uuid.uuid4()), "name": title, "slug": name, "image": None, "active": True}}, upsert=True)
     for slug, name, sub, category, price, original_price, tag, image in catalog:
-        await db.products.update_one({"slug": slug}, {"$setOnInsert": {"id": slug, "name": name, "slug": slug, "sub": sub, "description": f"{name} available with DEALKR Assured quality.", "category_slug": category, "price": price, "original_price": original_price, "stock": 25, "images": [image], "tag": tag, "variants": [], "active": True, "featured": True, "created_at": now(), "updated_at": now()}}, upsert=True)
+        await db.products.update_one({"slug": slug}, {"$setOnInsert": {"id": slug, "name": name, "slug": slug, "sub": sub, "description": f"{name} available with MobileCart Assured quality.", "category_slug": category, "price": price, "original_price": original_price, "stock": 25, "images": [image], "tag": tag, "variants": [], "active": True, "featured": True, "created_at": now(), "updated_at": now()}}, upsert=True)
     phone = await db.products.find_one({"slug": "iphone"}, {"_id": 0})
     if phone:
         await db.auctions.update_one({"product_id": phone["id"], "status": "live"}, {"$setOnInsert": {"id": "auction-iphone-14", "product_id": phone["id"], "starting_price": 50000, "current_bid": 68900, "bid_increment": 500, "bid_count": 12, "status": "live", "starts_at": (datetime.now(timezone.utc) - timedelta(hours=3)).isoformat(), "ends_at": (datetime.now(timezone.utc) + timedelta(days=2)).isoformat(), "winner_user_id": None}}, upsert=True)
+    section_seeds = {
+        "vendors": [("CellPoint Store", "approved", "Verified marketplace vendor", {"email": "vendor@cellpoint.example.com", "commission": "12%"})],
+        "brands": [("Apple", "active", "Official brand collection", {"slug": "apple"})],
+        "campaigns": [("Mobile Festival", "published", "Seasonal device offers", {"starts_at": now(), "ends_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()})],
+        "coupons": [("WELCOME10", "active", "10% welcome discount", {"code": "WELCOME10", "discount": "10%", "minimum_order": 999})],
+        "subscriptions": [("MobileCart Gold", "active", "Premium membership: free delivery, priority support, early access", {"monthly_price": 99})],
+        "app-manager": [("Homepage Feed", "active", "Customer home modules configuration", {"version": "1.0"})],
+        "banners": [("Premium Refurbished", "published", "Quality-checked refurbished devices", {"link": "/category"})],
+        "notifications": [("Welcome to MobileCart", "published", "New deals and order updates are ready.", {"audience": "customers"})],
+        "wallet-withdrawals": [("Vendor settlement policy", "active", "Weekly settlement configuration", {"minimum_withdrawal": 500})],
+        "shipping": [("Standard Delivery", "active", "Free delivery across eligible pin codes", {"fee": 0, "estimated_days": "3-5"})],
+        "gst-tax": [("GST Standard", "active", "Default tax rule for electronics", {"rate": 18})],
+        "settings": [("Store Settings", "active", "Global marketplace controls", {"currency": "INR", "support_email": "support@mobilecart.example.com"})],
+    }
+    for resource, records in section_seeds.items():
+        collection = db[f"admin_{resource.replace('-', '_')}"]
+        for title, status, description, data in records:
+            timestamp = now()
+            await collection.update_one({"title": title}, {"$setOnInsert": {"id": str(uuid.uuid4()), "resource": resource, "title": title, "status": status, "description": description, "data": data, "created_at": timestamp, "updated_at": timestamp}}, upsert=True)
 
 
 @app.on_event("startup")
@@ -342,6 +425,10 @@ async def initialise() -> None:
     await db.auctions.create_index([("status", 1), ("ends_at", 1)])
     await db.bids.create_index([("auction_id", 1), ("created_at", -1)])
     await db.login_attempts.create_index("identifier", unique=True)
+    await db.returns.create_index([("user_id", 1), ("created_at", -1)])
+    await db.support_tickets.create_index([("user_id", 1), ("created_at", -1)])
+    for resource in MANAGED_RESOURCES:
+        await db[f"admin_{resource.replace('-', '_')}"] .create_index([("status", 1), ("updated_at", -1)])
     await seed_data()
 
 
@@ -577,7 +664,7 @@ async def create_order(input: OrderCreate, user: Annotated[dict[str, Any], Depen
             raise HTTPException(409, f"{cart_item.product.name} is no longer in stock")
         order_items.append({"product_id": cart_item.product_id, "name": cart_item.product.name, "image": cart_item.product.images[0], "price": cart_item.product.price, "quantity": cart_item.quantity, "variant_sku": cart_item.variant_sku})
     created = now()
-    order = {"id": str(uuid.uuid4()), "order_number": f"DKR-{secrets.randbelow(900000) + 100000}", "user_id": user["id"], "items": order_items, "delivery_address": address, "subtotal": cart.subtotal, "platform_fee": 99, "total": cart.subtotal + 99, "status": "payment_pending" if input.payment_method != "cod" else "confirmed", "tracking": {"status": "Order placed", "events": [{"status": "Order placed", "at": created}]}, "payment": {"provider": "razorpay", "method": input.payment_method, "status": "pending" if input.payment_method != "cod" else "cash_on_delivery", "provider_order_id": None, "transaction_id": None}, "created_at": created, "updated_at": created}
+    order = {"id": str(uuid.uuid4()), "order_number": f"MC-{secrets.randbelow(900000) + 100000}", "user_id": user["id"], "items": order_items, "delivery_address": address, "subtotal": cart.subtotal, "platform_fee": 99, "total": cart.subtotal + 99, "status": "payment_pending" if input.payment_method != "cod" else "confirmed", "tracking": {"status": "Order placed", "events": [{"status": "Order placed", "at": created}]}, "payment": {"provider": "razorpay", "method": input.payment_method, "status": "pending" if input.payment_method != "cod" else "cash_on_delivery", "provider_order_id": None, "transaction_id": None}, "created_at": created, "updated_at": created}
     await db.orders.insert_one(order.copy())
     await db.carts.update_one({"user_id": user["id"]}, {"$set": {"items": [], "updated_at": now()}})
     return Order(**order)
@@ -750,6 +837,212 @@ async def upload_image(request: Request, file: UploadFile = File(...), _: Annota
     name = f"{uuid.uuid4().hex}{allowed[file.content_type]}"
     await asyncio.to_thread((UPLOAD_DIR / name).write_bytes, content)
     return {"url": f"{str(request.base_url).rstrip('/')}/api/uploads/{name}"}
+
+
+def managed_collection(resource: str):
+    if resource not in MANAGED_RESOURCES:
+        raise HTTPException(404, "Admin section not found")
+    return db[f"admin_{resource.replace('-', '_')}"]
+
+
+def managed_payload(row: dict[str, Any]) -> ManagedRecord:
+    return ManagedRecord(**clean(row.copy()))
+
+
+@api.get("/admin/resources/{resource}", response_model=ManagedRecordList)
+async def list_managed_records(resource: str, _: Annotated[dict[str, Any], Depends(admin_user)], page: int = Query(default=1, ge=1), page_size: int = Query(default=20, ge=1, le=100), query: str | None = None, status: str | None = None) -> ManagedRecordList:
+    collection = managed_collection(resource)
+    filter_query: dict[str, Any] = {}
+    if status:
+        filter_query["status"] = status
+    if query:
+        filter_query["$or"] = [{"title": {"$regex": re.escape(query), "$options": "i"}}, {"description": {"$regex": re.escape(query), "$options": "i"}}]
+    total = await collection.count_documents(filter_query)
+    rows = await collection.find(filter_query, {"_id": 0}).sort("updated_at", -1).skip((page - 1) * page_size).limit(page_size).to_list(page_size)
+    return ManagedRecordList(items=[managed_payload(row) for row in rows], total=total, page=page, page_size=page_size)
+
+
+@api.post("/admin/resources/{resource}", response_model=ManagedRecord, status_code=201)
+async def create_managed_record(resource: str, input: ManagedRecordInput, _: Annotated[dict[str, Any], Depends(admin_user)]) -> ManagedRecord:
+    collection = managed_collection(resource)
+    timestamp = now()
+    record = {"id": str(uuid.uuid4()), "resource": resource, **input.model_dump(), "created_at": timestamp, "updated_at": timestamp}
+    await collection.insert_one(record.copy())
+    return ManagedRecord(**record)
+
+
+@api.patch("/admin/resources/{resource}/{record_id}", response_model=ManagedRecord)
+async def update_managed_record(resource: str, record_id: str, input: ManagedRecordInput, _: Annotated[dict[str, Any], Depends(admin_user)]) -> ManagedRecord:
+    collection = managed_collection(resource)
+    result = await collection.update_one({"id": record_id}, {"$set": {**input.model_dump(), "updated_at": now()}})
+    if result.modified_count == 0:
+        if not await collection.find_one({"id": record_id}, {"_id": 0, "id": 1}):
+            raise HTTPException(404, "Record not found")
+    record = await collection.find_one({"id": record_id}, {"_id": 0})
+    return managed_payload(record)
+
+
+@api.delete("/admin/resources/{resource}/{record_id}", status_code=204)
+async def delete_managed_record(resource: str, record_id: str, _: Annotated[dict[str, Any], Depends(admin_user)]) -> Response:
+    collection = managed_collection(resource)
+    result = await collection.delete_one({"id": record_id})
+    if result.deleted_count == 0:
+        raise HTTPException(404, "Record not found")
+    return Response(status_code=204)
+
+
+@api.get("/content/{resource}", response_model=list[ManagedRecord])
+async def public_content(resource: str) -> list[ManagedRecord]:
+    if resource not in PUBLIC_RESOURCES:
+        raise HTTPException(404, "Customer content section not found")
+    collection = managed_collection(resource)
+    rows = await collection.find({"status": {"$in": ["active", "published"]}}, {"_id": 0}).sort("updated_at", -1).to_list(100)
+    return [managed_payload(row) for row in rows]
+
+
+@api.get("/admin/categories", response_model=list[Category])
+async def admin_categories(_: Annotated[dict[str, Any], Depends(admin_user)]) -> list[Category]:
+    rows = await db.categories.find({}, {"_id": 0}).sort("name", 1).to_list(200)
+    return [Category(**row) for row in rows]
+
+
+@api.patch("/admin/categories/{category_id}", response_model=Category)
+async def update_category(category_id: str, input: CategoryInput, _: Annotated[dict[str, Any], Depends(admin_user)]) -> Category:
+    duplicate = await db.categories.find_one({"slug": input.slug, "id": {"$ne": category_id}}, {"_id": 0, "id": 1})
+    if duplicate:
+        raise HTTPException(409, "Category already exists")
+    result = await db.categories.update_one({"id": category_id}, {"$set": input.model_dump()})
+    if result.modified_count == 0 and not await db.categories.find_one({"id": category_id}, {"_id": 0, "id": 1}):
+        raise HTTPException(404, "Category not found")
+    category = await db.categories.find_one({"id": category_id}, {"_id": 0})
+    return Category(**category)
+
+
+@api.delete("/admin/categories/{category_id}", status_code=204)
+async def delete_category(category_id: str, _: Annotated[dict[str, Any], Depends(admin_user)]) -> Response:
+    result = await db.categories.update_one({"id": category_id}, {"$set": {"active": False}})
+    if result.modified_count == 0:
+        raise HTTPException(404, "Category not found")
+    return Response(status_code=204)
+
+
+@api.get("/admin/users", response_model=list[UserPublic])
+async def list_users(_: Annotated[dict[str, Any], Depends(admin_user)], role: Literal["customer", "admin"] | None = None) -> list[UserPublic]:
+    filter_query: dict[str, Any] = {"role": role} if role else {}
+    rows = await db.users.find(filter_query, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return [public_user(row) for row in rows]
+
+
+@api.patch("/admin/users/{user_id}", response_model=UserPublic)
+async def set_user_active(user_id: str, input: UserManagementUpdate, admin: Annotated[dict[str, Any], Depends(admin_user)]) -> UserPublic:
+    if user_id == admin["id"] and not input.active:
+        raise HTTPException(400, "You cannot deactivate your own account")
+    result = await db.users.update_one({"id": user_id}, {"$set": {"active": input.active, "updated_at": now()}})
+    if result.modified_count == 0 and not await db.users.find_one({"id": user_id}, {"_id": 0, "id": 1}):
+        raise HTTPException(404, "User not found")
+    user = await db.users.find_one({"id": user_id}, {"_id": 0})
+    return public_user(user)
+
+
+@api.post("/admin/users", response_model=UserPublic, status_code=201)
+async def create_admin_user(input: AdminUserCreate, _: Annotated[dict[str, Any], Depends(super_admin_user)]) -> UserPublic:
+    email = str(input.email).lower()
+    if await db.users.find_one({"email": email}, {"_id": 0, "id": 1}):
+        raise HTTPException(409, "An account with this email already exists")
+    user = {"id": str(uuid.uuid4()), "email": email, "name": input.name.strip(), "role": "admin", "admin_level": "standard", "active": True, "phone": None, "addresses": [], "password_hash": hash_password(input.password), "created_at": now()}
+    await db.users.insert_one(user.copy())
+    return public_user(user)
+
+
+@api.get("/admin/payments", response_model=OrderList)
+async def admin_payments(_: Annotated[dict[str, Any], Depends(admin_user)], page: int = Query(default=1, ge=1), page_size: int = Query(default=50, ge=1, le=100)) -> OrderList:
+    total = await db.orders.count_documents({})
+    rows = await db.orders.find({}, {"_id": 0}).sort("created_at", -1).skip((page - 1) * page_size).limit(page_size).to_list(page_size)
+    return OrderList(items=[Order(**row) for row in rows], total=total)
+
+
+@api.get("/admin/auctions", response_model=list[Auction])
+async def admin_auctions(_: Annotated[dict[str, Any], Depends(admin_user)]) -> list[Auction]:
+    rows = await db.auctions.find({}, {"_id": 0}).sort("ends_at", 1).to_list(500)
+    return [await auction_payload(row) for row in rows]
+
+
+@api.patch("/admin/payments/{order_id}", response_model=Order)
+async def update_payment(order_id: str, input: PaymentUpdate, _: Annotated[dict[str, Any], Depends(admin_user)]) -> Order:
+    update: dict[str, Any] = {"payment.status": input.status, "updated_at": now()}
+    if input.transaction_id:
+        update["payment.transaction_id"] = input.transaction_id
+    result = await db.orders.update_one({"id": order_id}, {"$set": update})
+    if result.modified_count == 0 and not await db.orders.find_one({"id": order_id}, {"_id": 0, "id": 1}):
+        raise HTTPException(404, "Order not found")
+    order = await db.orders.find_one({"id": order_id}, {"_id": 0})
+    return Order(**order)
+
+
+@api.get("/admin/reports", response_model=Dashboard)
+async def reports(user: Annotated[dict[str, Any], Depends(admin_user)]) -> Dashboard:
+    return await dashboard(user)
+
+
+@api.post("/returns", response_model=ManagedRecord, status_code=201)
+async def create_return(input: ManagedRecordInput, user: Annotated[dict[str, Any], Depends(require_customer)]) -> ManagedRecord:
+    order_id = str(input.data.get("order_id", ""))
+    if not order_id or not await db.orders.find_one({"id": order_id, "user_id": user["id"]}, {"_id": 0, "id": 1}):
+        raise HTTPException(404, "Your order was not found")
+    timestamp = now()
+    record = {"id": str(uuid.uuid4()), "resource": "returns", "user_id": user["id"], **input.model_dump(), "status": "requested", "created_at": timestamp, "updated_at": timestamp}
+    await db.returns.insert_one(record.copy())
+    return managed_payload(record)
+
+
+@api.get("/returns", response_model=list[ManagedRecord])
+async def customer_returns(user: Annotated[dict[str, Any], Depends(require_customer)]) -> list[ManagedRecord]:
+    rows = await db.returns.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return [managed_payload(row) for row in rows]
+
+
+@api.get("/admin/returns", response_model=list[ManagedRecord])
+async def admin_returns(_: Annotated[dict[str, Any], Depends(admin_user)]) -> list[ManagedRecord]:
+    rows = await db.returns.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return [managed_payload(row) for row in rows]
+
+
+@api.patch("/admin/returns/{return_id}", response_model=ManagedRecord)
+async def update_return(return_id: str, input: ManagedRecordInput, _: Annotated[dict[str, Any], Depends(admin_user)]) -> ManagedRecord:
+    result = await db.returns.update_one({"id": return_id}, {"$set": {**input.model_dump(), "updated_at": now()}})
+    if result.modified_count == 0 and not await db.returns.find_one({"id": return_id}, {"_id": 0, "id": 1}):
+        raise HTTPException(404, "Return request not found")
+    record = await db.returns.find_one({"id": return_id}, {"_id": 0})
+    return managed_payload(record)
+
+
+@api.post("/support/tickets", response_model=ManagedRecord, status_code=201)
+async def create_ticket(input: ManagedRecordInput, user: Annotated[dict[str, Any], Depends(require_customer)]) -> ManagedRecord:
+    timestamp = now()
+    record = {"id": str(uuid.uuid4()), "resource": "support", "user_id": user["id"], **input.model_dump(), "status": "open", "created_at": timestamp, "updated_at": timestamp}
+    await db.support_tickets.insert_one(record.copy())
+    return managed_payload(record)
+
+
+@api.get("/support/tickets", response_model=list[ManagedRecord])
+async def customer_tickets(user: Annotated[dict[str, Any], Depends(require_customer)]) -> list[ManagedRecord]:
+    rows = await db.support_tickets.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return [managed_payload(row) for row in rows]
+
+
+@api.get("/admin/support-tickets", response_model=list[ManagedRecord])
+async def admin_tickets(_: Annotated[dict[str, Any], Depends(admin_user)]) -> list[ManagedRecord]:
+    rows = await db.support_tickets.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return [managed_payload(row) for row in rows]
+
+
+@api.patch("/admin/support-tickets/{ticket_id}", response_model=ManagedRecord)
+async def update_ticket(ticket_id: str, input: ManagedRecordInput, _: Annotated[dict[str, Any], Depends(admin_user)]) -> ManagedRecord:
+    result = await db.support_tickets.update_one({"id": ticket_id}, {"$set": {**input.model_dump(), "updated_at": now()}})
+    if result.modified_count == 0 and not await db.support_tickets.find_one({"id": ticket_id}, {"_id": 0, "id": 1}):
+        raise HTTPException(404, "Support ticket not found")
+    record = await db.support_tickets.find_one({"id": ticket_id}, {"_id": 0})
+    return managed_payload(record)
 
 
 app.include_router(api)
