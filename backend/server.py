@@ -1,89 +1,756 @@
-from fastapi import FastAPI, APIRouter
 from dotenv import load_dotenv
-from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
-import os
-import logging
 from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict
-from typing import List
-import uuid
-from datetime import datetime, timezone
-
 
 ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / '.env')
+load_dotenv(ROOT_DIR / ".env")
 
-# MongoDB connection
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+import asyncio
+import os
+import re
+import secrets
+import uuid
+from datetime import datetime, timedelta, timezone
+from typing import Annotated, Any, Literal
 
-# Create the main app without a prefix
-app = FastAPI()
+import bcrypt
+import jwt
+from fastapi import APIRouter, Depends, FastAPI, File, HTTPException, Query, Request, Response, UploadFile
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from motor.motor_asyncio import AsyncIOMotorClient
+from pydantic import BaseModel, EmailStr, Field, field_validator
+from starlette.middleware.cors import CORSMiddleware
 
-# Create a router with the /api prefix
-api_router = APIRouter(prefix="/api")
+
+MONGO_URL = os.environ["MONGO_URL"]
+DB_NAME = os.environ["DB_NAME"]
+JWT_SECRET = os.environ["JWT_SECRET"]
+FRONTEND_URL = os.environ["FRONTEND_URL"]
+ADMIN_EMAIL = os.environ["ADMIN_EMAIL"].lower()
+ADMIN_PASSWORD = os.environ["ADMIN_PASSWORD"]
+JWT_ALGORITHM = "HS256"
+UPLOAD_DIR = ROOT_DIR / "uploads"
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+client = AsyncIOMotorClient(MONGO_URL, serverSelectionTimeoutMS=5000)
+db = client[DB_NAME]
+app = FastAPI(title="DEALKR API", version="1.0.0")
+api = APIRouter(prefix="/api")
+app.mount("/api/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
 
-# Define Models
-class StatusCheck(BaseModel):
-    model_config = ConfigDict(extra="ignore")  # Ignore MongoDB's _id field
-    
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+class ApiError(BaseModel):
+    detail: str
 
-class StatusCheckCreate(BaseModel):
-    client_name: str
 
-# Add your routes to the router instead of directly to app
-@api_router.get("/")
-async def root():
-    return {"message": "Hello World"}
+class AddressInput(BaseModel):
+    label: str = Field(min_length=1, max_length=32)
+    recipient_name: str = Field(min_length=2, max_length=100)
+    phone: str = Field(pattern=r"^[0-9+ -]{8,20}$")
+    line1: str = Field(min_length=3, max_length=160)
+    line2: str = Field(default="", max_length=160)
+    city: str = Field(min_length=2, max_length=64)
+    state: str = Field(min_length=2, max_length=64)
+    postal_code: str = Field(min_length=4, max_length=12)
+    country: str = Field(default="India", max_length=64)
 
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_dict = input.model_dump()
-    status_obj = StatusCheck(**status_dict)
-    
-    # Convert to dict and serialize datetime to ISO string for MongoDB
-    doc = status_obj.model_dump()
-    doc['timestamp'] = doc['timestamp'].isoformat()
-    
-    _ = await db.status_checks.insert_one(doc)
-    return status_obj
 
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    # Exclude MongoDB's _id field from the query results
-    status_checks = await db.status_checks.find({}, {"_id": 0}).to_list(1000)
-    
-    # Convert ISO string timestamps back to datetime objects
-    for check in status_checks:
-        if isinstance(check['timestamp'], str):
-            check['timestamp'] = datetime.fromisoformat(check['timestamp'])
-    
-    return status_checks
+class Address(AddressInput):
+    id: str
 
-# Include the router in the main app
-app.include_router(api_router)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+class UserPublic(BaseModel):
+    id: str
+    email: EmailStr
+    name: str
+    role: Literal["customer", "admin"]
+    phone: str | None = None
+    addresses: list[Address] = []
+    created_at: str
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+
+class RegisterInput(BaseModel):
+    name: str = Field(min_length=2, max_length=100)
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=128)
+
+
+class LoginInput(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=1, max_length=128)
+
+
+class ProfileUpdate(BaseModel):
+    name: str = Field(min_length=2, max_length=100)
+    phone: str | None = Field(default=None, max_length=20)
+
+
+class CategoryInput(BaseModel):
+    name: str = Field(min_length=2, max_length=80)
+    slug: str = Field(pattern=r"^[a-z0-9-]{2,80}$")
+    image: str | None = None
+    active: bool = True
+
+
+class Category(CategoryInput):
+    id: str
+
+
+class Variant(BaseModel):
+    sku: str = Field(min_length=2, max_length=80)
+    name: str = Field(min_length=1, max_length=80)
+    attributes: dict[str, str] = {}
+    price: int = Field(ge=0)
+    stock: int = Field(ge=0)
+
+
+class ProductInput(BaseModel):
+    name: str = Field(min_length=2, max_length=180)
+    slug: str = Field(pattern=r"^[a-z0-9-]{2,180}$")
+    sub: str = Field(default="", max_length=200)
+    description: str = Field(default="", max_length=5000)
+    category_slug: str = Field(min_length=2, max_length=80)
+    price: int = Field(ge=0)
+    original_price: int = Field(ge=0)
+    stock: int = Field(ge=0)
+    images: list[str] = Field(min_length=1, max_length=12)
+    tag: str = Field(default="DEAL", max_length=32)
+    variants: list[Variant] = Field(default_factory=list, max_length=100)
+    active: bool = True
+    featured: bool = False
+
+    @field_validator("images")
+    @classmethod
+    def validate_images(cls, images: list[str]) -> list[str]:
+        if any(not image.startswith(("https://", "http://", "/api/uploads/")) for image in images):
+            raise ValueError("Images must be secure URLs or uploaded image paths")
+        return images
+
+
+class Product(ProductInput):
+    id: str
+    created_at: str
+    updated_at: str
+    off: str
+
+
+class ProductList(BaseModel):
+    items: list[Product]
+    page: int
+    page_size: int
+    total: int
+    pages: int
+
+
+class CartItemInput(BaseModel):
+    product_id: str
+    variant_sku: str | None = None
+    quantity: int = Field(ge=1, le=20)
+
+
+class CartItem(BaseModel):
+    product_id: str
+    variant_sku: str | None = None
+    quantity: int
+    product: Product
+
+
+class CartResponse(BaseModel):
+    items: list[CartItem]
+    subtotal: int
+    item_count: int
+
+
+class OrderCreate(BaseModel):
+    address_id: str
+    payment_method: Literal["upi", "card", "net_banking", "wallet", "cod"] = "upi"
+
+
+class Order(BaseModel):
+    id: str
+    order_number: str
+    user_id: str
+    items: list[dict[str, Any]]
+    delivery_address: Address
+    subtotal: int
+    platform_fee: int
+    total: int
+    status: str
+    tracking: dict[str, Any]
+    payment: dict[str, Any]
+    created_at: str
+    updated_at: str
+
+
+class OrderList(BaseModel):
+    items: list[Order]
+    total: int
+
+
+class AuctionInput(BaseModel):
+    product_id: str
+    starting_price: int = Field(ge=0)
+    bid_increment: int = Field(gt=0)
+    starts_at: str
+    ends_at: str
+
+
+class Auction(BaseModel):
+    id: str
+    product_id: str
+    product: Product | None = None
+    starting_price: int
+    current_bid: int
+    bid_increment: int
+    bid_count: int
+    status: str
+    starts_at: str
+    ends_at: str
+    winner_user_id: str | None = None
+
+
+class BidInput(BaseModel):
+    amount: int = Field(gt=0)
+
+
+class Bid(BaseModel):
+    id: str
+    auction_id: str
+    user_id: str
+    bidder_name: str
+    amount: int
+    created_at: str
+
+
+class Dashboard(BaseModel):
+    metrics: dict[str, int]
+    recent_orders: list[Order]
+    order_statuses: dict[str, int]
+    activities: list[dict[str, str]]
+
+
+def now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def clean(document: dict[str, Any] | None) -> dict[str, Any] | None:
+    if document is None:
+        return None
+    document.pop("_id", None)
+    document.pop("password_hash", None)
+    return document
+
+
+def public_user(document: dict[str, Any]) -> UserPublic:
+    payload = clean(document.copy())
+    return UserPublic(**payload)
+
+
+def product_payload(document: dict[str, Any]) -> Product:
+    payload = clean(document.copy())
+    price = payload["price"]
+    original_price = payload["original_price"]
+    payload["off"] = f"{round((1 - price / original_price) * 100)}% OFF" if original_price else "DEAL"
+    return Product(**payload)
+
+
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+
+def verify_password(password: str, hashed_password: str) -> bool:
+    return bcrypt.checkpw(password.encode("utf-8"), hashed_password.encode("utf-8"))
+
+
+def token_for(user: dict[str, Any], token_type: str, duration: timedelta) -> str:
+    return jwt.encode(
+        {"sub": user["id"], "email": user["email"], "role": user["role"], "type": token_type, "exp": datetime.now(timezone.utc) + duration},
+        JWT_SECRET,
+        algorithm=JWT_ALGORITHM,
+    )
+
+
+def set_session(response: Response, user: dict[str, Any]) -> None:
+    response.set_cookie("access_token", token_for(user, "access", timedelta(minutes=15)), httponly=True, secure=True, samesite="none", max_age=900, path="/")
+    response.set_cookie("refresh_token", token_for(user, "refresh", timedelta(days=7)), httponly=True, secure=True, samesite="none", max_age=604800, path="/")
+
+
+async def current_user(request: Request) -> dict[str, Any]:
+    token = request.cookies.get("access_token")
+    header = request.headers.get("authorization", "")
+    if not token and header.startswith("Bearer "):
+        token = header[7:]
+    if not token:
+        raise HTTPException(401, "Authentication required")
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        if payload.get("type") != "access":
+            raise ValueError("Wrong token type")
+    except (jwt.InvalidTokenError, ValueError):
+        raise HTTPException(401, "Invalid or expired session")
+    user = await db.users.find_one({"id": payload["sub"]}, {"_id": 0})
+    if not user or user.get("role") != payload.get("role"):
+        raise HTTPException(401, "Session is no longer valid")
+    return user
+
+
+async def admin_user(user: Annotated[dict[str, Any], Depends(current_user)]) -> dict[str, Any]:
+    if user["role"] != "admin":
+        raise HTTPException(403, "Admin access required")
+    return user
+
+
+async def require_customer(user: Annotated[dict[str, Any], Depends(current_user)]) -> dict[str, Any]:
+    return user
+
+
+async def seed_data() -> None:
+    admin = await db.users.find_one({"email": ADMIN_EMAIL})
+    if not admin:
+        await db.users.insert_one({"id": str(uuid.uuid4()), "email": ADMIN_EMAIL, "name": "DEALKR Admin", "role": "admin", "phone": None, "addresses": [], "password_hash": hash_password(ADMIN_PASSWORD), "created_at": now()})
+    elif not verify_password(ADMIN_PASSWORD, admin["password_hash"]):
+        await db.users.update_one({"email": ADMIN_EMAIL}, {"$set": {"password_hash": hash_password(ADMIN_PASSWORD)}})
+    catalog = [
+        ("iphone", "iPhone 15 Pro Max", "256GB · Natural Titanium", "mobiles", 109900, 134900, "AI PICK", "https://images.unsplash.com/photo-1696446701796-da61225697cc?auto=format&fit=crop&w=800&q=85"),
+        ("samsung", "Samsung S23 Ultra", "256GB · Phantom Black", "mobiles", 64999, 89999, "BESTSELLER", "https://images.unsplash.com/photo-1678911820864-e2c567c655d7?auto=format&fit=crop&w=800&q=85"),
+        ("macbook", "MacBook Air M2", "13-inch · 8GB RAM", "laptops", 89900, 114900, "TOP RATED", "https://images.pexels.com/photos/20828488/pexels-photo-20828488.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"),
+        ("nothing-phone-2", "Nothing Phone (2)", "256GB · White", "mobiles", 32999, 39999, "NEW", "https://images.unsplash.com/photo-1598327105666-5b89351aff97?auto=format&fit=crop&w=800&q=85"),
+        ("boat-airdopes-141", "boAt Airdopes 141", "TWS Wireless · Black", "audio", 1299, 2999, "DEAL", "https://images.unsplash.com/photo-1606220945770-b5b6c2c55bf1?auto=format&fit=crop&w=800&q=85"),
+        ("pixel-7", "Google Pixel 7", "128GB · Snow", "mobiles", 28999, 49999, "VALUE", "https://images.unsplash.com/photo-1598327105666-5b89351aff97?auto=format&fit=crop&w=800&q=85"),
+    ]
+    for name in ["mobiles", "laptops", "tablets", "smartwatch", "accessories", "audio"]:
+        await db.categories.update_one({"slug": name}, {"$setOnInsert": {"id": str(uuid.uuid4()), "name": name.title(), "slug": name, "image": None, "active": True}}, upsert=True)
+    for slug, name, sub, category, price, original_price, tag, image in catalog:
+        await db.products.update_one({"slug": slug}, {"$setOnInsert": {"id": slug, "name": name, "slug": slug, "sub": sub, "description": f"{name} available with DEALKR Assured quality.", "category_slug": category, "price": price, "original_price": original_price, "stock": 25, "images": [image], "tag": tag, "variants": [], "active": True, "featured": True, "created_at": now(), "updated_at": now()}}, upsert=True)
+    phone = await db.products.find_one({"slug": "iphone"}, {"_id": 0})
+    if phone:
+        await db.auctions.update_one({"product_id": phone["id"], "status": "live"}, {"$setOnInsert": {"id": "auction-iphone-14", "product_id": phone["id"], "starting_price": 50000, "current_bid": 68900, "bid_increment": 500, "bid_count": 12, "status": "live", "starts_at": (datetime.now(timezone.utc) - timedelta(hours=3)).isoformat(), "ends_at": (datetime.now(timezone.utc) + timedelta(days=2)).isoformat(), "winner_user_id": None}}, upsert=True)
+
+
+@app.on_event("startup")
+async def initialise() -> None:
+    await db.command("ping")
+    await db.users.create_index("email", unique=True)
+    await db.products.create_index("slug", unique=True)
+    await db.categories.create_index("slug", unique=True)
+    await db.products.create_index([("name", "text"), ("description", "text"), ("sub", "text")])
+    await db.products.create_index([("active", 1), ("category_slug", 1), ("price", 1)])
+    await db.carts.create_index("user_id", unique=True)
+    await db.wishlists.create_index("user_id", unique=True)
+    await db.orders.create_index([("user_id", 1), ("created_at", -1)])
+    await db.auctions.create_index([("status", 1), ("ends_at", 1)])
+    await db.bids.create_index([("auction_id", 1), ("created_at", -1)])
+    await db.login_attempts.create_index("identifier", unique=True)
+    await seed_data()
+
 
 @app.on_event("shutdown")
-async def shutdown_db_client():
+async def shutdown() -> None:
     client.close()
+
+
+@app.exception_handler(HTTPException)
+async def http_error(_: Request, exc: HTTPException) -> JSONResponse:
+    return JSONResponse(status_code=exc.status_code, content={"detail": str(exc.detail)})
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error(_: Request, exc: RequestValidationError) -> JSONResponse:
+    message = "; ".join(error["msg"] for error in exc.errors())
+    return JSONResponse(status_code=422, content={"detail": message})
+
+
+@api.get("/health")
+async def health() -> dict[str, str]:
+    await db.command("ping")
+    return {"status": "ok"}
+
+
+@api.post("/auth/register", response_model=UserPublic, status_code=201)
+async def register(input: RegisterInput, response: Response) -> UserPublic:
+    email = str(input.email).lower()
+    if await db.users.find_one({"email": email}, {"_id": 0, "id": 1}):
+        raise HTTPException(409, "An account with this email already exists")
+    user = {"id": str(uuid.uuid4()), "email": email, "name": input.name.strip(), "role": "customer", "phone": None, "addresses": [], "password_hash": hash_password(input.password), "created_at": now()}
+    await db.users.insert_one(user.copy())
+    set_session(response, user)
+    return public_user(user)
+
+
+@api.post("/auth/login", response_model=UserPublic)
+async def login(input: LoginInput, request: Request, response: Response) -> UserPublic:
+    email = str(input.email).lower()
+    identifier = email
+    attempt = await db.login_attempts.find_one({"identifier": identifier}, {"_id": 0})
+    if attempt and attempt.get("locked_until", "") > now():
+        raise HTTPException(429, "Too many sign-in attempts. Please try again in 15 minutes")
+    user = await db.users.find_one({"email": email}, {"_id": 0})
+    if not user or not verify_password(input.password, user["password_hash"]):
+        failures = (attempt or {}).get("failures", 0) + 1
+        update: dict[str, Any] = {"failures": failures, "updated_at": now()}
+        if failures >= 5:
+            update["locked_until"] = (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat()
+        await db.login_attempts.update_one({"identifier": identifier}, {"$set": update}, upsert=True)
+        raise HTTPException(401, "Incorrect email or password")
+    await db.login_attempts.delete_one({"identifier": identifier})
+    set_session(response, user)
+    return public_user(user)
+
+
+@api.post("/auth/refresh", response_model=UserPublic)
+async def refresh(request: Request, response: Response) -> UserPublic:
+    token = request.cookies.get("refresh_token")
+    if not token:
+        raise HTTPException(401, "Refresh session required")
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        if payload.get("type") != "refresh":
+            raise ValueError("Wrong token")
+    except (jwt.InvalidTokenError, ValueError):
+        raise HTTPException(401, "Invalid or expired refresh session")
+    user = await db.users.find_one({"id": payload["sub"]}, {"_id": 0})
+    if not user:
+        raise HTTPException(401, "User not found")
+    set_session(response, user)
+    return public_user(user)
+
+
+@api.post("/auth/logout", status_code=204)
+async def logout() -> Response:
+    response = Response(status_code=204)
+    response.delete_cookie("access_token", path="/", secure=True, samesite="none")
+    response.delete_cookie("refresh_token", path="/", secure=True, samesite="none")
+    return response
+
+
+@api.get("/auth/me", response_model=UserPublic)
+async def me(user: Annotated[dict[str, Any], Depends(current_user)]) -> UserPublic:
+    return public_user(user)
+
+
+@api.patch("/auth/me", response_model=UserPublic)
+async def update_profile(input: ProfileUpdate, user: Annotated[dict[str, Any], Depends(current_user)]) -> UserPublic:
+    await db.users.update_one({"id": user["id"]}, {"$set": {"name": input.name.strip(), "phone": input.phone, "updated_at": now()}})
+    updated = await db.users.find_one({"id": user["id"]}, {"_id": 0})
+    return public_user(updated)
+
+
+@api.post("/auth/me/addresses", response_model=Address, status_code=201)
+async def add_address(input: AddressInput, user: Annotated[dict[str, Any], Depends(current_user)]) -> Address:
+    address = {"id": str(uuid.uuid4()), **input.model_dump()}
+    await db.users.update_one({"id": user["id"]}, {"$push": {"addresses": address}})
+    return Address(**address)
+
+
+@api.delete("/auth/me/addresses/{address_id}", status_code=204)
+async def remove_address(address_id: str, user: Annotated[dict[str, Any], Depends(current_user)]) -> Response:
+    result = await db.users.update_one({"id": user["id"]}, {"$pull": {"addresses": {"id": address_id}}})
+    if result.modified_count == 0:
+        raise HTTPException(404, "Address not found")
+    return Response(status_code=204)
+
+
+@api.get("/categories", response_model=list[Category])
+async def list_categories() -> list[Category]:
+    rows = await db.categories.find({"active": True}, {"_id": 0}).sort("name", 1).to_list(100)
+    return [Category(**row) for row in rows]
+
+
+@api.get("/products", response_model=ProductList)
+async def list_products(query: str | None = None, category: str | None = None, min_price: int | None = Query(default=None, ge=0), max_price: int | None = Query(default=None, ge=0), page: int = Query(default=1, ge=1), page_size: int = Query(default=24, ge=1, le=100), sort: Literal["newest", "price_asc", "price_desc"] = "newest") -> ProductList:
+    filter_query: dict[str, Any] = {"active": True}
+    if category:
+        filter_query["category_slug"] = category
+    if query:
+        regex = re.escape(query.strip())
+        filter_query["$or"] = [{"name": {"$regex": regex, "$options": "i"}}, {"sub": {"$regex": regex, "$options": "i"}}, {"description": {"$regex": regex, "$options": "i"}}]
+    if min_price is not None or max_price is not None:
+        filter_query["price"] = {**({"$gte": min_price} if min_price is not None else {}), **({"$lte": max_price} if max_price is not None else {})}
+    sort_value = {"newest": ("created_at", -1), "price_asc": ("price", 1), "price_desc": ("price", -1)}[sort]
+    total = await db.products.count_documents(filter_query)
+    rows = await db.products.find(filter_query, {"_id": 0}).sort(*sort_value).skip((page - 1) * page_size).limit(page_size).to_list(page_size)
+    return ProductList(items=[product_payload(row) for row in rows], page=page, page_size=page_size, total=total, pages=max(1, (total + page_size - 1) // page_size))
+
+
+@api.get("/products/{product_id_or_slug}", response_model=Product)
+async def get_product(product_id_or_slug: str) -> Product:
+    row = await db.products.find_one({"$and": [{"active": True}, {"$or": [{"id": product_id_or_slug}, {"slug": product_id_or_slug}]}]}, {"_id": 0})
+    if not row:
+        raise HTTPException(404, "Product not found")
+    return product_payload(row)
+
+
+async def cart_response(user_id: str) -> CartResponse:
+    cart = await db.carts.find_one({"user_id": user_id}, {"_id": 0}) or {"items": []}
+    items: list[CartItem] = []
+    for item in cart.get("items", []):
+        product = await db.products.find_one({"id": item["product_id"], "active": True}, {"_id": 0})
+        if product:
+            items.append(CartItem(product_id=item["product_id"], variant_sku=item.get("variant_sku"), quantity=item["quantity"], product=product_payload(product)))
+    return CartResponse(items=items, subtotal=sum(item.product.price * item.quantity for item in items), item_count=sum(item.quantity for item in items))
+
+
+@api.get("/cart", response_model=CartResponse)
+async def get_cart(user: Annotated[dict[str, Any], Depends(require_customer)]) -> CartResponse:
+    return await cart_response(user["id"])
+
+
+@api.post("/cart/items", response_model=CartResponse)
+async def add_cart_item(input: CartItemInput, user: Annotated[dict[str, Any], Depends(require_customer)]) -> CartResponse:
+    product = await db.products.find_one({"id": input.product_id, "active": True}, {"_id": 0})
+    if not product:
+        raise HTTPException(404, "Product not found")
+    available = product["stock"]
+    if input.variant_sku:
+        variant = next((variant for variant in product["variants"] if variant["sku"] == input.variant_sku), None)
+        if not variant:
+            raise HTTPException(404, "Product variant not found")
+        available = variant["stock"]
+    if input.quantity > available:
+        raise HTTPException(409, "Requested quantity is not available")
+    cart = await db.carts.find_one({"user_id": user["id"]}, {"_id": 0})
+    item = {"product_id": input.product_id, "variant_sku": input.variant_sku, "quantity": input.quantity}
+    if not cart:
+        await db.carts.insert_one({"user_id": user["id"], "items": [item], "updated_at": now()})
+    else:
+        existing_index = next((index for index, row in enumerate(cart["items"]) if row["product_id"] == input.product_id and row.get("variant_sku") == input.variant_sku), None)
+        if existing_index is None:
+            await db.carts.update_one({"user_id": user["id"]}, {"$push": {"items": item}, "$set": {"updated_at": now()}})
+        else:
+            new_quantity = cart["items"][existing_index]["quantity"] + input.quantity
+            if new_quantity > available:
+                raise HTTPException(409, "Requested quantity is not available")
+            await db.carts.update_one({"user_id": user["id"], "items.product_id": input.product_id}, {"$set": {f"items.{existing_index}.quantity": new_quantity, "updated_at": now()}})
+    return await cart_response(user["id"])
+
+
+@api.patch("/cart/items/{product_id}", response_model=CartResponse)
+async def set_cart_quantity(product_id: str, input: CartItemInput, user: Annotated[dict[str, Any], Depends(require_customer)]) -> CartResponse:
+    if product_id != input.product_id:
+        raise HTTPException(400, "Product identifier mismatch")
+    result = await db.carts.update_one({"user_id": user["id"], "items.product_id": product_id}, {"$set": {"items.$.quantity": input.quantity, "updated_at": now()}})
+    if result.modified_count == 0:
+        raise HTTPException(404, "Cart item not found")
+    return await cart_response(user["id"])
+
+
+@api.delete("/cart/items/{product_id}", status_code=204)
+async def remove_cart_item(product_id: str, user: Annotated[dict[str, Any], Depends(require_customer)]) -> Response:
+    await db.carts.update_one({"user_id": user["id"]}, {"$pull": {"items": {"product_id": product_id}}, "$set": {"updated_at": now()}})
+    return Response(status_code=204)
+
+
+@api.get("/wishlist", response_model=list[Product])
+async def get_wishlist(user: Annotated[dict[str, Any], Depends(require_customer)]) -> list[Product]:
+    wishlist = await db.wishlists.find_one({"user_id": user["id"]}, {"_id": 0}) or {"product_ids": []}
+    rows = await db.products.find({"id": {"$in": wishlist["product_ids"]}, "active": True}, {"_id": 0}).to_list(100)
+    return [product_payload(row) for row in rows]
+
+
+@api.put("/wishlist/{product_id}", status_code=204)
+async def add_wishlist(product_id: str, user: Annotated[dict[str, Any], Depends(require_customer)]) -> Response:
+    if not await db.products.find_one({"id": product_id, "active": True}, {"_id": 0, "id": 1}):
+        raise HTTPException(404, "Product not found")
+    await db.wishlists.update_one({"user_id": user["id"]}, {"$setOnInsert": {"user_id": user["id"]}, "$addToSet": {"product_ids": product_id}}, upsert=True)
+    return Response(status_code=204)
+
+
+@api.delete("/wishlist/{product_id}", status_code=204)
+async def remove_wishlist(product_id: str, user: Annotated[dict[str, Any], Depends(require_customer)]) -> Response:
+    await db.wishlists.update_one({"user_id": user["id"]}, {"$pull": {"product_ids": product_id}})
+    return Response(status_code=204)
+
+
+@api.post("/orders", response_model=Order, status_code=201)
+async def create_order(input: OrderCreate, user: Annotated[dict[str, Any], Depends(require_customer)]) -> Order:
+    cart = await cart_response(user["id"])
+    if not cart.items:
+        raise HTTPException(400, "Your cart is empty")
+    address = next((row for row in user.get("addresses", []) if row["id"] == input.address_id), None)
+    if not address:
+        raise HTTPException(404, "Delivery address not found")
+    order_items: list[dict[str, Any]] = []
+    for cart_item in cart.items:
+        result = await db.products.update_one({"id": cart_item.product_id, "stock": {"$gte": cart_item.quantity}}, {"$inc": {"stock": -cart_item.quantity}, "$set": {"updated_at": now()}})
+        if result.modified_count == 0:
+            raise HTTPException(409, f"{cart_item.product.name} is no longer in stock")
+        order_items.append({"product_id": cart_item.product_id, "name": cart_item.product.name, "image": cart_item.product.images[0], "price": cart_item.product.price, "quantity": cart_item.quantity, "variant_sku": cart_item.variant_sku})
+    created = now()
+    order = {"id": str(uuid.uuid4()), "order_number": f"DKR-{secrets.randbelow(900000) + 100000}", "user_id": user["id"], "items": order_items, "delivery_address": address, "subtotal": cart.subtotal, "platform_fee": 99, "total": cart.subtotal + 99, "status": "payment_pending" if input.payment_method != "cod" else "confirmed", "tracking": {"status": "Order placed", "events": [{"status": "Order placed", "at": created}]}, "payment": {"provider": "razorpay", "method": input.payment_method, "status": "pending" if input.payment_method != "cod" else "cash_on_delivery", "provider_order_id": None, "transaction_id": None}, "created_at": created, "updated_at": created}
+    await db.orders.insert_one(order.copy())
+    await db.carts.update_one({"user_id": user["id"]}, {"$set": {"items": [], "updated_at": now()}})
+    return Order(**order)
+
+
+@api.get("/orders", response_model=OrderList)
+async def list_orders(user: Annotated[dict[str, Any], Depends(require_customer)], page: int = Query(default=1, ge=1), page_size: int = Query(default=20, ge=1, le=100)) -> OrderList:
+    filter_query = {} if user["role"] == "admin" else {"user_id": user["id"]}
+    total = await db.orders.count_documents(filter_query)
+    rows = await db.orders.find(filter_query, {"_id": 0}).sort("created_at", -1).skip((page - 1) * page_size).limit(page_size).to_list(page_size)
+    return OrderList(items=[Order(**row) for row in rows], total=total)
+
+
+@api.get("/orders/{order_id}", response_model=Order)
+async def get_order(order_id: str, user: Annotated[dict[str, Any], Depends(require_customer)]) -> Order:
+    filter_query: dict[str, Any] = {"id": order_id}
+    if user["role"] != "admin":
+        filter_query["user_id"] = user["id"]
+    order = await db.orders.find_one(filter_query, {"_id": 0})
+    if not order:
+        raise HTTPException(404, "Order not found")
+    return Order(**order)
+
+
+async def auction_payload(row: dict[str, Any]) -> Auction:
+    payload = clean(row.copy())
+    product = await db.products.find_one({"id": payload["product_id"]}, {"_id": 0})
+    payload["product"] = product_payload(product) if product else None
+    return Auction(**payload)
+
+
+@api.get("/auctions", response_model=list[Auction])
+async def list_auctions(status: str = "live") -> list[Auction]:
+    rows = await db.auctions.find({"status": status}, {"_id": 0}).sort("ends_at", 1).to_list(100)
+    return [await auction_payload(row) for row in rows]
+
+
+@api.get("/auctions/{auction_id}", response_model=Auction)
+async def get_auction(auction_id: str) -> Auction:
+    auction = await db.auctions.find_one({"id": auction_id}, {"_id": 0})
+    if not auction:
+        raise HTTPException(404, "Auction not found")
+    return await auction_payload(auction)
+
+
+@api.post("/auctions/{auction_id}/bids", response_model=Bid, status_code=201)
+async def place_bid(auction_id: str, input: BidInput, user: Annotated[dict[str, Any], Depends(require_customer)]) -> Bid:
+    auction = await db.auctions.find_one({"id": auction_id}, {"_id": 0})
+    if not auction or auction["status"] != "live" or auction["ends_at"] <= now():
+        raise HTTPException(409, "This auction is no longer live")
+    minimum = auction["current_bid"] + auction["bid_increment"]
+    if input.amount < minimum:
+        raise HTTPException(409, f"Your bid must be at least ₹{minimum}")
+    result = await db.auctions.update_one({"id": auction_id, "status": "live", "current_bid": {"$lt": input.amount}, "ends_at": {"$gt": now()}}, {"$set": {"current_bid": input.amount, "leading_user_id": user["id"]}, "$inc": {"bid_count": 1}})
+    if result.modified_count == 0:
+        raise HTTPException(409, "A higher bid was placed. Refresh and try again")
+    bid = {"id": str(uuid.uuid4()), "auction_id": auction_id, "user_id": user["id"], "bidder_name": user["name"], "amount": input.amount, "created_at": now()}
+    await db.bids.insert_one(bid.copy())
+    return Bid(**bid)
+
+
+@api.get("/auctions/{auction_id}/bids", response_model=list[Bid])
+async def bid_history(auction_id: str) -> list[Bid]:
+    rows = await db.bids.find({"auction_id": auction_id}, {"_id": 0}).sort("created_at", -1).limit(50).to_list(50)
+    return [Bid(**row) for row in rows]
+
+
+@api.get("/admin/dashboard", response_model=Dashboard)
+async def dashboard(_: Annotated[dict[str, Any], Depends(admin_user)]) -> Dashboard:
+    orders = await db.orders.find({}, {"_id": 0}).sort("created_at", -1).limit(5).to_list(5)
+    order_statuses: dict[str, int] = {}
+    async for row in db.orders.find({}, {"_id": 0, "status": 1}):
+        order_statuses[row["status"]] = order_statuses.get(row["status"], 0) + 1
+    revenue = sum(row["total"] for row in await db.orders.find({"payment.status": {"$in": ["captured", "cash_on_delivery"]}}, {"_id": 0, "total": 1}).to_list(10000))
+    return Dashboard(metrics={"total_revenue": revenue, "total_orders": await db.orders.count_documents({}), "total_users": await db.users.count_documents({"role": "customer"}), "total_products": await db.products.count_documents({}), "total_auctions": await db.auctions.count_documents({})}, recent_orders=[Order(**row) for row in orders], order_statuses=order_statuses, activities=[{"title": "Live catalog connected", "detail": "Products, orders and auctions are using the secure API", "time": "Just now"}])
+
+
+@api.get("/admin/products", response_model=ProductList)
+async def admin_products(_: Annotated[dict[str, Any], Depends(admin_user)], page: int = 1, page_size: int = 50) -> ProductList:
+    total = await db.products.count_documents({})
+    rows = await db.products.find({}, {"_id": 0}).sort("updated_at", -1).skip((page - 1) * page_size).limit(page_size).to_list(page_size)
+    return ProductList(items=[product_payload(row) for row in rows], page=page, page_size=page_size, total=total, pages=max(1, (total + page_size - 1) // page_size))
+
+
+@api.post("/admin/products", response_model=Product, status_code=201)
+async def create_product(input: ProductInput, _: Annotated[dict[str, Any], Depends(admin_user)]) -> Product:
+    if await db.products.find_one({"slug": input.slug}, {"_id": 0, "id": 1}):
+        raise HTTPException(409, "A product with this slug already exists")
+    if not await db.categories.find_one({"slug": input.category_slug, "active": True}, {"_id": 0, "id": 1}):
+        raise HTTPException(422, "Category does not exist or is inactive")
+    timestamp = now()
+    product = {"id": str(uuid.uuid4()), **input.model_dump(), "created_at": timestamp, "updated_at": timestamp}
+    await db.products.insert_one(product.copy())
+    return product_payload(product)
+
+
+@api.patch("/admin/products/{product_id}", response_model=Product)
+async def update_product(product_id: str, input: ProductInput, _: Annotated[dict[str, Any], Depends(admin_user)]) -> Product:
+    existing = await db.products.find_one({"id": product_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(404, "Product not found")
+    duplicate = await db.products.find_one({"slug": input.slug, "id": {"$ne": product_id}}, {"_id": 0, "id": 1})
+    if duplicate:
+        raise HTTPException(409, "A product with this slug already exists")
+    await db.products.update_one({"id": product_id}, {"$set": {**input.model_dump(), "updated_at": now()}})
+    updated = await db.products.find_one({"id": product_id}, {"_id": 0})
+    return product_payload(updated)
+
+
+@api.delete("/admin/products/{product_id}", status_code=204)
+async def delete_product(product_id: str, _: Annotated[dict[str, Any], Depends(admin_user)]) -> Response:
+    result = await db.products.update_one({"id": product_id}, {"$set": {"active": False, "updated_at": now()}})
+    if result.modified_count == 0:
+        raise HTTPException(404, "Product not found")
+    return Response(status_code=204)
+
+
+@api.post("/admin/categories", response_model=Category, status_code=201)
+async def create_category(input: CategoryInput, _: Annotated[dict[str, Any], Depends(admin_user)]) -> Category:
+    if await db.categories.find_one({"slug": input.slug}, {"_id": 0, "id": 1}):
+        raise HTTPException(409, "Category already exists")
+    category = {"id": str(uuid.uuid4()), **input.model_dump()}
+    await db.categories.insert_one(category.copy())
+    return Category(**category)
+
+
+@api.patch("/admin/orders/{order_id}/status", response_model=Order)
+async def update_order_status(order_id: str, status: str = Query(pattern=r"^(confirmed|packed|shipped|delivered|cancelled)$"), tracking_number: str | None = None, _: Annotated[dict[str, Any], Depends(admin_user)] = None) -> Order:
+    event = {"status": status.replace("_", " ").title(), "at": now()}
+    update: dict[str, Any] = {"status": status, "updated_at": now(), "tracking.status": event["status"]}
+    if tracking_number:
+        update["tracking.number"] = tracking_number
+    result = await db.orders.update_one({"id": order_id}, {"$set": update, "$push": {"tracking.events": event}})
+    if result.modified_count == 0:
+        raise HTTPException(404, "Order not found")
+    order = await db.orders.find_one({"id": order_id}, {"_id": 0})
+    return Order(**order)
+
+
+@api.post("/admin/auctions", response_model=Auction, status_code=201)
+async def create_auction(input: AuctionInput, _: Annotated[dict[str, Any], Depends(admin_user)]) -> Auction:
+    if not await db.products.find_one({"id": input.product_id}, {"_id": 0, "id": 1}):
+        raise HTTPException(404, "Product not found")
+    if input.ends_at <= input.starts_at:
+        raise HTTPException(422, "Auction end must be after start")
+    auction = {"id": str(uuid.uuid4()), **input.model_dump(), "current_bid": input.starting_price, "bid_count": 0, "status": "upcoming" if input.starts_at > now() else "live", "winner_user_id": None}
+    await db.auctions.insert_one(auction.copy())
+    return await auction_payload(auction)
+
+
+@api.post("/admin/auctions/{auction_id}/close", response_model=Auction)
+async def close_auction(auction_id: str, _: Annotated[dict[str, Any], Depends(admin_user)]) -> Auction:
+    auction = await db.auctions.find_one({"id": auction_id}, {"_id": 0})
+    if not auction:
+        raise HTTPException(404, "Auction not found")
+    winner = await db.bids.find_one({"auction_id": auction_id}, {"_id": 0}, sort=[("amount", -1), ("created_at", 1)])
+    await db.auctions.update_one({"id": auction_id}, {"$set": {"status": "closed", "winner_user_id": winner["user_id"] if winner else None}})
+    closed = await db.auctions.find_one({"id": auction_id}, {"_id": 0})
+    return await auction_payload(closed)
+
+
+@api.post("/admin/uploads", status_code=201)
+async def upload_image(request: Request, file: UploadFile = File(...), _: Annotated[dict[str, Any], Depends(admin_user)] = None) -> dict[str, str]:
+    allowed = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
+    if file.content_type not in allowed:
+        raise HTTPException(415, "Only JPEG, PNG and WebP images are allowed")
+    content = await file.read()
+    if len(content) > 5 * 1024 * 1024:
+        raise HTTPException(413, "Image must be 5 MB or smaller")
+    name = f"{uuid.uuid4().hex}{allowed[file.content_type]}"
+    await asyncio.to_thread((UPLOAD_DIR / name).write_bytes, content)
+    return {"url": f"{str(request.base_url).rstrip('/')}/api/uploads/{name}"}
+
+
+app.include_router(api)
+app.add_middleware(CORSMiddleware, allow_origins=[FRONTEND_URL], allow_credentials=True, allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"], allow_headers=["Content-Type", "Authorization"])

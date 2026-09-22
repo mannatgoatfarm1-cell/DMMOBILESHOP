@@ -5,7 +5,9 @@ Build the same design website and web admin panel as the provided DEALKR referen
 
 ## Architecture Decisions
 - Responsive React single-page experience with customer storefront routes and `/admin` dashboard route.
-- Local demo state is used for products, cart, checkout, auction bidding, and admin metrics so the visual prototype works immediately without credentials or live services.
+- React storefront and admin dashboard use FastAPI APIs at `REACT_APP_BACKEND_URL`; MongoDB is the source of truth for catalog, customers, carts, orders, auctions, and admin metrics.
+- JWT access and refresh cookies secure customer and administrator sessions. All admin routes require the server-side `admin` role.
+- Image uploads are validated and stored behind an authenticated API endpoint. Payment records use provider-ready fields for a later Razorpay integration.
 - Visual system follows the reference: deep navy surfaces, electric purple/blue accents, INR formatting, product photography, compact data-dense admin panels.
 
 ## User Personas
@@ -24,15 +26,20 @@ Build the same design website and web admin panel as the provided DEALKR referen
 - Added local cart state, quantity/remove behavior, checkout payment selection, order confirmation, auction bid increment, toast feedback, responsive bottom navigation, and mobile admin menu.
 - Added descriptive `data-testid` attributes throughout interactive flows and verified production build plus desktop/mobile screens.
 - Fixed the product-detail header cart navigation so it opens the cart flow correctly.
+- Replaced all mocked storefront data with seeded MongoDB catalog records and production-style FastAPI routes for products, categories, search, filters, pagination, carts, wishlists, checkout orders, auction bids/history, and admin operations.
+- Added customer signup/login, httpOnly JWT sessions, addresses, profile management, seeded administrator access, role checks, brute-force sign-in lockout, and structured API validation/error responses.
+- Added MongoDB indexes, data validation, protected image upload support, order tracking/payment architecture, and live admin dashboard metrics.
+- Validated real customer and administrator journeys end-to-end. Fixed auth lockout keying and stable logout response handling; backend regression suite now passes 10/10 and production frontend build passes.
 
 ## Prioritized Backlog
-- P0: Keep the storefront and admin visual flows stable.
-- P1: Connect products, orders, vendors, and campaigns to persistent backend data.
-- P1: Add admin editing forms and customer account/order history persistence.
-- P2: Add real payments, authentication, notifications, and live auction synchronization.
+- P0: Keep storefront, customer account, and role-protected admin flows stable against the live API.
+- P1: Add full admin management screens for product/category/order/auction CRUD and connect the remaining dashboard navigation sections.
+- P1: Move uploads to managed object storage before scaling beyond a single application instance.
+- P2: Integrate Razorpay payment creation, verification, webhooks, refunds, and reconciliation.
+- P2: Add auction closing scheduler and live bid synchronization.
 
 ## Next Tasks
-1. Replace local demo data with FastAPI/MongoDB product and order endpoints.
-2. Add admin CRUD forms for products, vendors, campaigns, and categories.
-3. Add customer sign-in, saved items, and persistent order history.
-4. Connect a payment provider and real-time auction events when production behavior is needed.
+1. Build the remaining admin management screens using the completed protected APIs.
+2. Configure the custom domain `www.mobilecart.com`; `/admin` already routes to the secure admin panel.
+3. Integrate Razorpay with server-side order verification and webhooks.
+4. Add managed object storage plus scheduled/live auction lifecycle processing.
