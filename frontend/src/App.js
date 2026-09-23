@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BrowserRouter, Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { Toaster, toast } from "sonner";
+import { GoogleOAuthProvider, useGoogleLogin } from "@react-oauth/google";
 import {
   Search, ShoppingCart, MapPin, ChevronRight, ChevronLeft, ChevronDown, Sparkles, Gavel, Heart, UserRound,
   Menu, X, Plus, ArrowLeft, Minus, Trash2, Check, Star, Store, Zap, Clock, Download, Apple as AppleIcon,
-  Smartphone, Laptop, Watch, Tablet, Headphones, Gamepad2, Camera, Home as HomeIcon, Percent, LayoutGrid,
+  Smartphone, Laptop, Watch, Tablet, Headphones, Gamepad2, Camera, Home as HomeIcon, Percent, LayoutGrid, Package,
   Truck, RotateCcw, ShieldCheck, BadgeCheck, LoaderCircle, LogOut, Wallet, Tag, ZoomIn,
 } from "lucide-react";
 import { api, apiError, cardProduct } from "@/api";
@@ -42,6 +43,7 @@ const HERO_PHONE = "https://static.prod-images.emergentagent.com/jobs/4d8ba7d6-4
 const PREOWNED = "https://static.prod-images.emergentagent.com/jobs/4d8ba7d6-4cc2-48fd-a329-88470c3b0d75/images/f47e5c206f6b238efb5c3026aeb05d74e6898d9d040b4d0cb4249239ca99bbb8.jpeg";
 
 const BADGES = ["Bestseller", "New Launch", "Hot Deal", "Assured", "Top Rated", "Value"];
+const FEATURED_ORDER = ["iphone", "samsung", "macbook", "boat-airdopes-141", "pixel-7", "nothing-phone-2"];
 const rateFor = (id = "") => {
   const seed = [...String(id)].reduce((total, char) => total + char.charCodeAt(0), 0);
   return { stars: (4 + (seed % 9) / 10).toFixed(1), count: `${(4 + (seed % 12))}.${seed % 9}K` };
@@ -57,6 +59,25 @@ function Brand({ small = false }) {
 }
 function Loading({ label = "Loading deals…" }) {
   return <div className="empty-state" data-testid="loading-state"><LoaderCircle className="spin" size={30} /><h3>{label}</h3></div>;
+}
+
+function GoogleSignInButton() {
+  // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
+  const signIn = useGoogleLogin({ flow: "auth-code", ux_mode: "redirect", redirect_uri: `${window.location.origin}/auth/google`, scope: "openid email profile" });
+  return <button type="button" className="google-signin" onClick={() => signIn()} data-testid="google-signin-button"><span>G</span> Continue with Google</button>;
+}
+
+function GoogleCallback({ setUser }) {
+  const navigate = useNavigate(); const location = useLocation();
+  const [message, setMessage] = useState("Completing Google sign-in…");
+  useEffect(() => {
+    const code = new URLSearchParams(location.search).get("code");
+    if (!code) { setMessage("Google sign-in was cancelled or could not be completed."); return; }
+    // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
+    const redirectUri = `${window.location.origin}/auth/google`;
+    api.post("/api/auth/google", { code, redirect_uri: redirectUri }).then(({ data }) => { setUser(data); toast.success("Google sign-in complete"); navigate(data.role === "admin" ? "/admin" : "/"); }).catch((error) => { setMessage(apiError(error)); });
+  }, [location.search, navigate, setUser]);
+  return <main className="auth-page"><Link to="/" data-testid="google-callback-brand-link"><Brand /></Link><section className="auth-card google-callback" data-testid="google-callback-state"><LoaderCircle className="spin" size={28} /><h1>{message}</h1>{message !== "Completing Google sign-in…" && <Link to="/login" className="primary-btn" data-testid="google-callback-return-login">Return to sign in</Link>}</section></main>;
 }
 
 function Topbar({ cartCount, wishCount = 0, user, onSearch, onLogout, onMenu }) {
@@ -149,8 +170,9 @@ function Countdown() {
 function StoreHome({ products, auctions, onAdd, onWish, common }) {
   const [slide, setSlide] = useState(0);
   const [tab, setTab] = useState("All");
-  const order = ["iphone", "samsung", "macbook", "boat-airdopes-141", "pixel-7", "nothing-phone-2"];
-  const display = useMemo(() => [...products].sort((a, b) => (order.indexOf(a.id) + 99) % 99 - (order.indexOf(b.id) + 99) % 99), [products]);
+  const display = useMemo(() => [...products].sort((a, b) => (FEATURED_ORDER.indexOf(a.id) + 99) % 99 - (FEATURED_ORDER.indexOf(b.id) + 99) % 99), [products]);
+  const primaryProduct = display[0] || null;
+  const laptopProduct = display.find((product) => product?.category_slug === "laptops") || display[2] || primaryProduct;
   const heroDeals = display.slice(0, 3);
   const trending = display.filter((product) => tab === "All" || product.category_slug === tab.toLowerCase().replace(" ", ""));
   useEffect(() => { const timer = setInterval(() => setSlide((value) => (value + 1) % 4), 4000); return () => clearInterval(timer); }, []);
@@ -166,7 +188,7 @@ function StoreHome({ products, auctions, onAdd, onWish, common }) {
               <span className="eyebrow">PREMIUM TECH. SMARTER PRICES.</span>
               <h1>Upgrade<br /><span className="grad">Your World</span></h1>
               <p className="hero-sub">New &amp; Pre-owned Devices • Verified Sellers • Best Deals</p>
-              <div className="hero-badge"><b>{display[0].name}</b><span>Up to <em>40% OFF</em></span></div>
+              <div className="hero-badge"><b>{primaryProduct?.name || "MobileCart picks"}</b><span>Up to <em>40% OFF</em></span></div>
               <div className="hero-cta">
                 <Link to="/category" className="primary-btn" data-testid="hero-shop-now">Shop Now <ChevronRight size={15} /></Link>
                 <Link to="/sell" className="ghost-btn" data-testid="hero-sell-device">Sell Your Device</Link>
@@ -209,11 +231,11 @@ function StoreHome({ products, auctions, onAdd, onWish, common }) {
         <section className="promo-row">
           <div className="promo promo-a" data-testid="promo-iphone">
             <div><b>Biggest iPhone Deals</b><span>Up to <em>40% OFF</em></span><Link to="/category?category=mobiles" className="promo-btn">Shop iPhones <ChevronRight size={13} /></Link></div>
-            <img src={display[0].image} alt="iPhone deals" />
+            <img src={primaryProduct?.image || HERO_PHONE} alt="iPhone deals" />
           </div>
           <div className="promo promo-b" data-testid="promo-laptops">
             <div><b>Laptops for Work &amp; Play</b><span>Top Brands. Great Prices.</span><Link to="/category?category=laptops" className="promo-btn">Explore Laptops <ChevronRight size={13} /></Link></div>
-            <img src={display.find((product) => product.category_slug === "laptops")?.image || display[2].image} alt="Laptops" />
+            <img src={laptopProduct?.image || HERO_PHONE} alt="Laptops" />
           </div>
           <div className="promo promo-c" data-testid="promo-preowned">
             <div><b>Certified Pre-Owned</b><span>Same Performance. Better Value.</span>
@@ -405,11 +427,16 @@ function Checkout({ cart, user, refreshUser, refreshCart, common }) {
   const [paid, setPaid] = useState(false);
   const [method, setMethod] = useState("upi");
   const [busy, setBusy] = useState(false);
-  const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0) + 99;
+  const [couponCode, setCouponCode] = useState("");
+  const [coupon, setCoupon] = useState(null);
+  const [couponBusy, setCouponBusy] = useState(false);
+  const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const total = Math.max(0, subtotal - (coupon?.discount || 0) + 99);
   const address = user?.addresses?.[0];
+  const applyCoupon = async () => { if (!couponCode.trim()) return; setCouponBusy(true); try { const { data } = await api.post("/api/coupons/validate", { code: couponCode, subtotal }); setCoupon(data); toast.success(`${data.code} applied`); } catch (error) { setCoupon(null); toast.error(apiError(error)); } finally { setCouponBusy(false); } };
   const place = async () => {
     if (!address) return; setBusy(true);
-    try { const { data } = await api.post("/api/orders", { address_id: address.id, payment_method: method }); setPaid(data); await refreshCart(); toast.success("Order placed successfully"); }
+    try { const { data } = await api.post("/api/orders", { address_id: address.id, payment_method: method, coupon_code: coupon?.code || null }); setPaid(data); await refreshCart(); toast.success("Order placed successfully"); }
     catch (error) { toast.error(apiError(error)); } finally { setBusy(false); }
   };
   return (
@@ -425,14 +452,16 @@ function Checkout({ cart, user, refreshUser, refreshCart, common }) {
             <section>
               <div className="checkout-section"><h3>Delivery address <Link to="/account" data-testid="change-checkout-address">Change</Link></h3><div className="address-card"><b>{address.label}</b><p>{address.recipient_name}</p><span>{address.line1}<br />{address.city} - {address.postal_code}<br />{address.phone}</span></div></div>
               <div className="checkout-section"><h3>Payment Options</h3>
-                {[["upi", "UPI", "Pay using any UPI app"], ["card", "Credit / Debit Card", "Visa, Mastercard, RuPay"], ["net_banking", "Net Banking", "All major banks"], ["wallet", "Wallet", "Paytm, PhonePe, Amazon Pay"], ["cod", "COD", "Cash on Delivery"]].map(([value, label, detail]) => (
+                {[["upi", "UPI", "Pay using any UPI app"], ["card", "Credit / Debit Card", "Visa, Mastercard, RuPay"], ["net_banking", "Net Banking", "All major banks"], ["wallet", "MobileCart Wallet", "Use your available wallet balance"], ["cod", "COD", "Cash on Delivery"]].map(([value, label, detail]) => (
                   <label className="payment-option" key={value}><input type="radio" name="payment" checked={method === value} onChange={() => setMethod(value)} data-testid={`payment-${value}`} /><span>{label}<small>{detail}</small></span><ChevronRight size={15} /></label>
                 ))}
               </div>
             </section>
             <aside className="summary">
               <h3>Payment Summary</h3>
-              <div><span>Items total</span><b>{money(total - 99)}</b></div>
+              <div><span>Items total</span><b>{money(subtotal)}</b></div>
+              <div className="coupon-control"><input value={couponCode} onChange={(event) => setCouponCode(event.target.value.toUpperCase())} placeholder="Coupon code" data-testid="checkout-coupon-input" /><button type="button" onClick={applyCoupon} disabled={couponBusy || !cart.length} data-testid="apply-coupon-button">{couponBusy ? "Checking…" : "Apply"}</button></div>
+              {coupon && <div className="coupon-result" data-testid="coupon-result"><span>{coupon.code} discount</span><b className="green-text">−{money(coupon.discount)}</b></div>}
               <div><span>Platform fee</span><b>₹99</b></div>
               <div><span>Delivery</span><b className="green-text">FREE</b></div>
               <hr />
@@ -508,8 +537,9 @@ function Login({ setUser }) {
   const [mode, setMode] = useState("login");
   const [form, setForm] = useState({ name: "", identifier: "", password: "", confirmPassword: "", resetToken: new URLSearchParams(location.search).get("reset_token") || "", newPassword: "", newPasswordConfirm: "" });
   const [busy, setBusy] = useState(false);
+  const [authError, setAuthError] = useState("");
   const submit = async (event) => {
-    event.preventDefault(); setBusy(true);
+    event.preventDefault(); setAuthError(""); setBusy(true);
     try {
       if (mode === "register" && form.password !== form.confirmPassword) throw new Error("Passwords do not match");
       if (mode === "reset" && form.newPassword !== form.newPasswordConfirm) throw new Error("Passwords do not match");
@@ -520,7 +550,7 @@ function Login({ setUser }) {
       const { data } = await api.post(endpoint, payload);
       setUser(data); toast.success(mode === "register" ? "Account created" : "Welcome back");
       navigate(data.role === "admin" ? "/admin" : new URLSearchParams(location.search).get("next") || "/");
-    } catch (error) { toast.error(error.message === "Passwords do not match" ? error.message : apiError(error)); } finally { setBusy(false); }
+    } catch (error) { const message = error.message === "Passwords do not match" ? error.message : apiError(error); setAuthError(message); toast.error(message); } finally { setBusy(false); }
   };
   const heading = mode === "register" ? "Create your account" : mode === "forgot" ? "Reset your password" : mode === "reset" ? "Choose a new password" : isAdminLogin ? "Admin sign in" : "Welcome back";
   return (
@@ -532,8 +562,10 @@ function Login({ setUser }) {
         {mode === "forgot" && <p className="auth-help" data-testid="forgot-password-help">Enter your account email or admin username to request a secure reset link.</p>}
         {mode === "reset" && <p className="auth-help" data-testid="reset-password-help">Paste the reset code from your secure reset link, then choose a new password.</p>}
         {mode === "register" && <input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Full name" required data-testid="register-name-input" />}
-        {mode === "reset" ? <><input type="text" value={form.resetToken} onChange={(event) => setForm({ ...form, resetToken: event.target.value })} placeholder="Reset code" required data-testid="reset-token-input" /><input type="password" value={form.newPassword} onChange={(event) => setForm({ ...form, newPassword: event.target.value })} placeholder="New password" minLength="8" required data-testid="reset-password-input" /><input type="password" value={form.newPasswordConfirm} onChange={(event) => setForm({ ...form, newPasswordConfirm: event.target.value })} placeholder="Re-enter new password" minLength="8" required data-testid="reset-confirm-password-input" /></> : <>{<input type={isAdminLogin && mode === "login" ? "text" : "email"} value={form.identifier} onChange={(event) => setForm({ ...form, identifier: event.target.value })} placeholder={isAdminLogin && mode === "login" ? "Admin username or email" : "Email address"} required data-testid="auth-email-input" />}{mode !== "forgot" && <input type="password" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} placeholder="Password" minLength="8" required data-testid="auth-password-input" />}{mode === "register" && <input type="password" value={form.confirmPassword} onChange={(event) => setForm({ ...form, confirmPassword: event.target.value })} placeholder="Re-enter password" minLength="8" required data-testid="register-confirm-password-input" />}</>}
+        {mode === "reset" ? <><input type="text" value={form.resetToken} onChange={(event) => setForm({ ...form, resetToken: event.target.value })} placeholder="Reset code" required data-testid="reset-token-input" /><input type="password" value={form.newPassword} onChange={(event) => setForm({ ...form, newPassword: event.target.value })} placeholder="New password" minLength="8" required data-testid="reset-password-input" /><input type="password" value={form.newPasswordConfirm} onChange={(event) => setForm({ ...form, newPasswordConfirm: event.target.value })} placeholder="Re-enter new password" minLength="8" required data-testid="reset-confirm-password-input" /></> : <>{<input type={isAdminLogin && mode === "login" ? "text" : "email"} autoComplete="username" value={form.identifier} onChange={(event) => { setForm({ ...form, identifier: event.target.value }); setAuthError(""); }} placeholder={isAdminLogin && mode === "login" ? "Admin username or email" : "Email address"} required data-testid="auth-email-input" />}{mode !== "forgot" && <input type="password" autoComplete={mode === "register" ? "new-password" : "current-password"} value={form.password} onChange={(event) => { setForm({ ...form, password: event.target.value }); setAuthError(""); }} placeholder="Password" minLength="8" required data-testid="auth-password-input" />}{mode === "register" && <input type="password" autoComplete="new-password" value={form.confirmPassword} onChange={(event) => setForm({ ...form, confirmPassword: event.target.value })} placeholder="Re-enter password" minLength="8" required data-testid="register-confirm-password-input" />}</>}
+        {authError && <p className="auth-error" role="alert" data-testid="auth-error-message">{authError}</p>}
         <button className="primary-btn full" disabled={busy} data-testid="auth-submit-button">{busy ? "Please wait…" : mode === "register" ? "Create account" : mode === "forgot" ? "Request reset" : mode === "reset" ? "Save new password" : "Sign in"}</button>
+        {mode === "login" && !isAdminLogin && <GoogleSignInButton />}
         {mode === "login" && <button type="button" className="auth-switch" onClick={() => setMode("forgot")} data-testid="forgot-password-button">Forgot password?</button>}
         {mode === "forgot" || mode === "reset" ? <button type="button" className="auth-switch" onClick={() => setMode("login")} data-testid="auth-back-to-login-button">Back to sign in</button> : !isAdminLogin && <button type="button" className="auth-switch" onClick={() => setMode(mode === "register" ? "login" : "register")} data-testid="auth-switch-button">{mode === "register" ? "Already have an account? Sign in" : "New to MobileCart? Create account"}</button>}
       </form>
@@ -543,16 +575,21 @@ function Login({ setUser }) {
 
 function Account({ user, setUser, common }) {
   const [orders, setOrders] = useState([]);
+  const [wallet, setWallet] = useState(null);
   const [loading, setLoading] = useState(true);
-  useEffect(() => { if (user) api.get("/api/orders").then(({ data }) => setOrders(data.items)).catch((error) => toast.error(apiError(error))).finally(() => setLoading(false)); }, [user]);
+  useEffect(() => { if (user) Promise.all([api.get("/api/orders"), api.get("/api/wallet")]).then(([orderResponse, walletResponse]) => { setOrders(orderResponse.data.items); setWallet(walletResponse.data); }).catch((error) => toast.error(apiError(error))).finally(() => setLoading(false)); }, [user]);
   if (!user) return <Navigate to="/login?next=/account" replace />;
+  const menuItems = [[Package, "My Orders", "Track, return & manage", "#orders"], [Heart, "My Wishlist", "Saved products", "/account"], [ShoppingCart, "My Cart", `${common.cartCount} items in cart`, "/cart"], [Wallet, "My Wallet", "Balance & transactions", "#wallet"], [Tag, "Coupons", "Apply at checkout", "/cart"], [Gavel, "Auction Bids", "Live bids & watchlist", "/auctions"], [MapPin, "Addresses", "Manage delivery addresses", "#addresses"], [Sparkles, "AI Deals", "Discover smarter deals", "/category?sort=price_desc"]];
   return (
     <>
       <Topbar {...common} />
       <main className="simple-page account-page">
-        <div className="page-heading"><div><span className="eyebrow">MY MOBILECART</span><h1>{user.name}</h1><p>{user.email}</p></div><button className="ghost-btn" onClick={async () => { await api.post("/api/auth/logout"); setUser(null); }} data-testid="account-signout-button"><LogOut size={15} /> Sign out</button></div>
-        <section className="checkout-section"><h3>Saved addresses</h3>{user.addresses?.length ? user.addresses.map((address) => <div className="address-card" key={address.id} data-testid={`saved-address-${address.id}`}><b>{address.label}</b><p>{address.recipient_name}</p><span>{address.line1}, {address.city} - {address.postal_code}</span></div>) : <p>No saved addresses yet. Add one during checkout.</p>}</section>
-        <section className="admin-panel table-panel orders-panel"><div className="panel-head"><h2>My Orders</h2></div>{loading ? <Loading label="Loading orders…" /> : <table data-testid="orders-table"><thead><tr><th>Order ID</th><th>Total</th><th>Status</th><th>Date</th></tr></thead><tbody>{orders.length ? orders.map((order) => <tr key={order.id}><td>{order.order_number}</td><td>{money(order.total)}</td><td className={`status-${order.status}`}>{order.status.replaceAll("_", " ")}</td><td>{new Date(order.created_at).toLocaleDateString("en-IN")}</td></tr>) : <tr><td colSpan="4">No orders yet</td></tr>}</tbody></table>}</section>
+        <div className="account-command-grid">
+          <aside className="account-menu-panel" data-testid="account-menu-panel"><div className="account-identity"><span className="account-avatar" data-testid="account-avatar">{user.name.slice(0, 1).toUpperCase()}</span><div><span className="eyebrow">MY MOBILECART</span><h1 data-testid="account-user-name">{user.name}</h1><p data-testid="account-user-email">{user.email}</p></div></div><div className="gold-mini-card" data-testid="account-gold-card"><span>★</span><div><b>MobileCart Gold</b><small>Premium benefits & early access</small></div><Link to="/category?sort=price_desc" data-testid="account-gold-explore-link">Explore <ChevronRight size={14} /></Link></div><nav className="account-action-grid">{menuItems.map(([Icon, title, detail, to]) => <Link to={to} key={title} data-testid={`account-menu-${title.toLowerCase().replaceAll(" ", "-")}`}><span><Icon size={18} /></span><div><b>{title}</b><small>{detail}</small></div><ChevronRight size={15} /></Link>)}</nav><button className="account-logout" onClick={async () => { await api.post("/api/auth/logout"); setUser(null); }} data-testid="account-signout-button"><LogOut size={16} /> Sign out</button></aside>
+          <section className="account-main-panel"><section className="gold-showcase" data-testid="account-gold-showcase"><div><span className="eyebrow">MOBILECART GOLD</span><h2>Smarter shopping, unlocked.</h2><p>Enjoy early deal access, delivery benefits and priority support.</p></div><span className="gold-crown">♛</span></section><section className="wallet-account" id="wallet" data-testid="customer-wallet-card"><div><span className="eyebrow">MOBILECART WALLET</span><strong data-testid="customer-wallet-balance">{money(wallet?.balance || 0)}</strong><small>Available balance</small></div><Wallet size={32} /></section><section className="wallet-history" data-testid="customer-wallet-history"><div className="panel-head"><h3>Recent Transactions</h3><span>{wallet?.transactions?.length || 0} entries</span></div>{wallet?.transactions?.length ? wallet.transactions.slice(0, 4).map((transaction) => <div className="ledger-row" key={transaction.id} data-testid={`customer-wallet-transaction-${transaction.id}`}><span className={transaction.kind === "credit" ? "credit" : "debit"}>{transaction.kind === "credit" ? "+" : "−"}{money(transaction.amount)}</span><p>{transaction.note}<small>{new Date(transaction.created_at).toLocaleString("en-IN")}</small></p><b>{money(transaction.balance_after)}</b></div>) : <p className="account-muted" data-testid="customer-wallet-empty-state">Wallet transactions will appear here.</p>}</section></section>
+        </div>
+        <section className="checkout-section" id="addresses"><h3>Saved addresses</h3>{user.addresses?.length ? user.addresses.map((address) => <div className="address-card" key={address.id} data-testid={`saved-address-${address.id}`}><b>{address.label}</b><p>{address.recipient_name}</p><span>{address.line1}, {address.city} - {address.postal_code}</span></div>) : <p data-testid="account-no-addresses">No saved addresses yet. Add one during checkout.</p>}</section>
+        <section className="admin-panel table-panel orders-panel" id="orders"><div className="panel-head"><h2>My Orders</h2></div>{loading ? <Loading label="Loading orders…" /> : <table data-testid="orders-table"><thead><tr><th>Order ID</th><th>Total</th><th>Status</th><th>Date</th></tr></thead><tbody>{orders.length ? orders.map((order) => <tr key={order.id}><td>{order.order_number}</td><td>{money(order.total)}</td><td className={`status-${order.status}`}>{order.status.replaceAll("_", " ")}</td><td>{new Date(order.created_at).toLocaleDateString("en-IN")}</td></tr>) : <tr><td colSpan="4" data-testid="account-empty-orders">No orders yet</td></tr>}</tbody></table>}</section>
       </main>
       <FooterBar />
       <BottomNav active="Account" />
@@ -601,6 +638,7 @@ function App() {
   const refreshWish = useCallback(async () => { if (!user) { setWishCount(0); return; } try { const { data } = await api.get("/api/wishlist"); setWishCount(data.length); } catch { setWishCount(0); } }, [user]);
   const refreshUser = useCallback(async () => { try { const { data } = await api.get("/api/auth/me"); setUser(data); return data; } catch { return null; } }, []);
   useEffect(() => { api.get("/api/auth/me").then(({ data }) => setUser(data)).catch(() => setUser(null)).finally(() => setAuthLoading(false)); api.get("/api/categories").then(({ data }) => setCategories(data)).catch(() => setCategories([])); refreshProducts(); refreshAuctions(); }, [refreshProducts, refreshAuctions]);
+  useEffect(() => { const liveSync = setInterval(() => { refreshProducts(); refreshAuctions(); api.get("/api/categories").then(({ data }) => setCategories(data)).catch(() => {}); }, 1000); return () => clearInterval(liveSync); }, [refreshProducts, refreshAuctions]);
   useEffect(() => { if (!authLoading) { refreshCart(); refreshWish(); } }, [authLoading, user, refreshCart, refreshWish]);
   const add = async (product, buyNow = false) => { if (!user) { toast.error("Please sign in to save your cart"); navigate("/login?next=/cart"); return; } try { await api.post("/api/cart/items", { product_id: product.id, quantity: 1 }); await refreshCart(); toast.success(`${product.name} added to cart`); if (buyNow) navigate("/cart"); } catch (error) { toast.error(apiError(error)); } };
   const setQuantity = async (item, quantity) => { try { if (quantity < 1) await api.delete(`/api/cart/items/${item.id}`); else await api.patch(`/api/cart/items/${item.id}`, { product_id: item.id, quantity }); await refreshCart(); } catch (error) { toast.error(apiError(error)); } };
@@ -613,6 +651,7 @@ function App() {
     <>
       <Toaster theme="dark" position="bottom-right" />
       <Routes>
+        <Route path="/auth/google" element={<GoogleCallback setUser={setUser} />} />
         <Route path="/login" element={<Login setUser={setUser} />} />
         <Route path="/admin/*" element={<AdminRoute user={user} />} />
         <Route path="/product/:id" element={<ProductPage onAdd={add} onWish={wish} common={common} />} />
@@ -628,4 +667,4 @@ function App() {
   );
 }
 
-export default function Root() { return <BrowserRouter><App /></BrowserRouter>; }
+export default function Root() { return <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID}><BrowserRouter><App /></BrowserRouter></GoogleOAuthProvider>; }

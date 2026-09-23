@@ -5,6 +5,7 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
 import asyncio
+import logging
 import os
 import re
 import secrets
@@ -14,6 +15,8 @@ from typing import Annotated, Any, Literal
 
 import bcrypt
 import jwt
+import requests
+from authlib.integrations.starlette_client import OAuth
 from fastapi import APIRouter, Depends, FastAPI, File, HTTPException, Query, Request, Response, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -21,6 +24,7 @@ from fastapi.staticfiles import StaticFiles
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 
 
 MONGO_URL = os.environ["MONGO_URL"]
@@ -29,15 +33,31 @@ JWT_SECRET = os.environ["JWT_SECRET"]
 FRONTEND_URL = os.environ["FRONTEND_URL"]
 ADMIN_EMAIL = os.environ["ADMIN_EMAIL"].lower()
 ADMIN_PASSWORD = os.environ["ADMIN_PASSWORD"]
+STORAGE_BASE = os.environ["INTEGRATION_PROXY_URL"].rstrip("/")
+EMERGENT_STORAGE_KEY = os.environ["EMERGENT_LLM_KEY"]
+GOOGLE_CLIENT_ID = os.environ["GOOGLE_CLIENT_ID"]
+GOOGLE_CLIENT_SECRET = os.environ["GOOGLE_CLIENT_SECRET"]
+GOOGLE_ALLOWED_ORIGINS = {origin.strip().rstrip("/") for origin in os.environ["GOOGLE_ALLOWED_ORIGINS"].split(",") if origin.strip()}
+STORAGE_URL = f"{STORAGE_BASE}/objstore/api/v1/storage"
 JWT_ALGORITHM = "HS256"
 UPLOAD_DIR = ROOT_DIR / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+logger = logging.getLogger(__name__)
+storage_key: str | None = None
 
 client = AsyncIOMotorClient(MONGO_URL, serverSelectionTimeoutMS=5000)
 db = client[DB_NAME]
 app = FastAPI(title="MobileCart API", version="1.0.0")
 api = APIRouter(prefix="/api")
 app.mount("/api/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
+oauth = OAuth()
+oauth.register(
+    name="google",
+    client_id=GOOGLE_CLIENT_ID,
+    client_secret=GOOGLE_CLIENT_SECRET,
+    server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
+    client_kwargs={"scope": "openid email profile"},
+)
 
 
 class ApiError(BaseModel):
@@ -92,6 +112,11 @@ class ResetPasswordInput(BaseModel):
     confirm_password: str = Field(min_length=8, max_length=128)
 
 
+class GoogleAuthInput(BaseModel):
+    code: str = Field(min_length=8, max_length=4096)
+    redirect_uri: str = Field(min_length=12, max_length=500)
+
+
 class ProfileUpdate(BaseModel):
     name: str = Field(min_length=2, max_length=100)
     phone: str | None = Field(default=None, max_length=20)
@@ -134,7 +159,7 @@ class ProductInput(BaseModel):
     @field_validator("images")
     @classmethod
     def validate_images(cls, images: list[str]) -> list[str]:
-        if any(not image.startswith(("https://", "http://", "/api/uploads/")) for image in images):
+        if any(not image.startswith(("https://", "http://", "/api/uploads/", "/api/media/")) for image in images):
             raise ValueError("Images must be secure URLs or uploaded image paths")
         return images
 
@@ -176,6 +201,7 @@ class CartResponse(BaseModel):
 class OrderCreate(BaseModel):
     address_id: str
     payment_method: Literal["upi", "card", "net_banking", "wallet", "cod"] = "upi"
+    coupon_code: str | None = Field(default=None, max_length=40)
 
 
 class Order(BaseModel):
@@ -186,6 +212,7 @@ class Order(BaseModel):
     delivery_address: Address
     subtotal: int
     platform_fee: int
+    discount: int = 0
     total: int
     status: str
     tracking: dict[str, Any]
@@ -284,6 +311,45 @@ class PaymentUpdate(BaseModel):
     transaction_id: str | None = Field(default=None, max_length=120)
 
 
+class CouponCheckInput(BaseModel):
+    code: str = Field(min_length=2, max_length=40)
+    subtotal: int = Field(ge=0)
+
+
+class WalletAdjustmentInput(BaseModel):
+    user_id: str
+    amount: int = Field(gt=0, le=1_000_000)
+    kind: Literal["credit", "debit"]
+    note: str = Field(min_length=2, max_length=240)
+
+
+class WalletSummary(BaseModel):
+    user_id: str
+    user_name: str
+    user_email: EmailStr
+    balance: int
+    updated_at: str
+
+
+class WalletTransaction(BaseModel):
+    id: str
+    user_id: str
+    kind: Literal["credit", "debit"]
+    amount: int
+    balance_after: int
+    note: str
+    created_at: str
+
+
+class MediaFile(BaseModel):
+    id: str
+    url: str
+    original_filename: str
+    content_type: str
+    size: int
+    created_at: str
+
+
 MANAGED_RESOURCES = {
     "vendors", "brands", "campaigns", "coupons", "subscriptions", "app-manager",
     "banners", "notifications", "wallet-withdrawals", "shipping", "gst-tax", "settings",
@@ -322,6 +388,30 @@ def hash_password(password: str) -> str:
 
 def verify_password(password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(password.encode("utf-8"), hashed_password.encode("utf-8"))
+
+
+def init_storage(force: bool = False) -> str:
+    global storage_key
+    if storage_key and not force:
+        return storage_key
+    response = requests.post(f"{STORAGE_URL}/init", json={"emergent_key": EMERGENT_STORAGE_KEY}, timeout=30)
+    response.raise_for_status()
+    storage_key = response.json()["storage_key"]
+    return storage_key
+
+
+def put_object(path: str, data: bytes, content_type: str) -> dict[str, Any]:
+    key = init_storage()
+    response = requests.put(f"{STORAGE_URL}/objects/{path}", headers={"X-Storage-Key": key, "Content-Type": content_type}, data=data, timeout=120)
+    response.raise_for_status()
+    return response.json()
+
+
+def get_object(path: str) -> tuple[bytes, str]:
+    key = init_storage()
+    response = requests.get(f"{STORAGE_URL}/objects/{path}", headers={"X-Storage-Key": key}, timeout=60)
+    response.raise_for_status()
+    return response.content, response.headers.get("Content-Type", "application/octet-stream")
 
 
 def token_for(user: dict[str, Any], token_type: str, duration: timedelta) -> str:
@@ -437,6 +527,7 @@ async def initialise() -> None:
     await db.users.create_index("email", unique=True)
     await db.products.create_index("slug", unique=True)
     await db.users.create_index("username", unique=True, sparse=True)
+    await db.users.create_index("google_id", unique=True, sparse=True)
     await db.categories.create_index("slug", unique=True)
     await db.products.create_index([("name", "text"), ("description", "text"), ("sub", "text")])
     await db.products.create_index([("active", 1), ("category_slug", 1), ("price", 1)])
@@ -447,11 +538,19 @@ async def initialise() -> None:
     await db.bids.create_index([("auction_id", 1), ("created_at", -1)])
     await db.login_attempts.create_index("identifier", unique=True)
     await db.password_reset_tokens.create_index("expires_at", expireAfterSeconds=0)
+    await db.wallets.create_index("user_id", unique=True)
+    await db.wallet_transactions.create_index([("user_id", 1), ("created_at", -1)])
+    await db.media_files.create_index("storage_path", unique=True)
     await db.returns.create_index([("user_id", 1), ("created_at", -1)])
     await db.support_tickets.create_index([("user_id", 1), ("created_at", -1)])
     for resource in MANAGED_RESOURCES:
         await db[f"admin_{resource.replace('-', '_')}"] .create_index([("status", 1), ("updated_at", -1)])
     await seed_data()
+    try:
+        await asyncio.to_thread(init_storage)
+        logger.info("Object storage initialized")
+    except requests.RequestException as error:
+        logger.error("Object storage initialization failed: %s", error)
 
 
 @app.on_event("shutdown")
@@ -492,18 +591,57 @@ async def register(input: RegisterInput, response: Response) -> UserPublic:
 @api.post("/auth/login", response_model=UserPublic)
 async def login(input: LoginInput, request: Request, response: Response) -> UserPublic:
     identifier = input.identifier.strip().lower()
+    user = await db.users.find_one({"$or": [{"email": identifier}, {"username": identifier}]}, {"_id": 0})
     attempt = await db.login_attempts.find_one({"identifier": identifier}, {"_id": 0})
+    # A valid credential must always restore access, even if the user previously mistyped it.
+    # Incorrect attempts remain protected by the lockout policy below.
+    if user and verify_password(input.password, user["password_hash"]):
+        if not user.get("active", True):
+            raise HTTPException(403, "This account is inactive")
+        await db.login_attempts.delete_one({"identifier": identifier})
+        set_session(response, user)
+        return public_user(user)
     if attempt and attempt.get("locked_until", "") > now():
         raise HTTPException(429, "Too many sign-in attempts. Please try again in 15 minutes")
-    user = await db.users.find_one({"$or": [{"email": identifier}, {"username": identifier}]}, {"_id": 0})
-    if not user or not verify_password(input.password, user["password_hash"]):
-        failures = (attempt or {}).get("failures", 0) + 1
-        update: dict[str, Any] = {"failures": failures, "updated_at": now()}
-        if failures >= 5:
-            update["locked_until"] = (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat()
-        await db.login_attempts.update_one({"identifier": identifier}, {"$set": update}, upsert=True)
-        raise HTTPException(401, "Incorrect email or password")
-    await db.login_attempts.delete_one({"identifier": identifier})
+    failures = (attempt or {}).get("failures", 0) + 1
+    update: dict[str, Any] = {"failures": failures, "updated_at": now()}
+    if failures >= 5:
+        update["locked_until"] = (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat()
+    await db.login_attempts.update_one({"identifier": identifier}, {"$set": update}, upsert=True)
+    raise HTTPException(401, "Incorrect email or password")
+
+
+@api.post("/auth/google", response_model=UserPublic)
+async def login_with_google(input: GoogleAuthInput, request: Request, response: Response) -> UserPublic:
+    redirect_uri = input.redirect_uri.rstrip("/")
+    if redirect_uri.rsplit("/auth/google", 1)[0] not in GOOGLE_ALLOWED_ORIGINS or not redirect_uri.endswith("/auth/google"):
+        raise HTTPException(400, "Google sign-in redirect is not allowed")
+    try:
+        token = await oauth.google.fetch_access_token(code=input.code, redirect_uri=redirect_uri)
+        if token.get("id_token"):
+            user_info = await oauth.google.parse_id_token(request, token)
+        else:
+            user_info_response = await oauth.google.get("userinfo", token=token)
+            user_info = user_info_response.json()
+    except Exception as error:
+        logger.warning("Google sign-in exchange failed: %s", error)
+        raise HTTPException(401, "Google sign-in could not be completed") from error
+    if not user_info or not user_info.get("email") or not user_info.get("email_verified"):
+        raise HTTPException(401, "A verified Google email is required")
+    email = str(user_info["email"]).lower()
+    google_id = str(user_info["sub"])
+    user = await db.users.find_one({"$or": [{"google_id": google_id}, {"email": email}]}, {"_id": 0})
+    if not user:
+        user = {"id": str(uuid.uuid4()), "email": email, "google_id": google_id, "name": str(user_info.get("name") or email.split("@")[0]), "role": "customer", "active": True, "phone": None, "addresses": [], "password_hash": hash_password(secrets.token_urlsafe(32)), "created_at": now()}
+        await db.users.insert_one(user.copy())
+    else:
+        if not user.get("active", True):
+            raise HTTPException(403, "This account is inactive")
+        if user.get("google_id") and user["google_id"] != google_id:
+            raise HTTPException(401, "This Google account does not match the linked MobileCart account")
+        if not user.get("google_id"):
+            await db.users.update_one({"id": user["id"]}, {"$set": {"google_id": google_id, "updated_at": now()}})
+            user["google_id"] = google_id
     set_session(response, user)
     return public_user(user)
 
@@ -704,6 +842,27 @@ async def remove_wishlist(product_id: str, user: Annotated[dict[str, Any], Depen
     return Response(status_code=204)
 
 
+async def coupon_discount(code: str | None, subtotal: int) -> tuple[int, str | None]:
+    if not code:
+        return 0, None
+    coupon = await db.admin_coupons.find_one({"status": {"$in": ["active", "published"]}, "data.code": code.strip().upper()}, {"_id": 0})
+    if not coupon:
+        raise HTTPException(404, "Coupon is not active or does not exist")
+    data = coupon.get("data", {})
+    minimum = int(data.get("minimum_order", 0))
+    if subtotal < minimum:
+        raise HTTPException(422, f"Coupon requires a minimum order of ₹{minimum}")
+    raw_discount = str(data.get("discount", "0")).strip()
+    discount = round(subtotal * float(raw_discount[:-1]) / 100) if raw_discount.endswith("%") else int(float(raw_discount))
+    return min(max(discount, 0), subtotal), str(data.get("code", code)).upper()
+
+
+@api.post("/coupons/validate")
+async def validate_coupon(input: CouponCheckInput) -> dict[str, Any]:
+    discount, code = await coupon_discount(input.code, input.subtotal)
+    return {"code": code, "discount": discount, "subtotal_after_discount": input.subtotal - discount}
+
+
 @api.post("/orders", response_model=Order, status_code=201)
 async def create_order(input: OrderCreate, user: Annotated[dict[str, Any], Depends(require_customer)]) -> Order:
     cart = await cart_response(user["id"])
@@ -712,14 +871,24 @@ async def create_order(input: OrderCreate, user: Annotated[dict[str, Any], Depen
     address = next((row for row in user.get("addresses", []) if row["id"] == input.address_id), None)
     if not address:
         raise HTTPException(404, "Delivery address not found")
+    discount, coupon_code = await coupon_discount(input.coupon_code, cart.subtotal)
+    total = max(0, cart.subtotal - discount + 99)
+    created = now()
+    payment_status = "pending" if input.payment_method != "cod" else "cash_on_delivery"
+    if input.payment_method == "wallet":
+        debit = await db.wallets.update_one({"user_id": user["id"], "balance": {"$gte": total}}, {"$inc": {"balance": -total}, "$set": {"updated_at": created}})
+        if debit.modified_count == 0:
+            raise HTTPException(409, "Your MobileCart Wallet balance is insufficient")
+        wallet = await db.wallets.find_one({"user_id": user["id"]}, {"_id": 0})
+        await db.wallet_transactions.insert_one({"id": str(uuid.uuid4()), "user_id": user["id"], "kind": "debit", "amount": total, "balance_after": wallet["balance"], "note": f"Order payment {coupon_code or ''}".strip(), "created_at": created})
+        payment_status = "captured"
     order_items: list[dict[str, Any]] = []
     for cart_item in cart.items:
         result = await db.products.update_one({"id": cart_item.product_id, "stock": {"$gte": cart_item.quantity}}, {"$inc": {"stock": -cart_item.quantity}, "$set": {"updated_at": now()}})
         if result.modified_count == 0:
             raise HTTPException(409, f"{cart_item.product.name} is no longer in stock")
         order_items.append({"product_id": cart_item.product_id, "name": cart_item.product.name, "image": cart_item.product.images[0], "price": cart_item.product.price, "quantity": cart_item.quantity, "variant_sku": cart_item.variant_sku})
-    created = now()
-    order = {"id": str(uuid.uuid4()), "order_number": f"MC-{secrets.randbelow(900000) + 100000}", "user_id": user["id"], "items": order_items, "delivery_address": address, "subtotal": cart.subtotal, "platform_fee": 99, "total": cart.subtotal + 99, "status": "payment_pending" if input.payment_method != "cod" else "confirmed", "tracking": {"status": "Order placed", "events": [{"status": "Order placed", "at": created}]}, "payment": {"provider": "razorpay", "method": input.payment_method, "status": "pending" if input.payment_method != "cod" else "cash_on_delivery", "provider_order_id": None, "transaction_id": None}, "created_at": created, "updated_at": created}
+    order = {"id": str(uuid.uuid4()), "order_number": f"MC-{secrets.randbelow(900000) + 100000}", "user_id": user["id"], "items": order_items, "delivery_address": address, "subtotal": cart.subtotal, "discount": discount, "coupon_code": coupon_code, "platform_fee": 99, "total": total, "status": "confirmed" if input.payment_method in {"cod", "wallet"} else "payment_pending", "tracking": {"status": "Order placed", "events": [{"status": "Order placed", "at": created}]}, "payment": {"provider": "mobilecart_wallet" if input.payment_method == "wallet" else "razorpay", "method": input.payment_method, "status": payment_status, "provider_order_id": None, "transaction_id": None}, "created_at": created, "updated_at": created}
     await db.orders.insert_one(order.copy())
     await db.carts.update_one({"user_id": user["id"]}, {"$set": {"items": [], "updated_at": now()}})
     return Order(**order)
@@ -742,6 +911,13 @@ async def get_order(order_id: str, user: Annotated[dict[str, Any], Depends(requi
     if not order:
         raise HTTPException(404, "Order not found")
     return Order(**order)
+
+
+@api.get("/wallet")
+async def customer_wallet(user: Annotated[dict[str, Any], Depends(require_customer)]) -> dict[str, Any]:
+    wallet = await db.wallets.find_one({"user_id": user["id"]}, {"_id": 0}) or {"user_id": user["id"], "balance": 0, "updated_at": user["created_at"]}
+    transactions = await db.wallet_transactions.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).limit(30).to_list(30)
+    return {"balance": wallet["balance"], "updated_at": wallet["updated_at"], "transactions": [WalletTransaction(**row) for row in transactions]}
 
 
 async def auction_payload(row: dict[str, Any]) -> Auction:
@@ -881,17 +1057,79 @@ async def close_auction(auction_id: str, _: Annotated[dict[str, Any], Depends(ad
     return await auction_payload(closed)
 
 
-@api.post("/admin/uploads", status_code=201)
-async def upload_image(request: Request, file: UploadFile = File(...), _: Annotated[dict[str, Any], Depends(admin_user)] = None) -> dict[str, str]:
+@api.post("/admin/uploads", response_model=MediaFile, status_code=201)
+async def upload_image(file: UploadFile = File(...), admin: Annotated[dict[str, Any], Depends(admin_user)] = None) -> MediaFile:
     allowed = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
     if file.content_type not in allowed:
         raise HTTPException(415, "Only JPEG, PNG and WebP images are allowed")
     content = await file.read()
     if len(content) > 5 * 1024 * 1024:
         raise HTTPException(413, "Image must be 5 MB or smaller")
-    name = f"{uuid.uuid4().hex}{allowed[file.content_type]}"
-    await asyncio.to_thread((UPLOAD_DIR / name).write_bytes, content)
-    return {"url": f"{str(request.base_url).rstrip('/')}/api/uploads/{name}"}
+    file_id = str(uuid.uuid4())
+    path = f"mobilecart/uploads/{admin['id']}/{uuid.uuid4().hex}{allowed[file.content_type]}"
+    try:
+        stored = await asyncio.to_thread(put_object, path, content, file.content_type)
+    except requests.RequestException as error:
+        logger.exception("Media upload failed")
+        raise HTTPException(502, "Image storage is temporarily unavailable") from error
+    record = {"id": file_id, "storage_path": stored["path"], "original_filename": file.filename or "product-image", "content_type": file.content_type, "size": stored["size"], "is_deleted": False, "created_at": now()}
+    await db.media_files.insert_one(record.copy())
+    return MediaFile(id=file_id, url=f"/api/media/{file_id}", original_filename=record["original_filename"], content_type=record["content_type"], size=record["size"], created_at=record["created_at"])
+
+
+@api.get("/media/{file_id}")
+async def download_media(file_id: str) -> Response:
+    record = await db.media_files.find_one({"id": file_id, "is_deleted": False}, {"_id": 0})
+    if not record:
+        raise HTTPException(404, "Image not found")
+    try:
+        content, content_type = await asyncio.to_thread(get_object, record["storage_path"])
+    except requests.RequestException as error:
+        logger.exception("Media download failed")
+        raise HTTPException(502, "Image is temporarily unavailable") from error
+    return Response(content=content, media_type=record.get("content_type", content_type))
+
+
+@api.delete("/admin/media/{file_id}", status_code=204)
+async def remove_media(file_id: str, _: Annotated[dict[str, Any], Depends(admin_user)]) -> Response:
+    result = await db.media_files.update_one({"id": file_id, "is_deleted": False}, {"$set": {"is_deleted": True, "deleted_at": now()}})
+    if result.modified_count == 0:
+        raise HTTPException(404, "Image not found")
+    return Response(status_code=204)
+
+
+@api.get("/admin/wallets", response_model=list[WalletSummary])
+async def admin_wallets(_: Annotated[dict[str, Any], Depends(admin_user)]) -> list[WalletSummary]:
+    users = await db.users.find({"role": "customer"}, {"_id": 0, "id": 1, "name": 1, "email": 1, "created_at": 1}).sort("created_at", -1).to_list(500)
+    rows: list[WalletSummary] = []
+    for customer in users:
+        wallet = await db.wallets.find_one({"user_id": customer["id"]}, {"_id": 0, "balance": 1, "updated_at": 1})
+        rows.append(WalletSummary(user_id=customer["id"], user_name=customer["name"], user_email=customer["email"], balance=(wallet or {}).get("balance", 0), updated_at=(wallet or {}).get("updated_at", customer["created_at"])))
+    return rows
+
+
+@api.get("/admin/wallets/{user_id}/transactions", response_model=list[WalletTransaction])
+async def admin_wallet_transactions(user_id: str, _: Annotated[dict[str, Any], Depends(admin_user)]) -> list[WalletTransaction]:
+    rows = await db.wallet_transactions.find({"user_id": user_id}, {"_id": 0}).sort("created_at", -1).limit(100).to_list(100)
+    return [WalletTransaction(**row) for row in rows]
+
+
+@api.post("/admin/wallets/adjust", response_model=WalletSummary)
+async def adjust_wallet(input: WalletAdjustmentInput, _: Annotated[dict[str, Any], Depends(admin_user)]) -> WalletSummary:
+    customer = await db.users.find_one({"id": input.user_id, "role": "customer"}, {"_id": 0, "id": 1, "name": 1, "email": 1, "created_at": 1})
+    if not customer:
+        raise HTTPException(404, "Customer not found")
+    timestamp = now()
+    if input.kind == "credit":
+        await db.wallets.update_one({"user_id": input.user_id}, {"$setOnInsert": {"user_id": input.user_id, "created_at": timestamp}, "$inc": {"balance": input.amount}, "$set": {"updated_at": timestamp}}, upsert=True)
+    else:
+        result = await db.wallets.update_one({"user_id": input.user_id, "balance": {"$gte": input.amount}}, {"$inc": {"balance": -input.amount}, "$set": {"updated_at": timestamp}})
+        if result.modified_count == 0:
+            raise HTTPException(409, "Customer wallet has insufficient balance")
+    wallet = await db.wallets.find_one({"user_id": input.user_id}, {"_id": 0})
+    transaction = {"id": str(uuid.uuid4()), "user_id": input.user_id, "kind": input.kind, "amount": input.amount, "balance_after": wallet["balance"], "note": input.note.strip(), "created_at": timestamp}
+    await db.wallet_transactions.insert_one(transaction.copy())
+    return WalletSummary(user_id=customer["id"], user_name=customer["name"], user_email=customer["email"], balance=wallet["balance"], updated_at=wallet["updated_at"])
 
 
 def managed_collection(resource: str):
@@ -1101,6 +1339,7 @@ async def update_ticket(ticket_id: str, input: ManagedRecordInput, _: Annotated[
 
 
 app.include_router(api)
+app.add_middleware(SessionMiddleware, secret_key=JWT_SECRET, same_site="lax", https_only=True)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[FRONTEND_URL.rstrip("/")],

@@ -1,48 +1,119 @@
 {
+  "theme": "dark",
+  "archetype": "Luxury (Archetype 5) + Swiss High-Contrast (Archetype 4) - Dark Navy/Purple/Blue Luxury Styling",
   "typography": {
-    "font_family_headings": "Outfit, sans-serif",
-    "font_family_body": "Plus Jakarta Sans, sans-serif",
-    "hierarchy": {
-      "h1": "text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight",
-      "h2": "text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight",
-      "h3": "text-xl sm:text-2xl font-bold",
-      "h4": "text-lg sm:text-xl font-semibold",
-      "body": "text-base font-normal leading-relaxed",
-      "small": "text-sm text-slate-400"
+    "headings": {
+      "fontFamily": "Satoshi, sans-serif",
+      "strategy": "Expressive, tight tracking for high-end feel. No generic Inter for headings."
+    },
+    "body": {
+      "fontFamily": "IBM Plex Sans, sans-serif",
+      "strategy": "Crisp, highly legible for dense admin data and tables."
+    },
+    "scale": {
+      "h1": "text-3xl sm:text-4xl font-medium tracking-tight",
+      "h2": "text-2xl sm:text-3xl tracking-tight",
+      "h3": "text-xl sm:text-2xl",
+      "h4": "text-lg sm:text-xl",
+      "body": "text-sm",
+      "labels": "text-xs uppercase tracking-[0.2em]"
     }
   },
   "colors": {
-    "background_primary": "#0A0F1D",
-    "background_secondary": "#111827",
-    "surface_card": "#161F33",
-    "accent_purple": "#7C3AED",
-    "accent_purple_glow": "#8B5CF6",
-    "accent_indigo": "#4F46E5",
-    "text_primary": "#F8FAFC",
-    "text_secondary": "#94A3B8",
-    "border_color": "#1E293B",
+    "background": "#090E17",
+    "surface": "#121A2F",
+    "primary": "#4F46E5",
+    "primaryHover": "#6366F1",
+    "accent": "#F59E0B",
+    "text": {
+      "primary": "#F9FAFB",
+      "secondary": "#9CA3AF"
+    },
+    "borders": "rgba(255,255,255,0.1)",
     "success": "#10B981",
-    "warning": "#F59E0B",
-    "error": "#EF4444"
+    "danger": "#EF4444",
+    "strategy": "Deep midnight blue/navy background (#090E17) with royal purple/indigo primary actions (#4F46E5). High contrast text for dense data. Avoid #7351B7 and #1B93A4. Strict adherence to luxury e-commerce admin aesthetics."
   },
   "visual_enhancers": {
-    "glassmorphism": "backdrop-blur-xl bg-[#111827]/80 border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.37)]",
-    "glow_effect": "shadow-[0_0_25px_rgba(124,58,237,0.3)]",
-    "card_hover": "transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:border-purple-500/50"
+    "surfaces": "Glassmorphism for sticky headers (bg-[#090E17]/80 backdrop-blur-xl border-b border-white/10). Flat solid for dashboard widgets with max 8px border-radius.",
+    "borders": "1px solid border-white/10. Subtle and sharp. No soft UI.",
+    "shadows": "Minimal ambient glow for active elements (e.g., shadow-[0_0_15px_rgba(79,70,229,0.2)]). Do not use heavy drop shadows on cards."
   },
-  "component_path": "/app/frontend/src/components/",
-  "instructions_to_main_agent": "Build the complete dual-mode application for DEALKR (Customer Storefront + Dark Admin Panel). Follow exact color spec: Deep Navy (#0A0F1D) and Royal/Electric Purple (#7C3AED) with INR currency formatting and all requested features: product browsing, cart, checkout demo, live auctions with bidding, AI deals negotiation/generator, categories, account orders, bulk-buy deals, and complete 11-section admin panel (dashboard, products, orders, vendors, campaigns, users, payments, auctions, coupons, categories, settings). Ensure all interactive elements have data-testid attributes.",
-  "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
-    "You MUST NOT apply universal transition like transition: all.",
-    "Every interactive element must include data-testid attribute.",
-    "Use sonner for toasts.",
-    "Ensure high contrast and readability on dark surfaces."
+  "grids_and_layouts": {
+    "strategy": "High Density Grid (Mode B). Dense data correlation, scanability.",
+    "spacing": "Generous container padding (p-6, p-8) but tight grid gaps (gap-4, gap-6) for widgets.",
+    "structure": "Persistent sidebar navigation (left), sticky top header (glassmorphism), main content area."
+  },
+  "components": {
+    "buttons": "Max 8px radius. Hover states must explicitly shift to a lighter hue of the primary color (e.g., hover:bg-indigo-500 hover:text-white). Ensure future-proof modularity.",
+    "cards": "Subtle roundness (8px), border border-white/10, solid dark background (#121A2F). No drop shadows, use borders for definition.",
+    "forms_inputs": "Shadcn standard inputs. Custom border colors focus:ring-2 focus:ring-indigo-500. Background #1A243D.",
+    "tables": "Dense layouts. IBM Plex Sans for tabular data (perfect for wallet ledger and product lists). Clear row hover states (hover:bg-white/5).",
+    "toasts": "Sonner for all notifications (e.g., one-click update success).",
+    "dialogs": "Used for quick-add actions, product image previews, and coupon setup."
+  },
+  "icons": {
+    "library": "@phosphor-icons/react",
+    "strategy": "Regular or Duotone weight. Consistent sizing (20px).",
+    "installation": "yarn add @phosphor-icons/react"
+  },
+  "motion": {
+    "strategy": "Minimalist micro-interactions. Hover states for all interactive elements. Enter animations for data tables (staggered).",
+    "rules": "Respect prefers-reduced-motion. Never apply 'transition: all'. Target specific properties (e.g., transition-colors duration-200)."
+  },
+  "accessibility": {
+    "contrast": "APCA preferred. Normal text min 4.5:1. Interactive elements min 3:1.",
+    "focus": "Clear focus rings on inputs and buttons.",
+    "testing": "All interactive and key informational elements MUST include data-testid attributes (e.g., data-testid='product-publish-button', data-testid='wallet-credit-btn')."
+  },
+  "media": {
+    "images": [
+      {
+        "url": "https://images.unsplash.com/photo-1760804876422-7efb73b58048?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAxODF8MHwxfHNlYXJjaHw0fHxsdXh1cnklMjBlLWNvbW1lcmNlJTIwcHJvZHVjdHxlbnwwfHx8fDE3OTAxMTQ2OTh8MA&ixlib=rb-4.1.0&q=85",
+        "category": "product_placeholder",
+        "description": "Black box with gold lettering for luxury product placeholders"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1593418632104-71bd668d1af1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAxODF8MHwxfHNlYXJjaHwxfHxsdXh1cnklMjBlLWNvbW1lcmNlJTIwcHJvZHVjdHxlbnwwfHx8fDE3OTAxMTQ2OTh8MA&ixlib=rb-4.1.0&q=85",
+        "category": "product_preview",
+        "description": "Chanel bag with perfume for product mockups"
+      },
+      {
+        "url": "https://images.pexels.com/photos/7832476/pexels-photo-7832476.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "category": "user_avatar",
+        "description": "Portrait of a young middle eastern man for admin or customer avatar"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1655841439659-0afc60676b70?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAxODF8MHwxfHNlYXJjaHwyfHxhYnN0cmFjdCUyMGRhcmslMjBibHVlJTIwbHV4dXJ5JTIwYmFja2dyb3VuZHxlbnwwfHx8fDE3OTAxMTQ2OTh8MA&ixlib=rb-4.1.0&q=85",
+        "category": "auth_background",
+        "description": "Dark teal wavy shapes on black for login or banner backgrounds"
+      }
+    ],
+    "image_rules": "Never use placeholders. Preserve main subjects. Images over content should use gradient overlays (max bg-black/50)."
+  },
+  "specific_features": {
+    "product_management": "CRUD table with multiple image upload zones. Image previews are mandatory. Provide a 'one-click publish' toggle with instant state update and toast feedback.",
+    "wallet_ledger": "Credit/Debit UI requires high contrast tabular data showing green text for credit (+), red for debit (-). Keep numbers monospaced.",
+    "content_publishing": "Homepage content publishing, banner, campaign, coupon control. Utilize modular forms and sections.",
+    "users_and_orders": "Dashboards for Users, Vendors, Orders, Payments, and Auctions. Display KPIs using high-density grid metrics."
+  },
+  "instructions_to_main_agent": [
+    "Prioritize Shadcn components customized with the dark navy/purple/blue luxury theme.",
+    "Build the dashboard layout with a fixed sidebar and sticky header.",
+    "Implement product CRUD with drag-and-drop multiple image upload previews.",
+    "Ensure the wallet debit/credit ledger is visually distinct and heavily utilizes IBM Plex Sans for monospaced figures.",
+    "Add 'data-testid' to all buttons, inputs, links, and actionable icons.",
+    "Use sonner for success/error toasts after any one-click update operations.",
+    "Avoid fully transparent backgrounds for sticky headers or dropdowns. ALWAYS use solid or heavy backdrop-blur backgrounds.",
+    "Never center-align the app container globally. Maintain a robust structural alignment.",
+    "Ensure all buttons are 'future-ready' (extensible UI components)."
   ],
-  "image_urls": {
-    "banner": "https://images.unsplash.com/photo-1764083281132-a29cca6918df?crop=entropy&cs=srgb&fm=jpg&q=85",
-    "gadget_flatlay": "https://images.pexels.com/photos/7989740/pexels-photo-7989740.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
-    "smartwatch": "https://images.pexels.com/photos/18597524/pexels-photo-18597524.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
-    "admin_dashboard": "https://images.unsplash.com/photo-1551288049-bebda4e38f71?crop=entropy&cs=srgb&fm=jpg&q=85",
-    "abstract_blue": "https://images.unsplash.com/photo-1776875479148-e51ea920282c?crop=entropy&cs=srgb&fm=jpg&q=85"
-  }
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
+    "Do not apply universal 'transition: all'. Apply transitions strictly to interactive elements excluding transforms.",
+    "Do not add '.App { text-align: center; }'.",
+    "Use 2-3x more spacing than typical for luxurious feel.",
+    "Never use AI assistant Emoji characters (🤖🧠💡).",
+    "Use sonner for toasts, locate it in /app/src/components/ui/sonner.js",
+    "Always use the provided image URLs. NEVER fall back to via.placeholder.com or similar dummy services."
+  ]
 }

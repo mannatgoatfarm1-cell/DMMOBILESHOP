@@ -1,0 +1,47 @@
+{
+  "summary": "Completed backend + frontend integration testing for MobileCart live-control scope on public preview URL. Admin login, product manager upload/media, all requested admin sections, wallet credit/debit ledger, customer wallet card, coupon validation, and insufficient-wallet checkout behavior passed. One critical backend issue remains: auth CORS preflight still returns 400 for preview origin.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "/api/auth/login (OPTIONS preflight)",
+        "issue": "Preflight from https://dashboard-design-20.preview.emergentagent.com returns 400 instead of 200/204, despite credentialed auth flow requirements.",
+        "priority": "CRITICAL"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration5_live_control.py",
+    "/app/backend/tests/conftest.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Fix CORS origin/preflight handling for /api/auth/login so OPTIONS returns 200/204 for preview domain with credentials.",
+    "After CORS fix, re-run auth regression (login/register/forgot/reset/logout/refresh) in browser context.",
+    "Keep backend tests running sequential when password-reset mutation tests are included to avoid credential race in parallel workers."
+  ],
+  "critical_code_review_comments": [
+    "CORS middleware in server.py still behaves incorrectly at runtime for preview-origin preflight even with allow_origin_regex configured; deployment/runtime env mismatch or middleware origin matching behavior needs RCA.",
+    "Legacy tests in test_dealkr_api.py still use outdated auth payload shapes and can generate noisy false failures; maintainers should align them with current identifier-based login contract.",
+    "Auth reset tests that mutate deepak143 credentials can interfere with parallel suites; isolate or serialize those tests."
+  ],
+  "updated_files": [
+    "/app/backend/tests/conftest.py",
+    "/app/backend/tests/test_iteration5_live_control.py",
+    "/app/test_reports/iteration_5.json"
+  ],
+  "success_rate": {
+    "backend": "87.5% (7/8 passing in focused iteration5 suite)",
+    "frontend": "100% (requested flows passed in browser run)"
+  },
+  "seed_data_creation": "Created temporary TEST_ lockout user via /api/auth/register during brute-force test. Added one uploaded test media file and temporary wallet ledger notes TEST_UI_CREDIT_* / TEST_UI_DEBIT_* for provided customer.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Admin flows verified with deepak143/deepak143 on /admin. UI upload via product-image-upload-input returned /api/media/<id> and media GET=200. Resource sections (banners/campaigns/coupons/vendors/brands/subscriptions/app-manager/notifications/shipping/gst-tax/settings) rendered. Categories, users/admin-users, orders, payments, auctions, returns-refunds, support-tickets tables rendered. Wallet credit+debit UI applied to p0check_1790113956@example.com and ledger updated while final balance restored to ₹60. Customer account wallet card visible. Checkout coupon WELCOME10 applied and wallet payment showed insufficient-balance rejection without creating order success state.",
+  "rca of the issue": "Reproduction: send OPTIONS /api/auth/login with Origin=https://dashboard-design-20.preview.emergentagent.com and Access-Control-Request-Method=POST. Observed 400 response. Expected 200/204 with access-control-allow-origin and access-control-allow-credentials=true. Likely root cause is runtime CORS origin matching/config divergence (environment origin value mismatch, middleware precedence, or ingress-origin transformation) rather than frontend behavior."
+}

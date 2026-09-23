@@ -1,0 +1,43 @@
+{
+  "summary": "Executed backend and frontend regression for Google OAuth start flow, invalid Google code handling, customer account/profile stability, StoreHome route transitions, and live-sync publish behavior on preview URL.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "/api/auth/login (OPTIONS preflight)",
+        "issue": "Preflight from https://dashboard-design-20.preview.emergentagent.com returns 400 instead of 200/204 for credentialed auth requests.",
+        "priority": "CRITICAL"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration9_google_profile_regression.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Fix CORSMiddleware preflight config for auth endpoints (allow OPTIONS for credentialed browser requests from preview origin).",
+    "Re-run OAuth/auth browser checks after CORS fix to confirm strict-browser compatibility."
+  ],
+  "critical_code_review_comments": [
+    "backend/server.py CORS allow_methods excludes OPTIONS, causing reproducible 400 preflight on /api/auth/login.",
+    "backend/server.py is very large (>1300 lines); split auth, catalog, and admin modules to reduce regression risk and improve maintainability."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration9_google_profile_regression.py",
+    "/app/test_reports/iteration_9.json"
+  ],
+  "success_rate": {
+    "backend": "80% (4/5 passing)",
+    "frontend": "100% for requested flows"
+  },
+  "seed_data_creation": "Created temporary customer account for brute-force lockout validation and temporary admin product TEST UI LIVE <timestamp> for live-sync check; cleaned up product via admin delete (204).",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Google sign-in button redirected to accounts.google.com with redirect_uri=https://dashboard-design-20.preview.emergentagent.com/auth/google and no redirect_uri_mismatch/400/403 screen. /api/auth/google with invalid code returned 401 (not 500). Customer login -> header profile -> /account rendered cleanly with session persisting across route transitions. Home/category/home transitions completed without Package/StoreHome runtime overlays. Live storefront sync reflected temporary admin product in ~1s without manual reload.",
+  "rca of the issue": "CORS preflight failure reproduces via direct OPTIONS to /api/auth/login with Origin + Access-Control-Request-* headers. Current CORSMiddleware config uses allow_methods [GET, POST, PUT, PATCH, DELETE] and does not include OPTIONS, which triggers 400 and blocks credentialed browser preflight in strict clients."
+}

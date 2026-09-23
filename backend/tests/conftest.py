@@ -48,7 +48,11 @@ def customer_credentials() -> dict:
 def customer_session(base_url: str, customer_credentials: dict) -> requests.Session:
     # Customer auth setup (register and receive secure cookies)
     session = requests.Session()
-    register = session.post(f"{base_url}/api/auth/register", json=customer_credentials, timeout=30)
+    register_payload = {
+        **customer_credentials,
+        "confirm_password": customer_credentials["password"],
+    }
+    register = session.post(f"{base_url}/api/auth/register", json=register_payload, timeout=30)
     assert register.status_code == 201, register.text
     return session
 
@@ -57,7 +61,7 @@ def customer_session(base_url: str, customer_credentials: dict) -> requests.Sess
 def admin_session(base_url: str) -> requests.Session:
     # Seeded admin auth setup
     session = requests.Session()
-    payload = {"email": "admin@dealkr.example.com", "password": "3Bw-zdq91GXPTEO1NyzQyfCa"}
+    payload = {"identifier": "deepak143", "password": "deepak143"}
     response = session.post(f"{base_url}/api/auth/login", json=payload, timeout=30)
     assert response.status_code == 200, response.text
     return session

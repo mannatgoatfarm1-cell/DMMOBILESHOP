@@ -20,7 +20,7 @@ Build a production-ready MobileCart storefront and web admin panel with product 
 - Admin dashboard with metrics, revenue chart, order status, recent activity, recent orders, categories, and full navigation inventory.
 - Match reference styling, shading, spacing, imagery, DEALKR branding, and ₹ currency examples.
 
-## Implemented — 2026-09-22
+## Implemented — 2026-09-22 to 2026-09-23
 - Replaced the starter splash screen with a complete MobileCart storefront and responsive admin dashboard.
 - Added functional demo routes: storefront, category browsing, product detail, cart, checkout success, auctions, and `/admin`.
 - Added local cart state, quantity/remove behavior, checkout payment selection, order confirmation, auction bid increment, toast feedback, responsive bottom navigation, and mobile admin menu.
@@ -38,18 +38,26 @@ Build a production-ready MobileCart storefront and web admin panel with product 
 - Fixed null-product handling on `/auctions`, preventing the prior route crash.
 - Added product image zoom/lightbox and category-based Similar Products to product detail pages.
 - Iteration 4 validation: requested frontend flows passed, 7/8 backend checks passed. Local credentialed CORS preflight passes; external preview OPTIONS preflight is rejected by the gateway although same-origin browser authentication and direct login work.
+- Added persistent object-storage backed admin media uploads, full admin workspace controls, wallet credit/debit ledger, coupon validation, customer wallet account view, and 1-second catalog/category/auction storefront synchronization.
+- Added MobileCart branded favicon.ico, PNG favicon sizes, Apple Touch Icon, Android/PWA icons, manifest, and page metadata.
+- Added Google OAuth customer login with the provided Google OAuth client. Customer login page has Google sign-in; admin login remains password-only. Browser redirect now reaches Google sign-in without redirect URI mismatch; real post-consent verification requires an authorized Google test account.
+- Rebuilt the customer Account hub with wallet, Gold, transactions, orders, saved-addresses and explicit sign-out control.
+- Fixed StoreHome unsafe product-image reads and the Account `Package` runtime import error that could interrupt a successful sign-in.
+- Fixed email/password reliability: valid credentials now clear stale failed-attempt records and immediately restore the session; wrong passwords retain the rate-limit protection. Login displays a persistent, readable error message.
+- Iteration 10 validated repeat customer/admin email login, valid-password recovery after lockout, visible auth errors, profile/account session persistence, and no Account runtime overlay.
 
 ## Prioritized Backlog
 - P0: Validate external preview gateway CORS behavior if a separate-origin client must access APIs; current MobileCart frontend uses same-origin API calls and works.
 - P0: Configure outbound email delivery for customer-facing password-reset links; reset tokens are generated securely but currently logged by the backend because no email provider is configured.
+- P0: Preview ingress currently rejects credentialed `OPTIONS /api/auth/login` requests before FastAPI; application-level CORS and same-origin login work. Ingress configuration needs an explicit preview-origin allowlist or CORS disabled at gateway.
 - P1: Add full admin management screens for product/category/order/auction CRUD and connect the remaining dashboard navigation sections.
 - P1: Move uploads to managed object storage before scaling beyond a single application instance.
 - P2: Integrate Razorpay payment creation, verification, webhooks, refunds, and reconciliation.
 - P2: Add auction closing scheduler and live bid synchronization.
 
 ## Next Tasks
-1. Add wallet add/spend, Gold membership, referrals, coupons, bulk-buy, and price tracking.
-2. Integrate an outbound email provider for production password-reset link delivery.
+1. Redesign payment settings with Hindi-first status feedback and connect Razorpay once Key ID, Key Secret, and Webhook Secret are supplied.
+2. Add outbound email delivery for production password-reset links.
 3. Add AI Assistant / Deal Engine through the approved LLM integration flow.
-4. Integrate Razorpay with server-side order verification and webhooks.
-5. Add managed object storage plus scheduled/live auction lifecycle processing.
+4. Add referrals, bulk-buy and price tracking.
+5. Add auction closing scheduler and real-time bid synchronization.

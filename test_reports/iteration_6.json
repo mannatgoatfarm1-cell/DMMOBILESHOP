@@ -1,0 +1,44 @@
+{
+  "summary": "Executed backend + frontend regression for profile navigation/logout and Google-auth additions on public preview URL. Critical account/profile bug is fixed: profile click keeps session and opens /account with wallet/menu visible. Google UI placement and invalid-code handling pass. One critical backend issue remains: auth CORS preflight still returns 400.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "/api/auth/login (OPTIONS preflight)",
+        "issue": "Preflight from https://dashboard-design-20.preview.emergentagent.com returns 400 (expected 200/204 with allow-origin + allow-credentials headers).",
+        "priority": "CRITICAL"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration6_profile_google_auth_regression.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Fix backend CORS preflight for auth endpoints so browser credentialed requests are not blocked in strict clients.",
+    "After CORS fix, re-run browser auth smoke for login/logout/refresh and Google redirect start->callback exchange."
+  ],
+  "critical_code_review_comments": [
+    "server.py CORS config likely remains runtime-mismatched (explicit origin/regex not taking effect for OPTIONS), causing repeat regression across iterations.",
+    "Google callback flow safely handles missing code and invalid-code exchange (401) without backend 500.",
+    "Account sign-out is correctly scoped to account-signout-button; profile-link navigation no longer triggers logout side-effects."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration6_profile_google_auth_regression.py",
+    "/app/test_reports/iteration_6.json"
+  ],
+  "success_rate": {
+    "backend": "83.3% (5/6 passing in iteration6 pytest)",
+    "frontend": "100% for requested profile/google/admin UI checks"
+  },
+  "seed_data_creation": "Created temporary TEST_ lockout customer via /api/auth/register during brute-force validation.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Verified with customer p0check_1790113956@example.com and admin deepak143 on preview URL. /account renders account-menu-panel and customer-wallet-balance on desktop and mobile (no horizontal clipping observed). /login shows google-signin-button for customer flow; /login?next=/admin hides it. /auth/google without code shows safe callback message + return-to-login. API POST /api/auth/google with invalid code returns 401. Admin login lands at /admin with .admin-shell visible.",
+  "rca of the issue": "Repro: OPTIONS /api/auth/login with Origin=https://dashboard-design-20.preview.emergentagent.com + Access-Control-Request-Method=POST returns 400. Expected CORS middleware to allow configured preview origin with credentials. Probable root cause is origin matching/config application mismatch at runtime (middleware ordering/config value normalization/ingress interaction), not frontend behavior."
+}

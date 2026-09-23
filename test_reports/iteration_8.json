@@ -1,0 +1,44 @@
+{
+  "summary": "Executed backend+frontend regression on preview URL for Google OAuth start flow, StoreHome route stability, admin live publish SLA, admin quick-find input, and profile link session behavior. Most requested flows passed; one critical backend CORS preflight failure persists.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "/api/auth/login (OPTIONS preflight)",
+        "issue": "Preflight from https://dashboard-design-20.preview.emergentagent.com still returns 400 instead of 200/204 with allow-origin + allow-credentials headers.",
+        "priority": "CRITICAL"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration8_auth_live_sync_regression.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Fix backend CORS preflight handling for auth endpoints (allow OPTIONS + credentialed preview origin).",
+    "Re-run auth browser checks after CORS fix to confirm strict-browser compatibility."
+  ],
+  "critical_code_review_comments": [
+    "server.py CORS config likely causes 400 preflight because allow_methods excludes OPTIONS while credentialed auth requests require successful preflight.",
+    "server.py is large (>1300 lines); split auth/catalog/admin modules to reduce regression risk and speed RCA.",
+    "StoreHome guard changes appear effective in this run; prior undefined '.image' runtime error was not reproduced across requested navigation sequence."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration8_auth_live_sync_regression.py",
+    "/app/test_reports/iteration_8.json"
+  ],
+  "success_rate": {
+    "backend": "80% (4/5 passing)",
+    "frontend": "100% for requested flows in this run"
+  },
+  "seed_data_creation": "Created temporary TEST lockout customer via /api/auth/register for brute-force validation; created temporary TEST LIVE product for SLA check and then unpublished it via admin delete action.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Google button redirected to accounts.google.com sign-in page and URL contained redirect_uri=https://dashboard-design-20.preview.emergentagent.com/auth/google; no redirect_uri_mismatch/400/403 text observed. Customer profile link opened /account with session intact. Admin quick-find input accepted typing on Products/Orders/Wallet/Banners/Coupons/Settings. Live publish appeared on a separate logged-in customer context without reload in ~0.10s. CORS preflight bug remains reproducible by direct OPTIONS.",
+  "rca of the issue": "Auth preflight RCA: backend CORSMiddleware allow_methods is set to [GET, POST, PUT, PATCH, DELETE] and does not explicitly include OPTIONS, so browser preflight OPTIONS /api/auth/login returns 400 for preview-origin credentialed requests. Mitigation: include OPTIONS (or '*') in allow_methods and preserve explicit origin + allow_credentials=true; then verify with real browser preflight and pytest."
+}

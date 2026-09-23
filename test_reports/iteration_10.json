@@ -1,0 +1,44 @@
+{
+  "summary": "Tested requested auth regressions on preview app for customer/admin login, lockout behavior, browser account navigation, and error message UX. Core requested flows pass; only preflight CORS header behavior remains failing as known infrastructure/gateway issue.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "/api/auth/login (OPTIONS preflight)",
+        "issue": "OPTIONS preflight still returns 400 and omits access-control-allow-origin, while allow-credentials=true is present.",
+        "priority": "CRITICAL"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration10_email_login_lockout_regression.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Fix auth preflight behavior so OPTIONS returns 200/204 with explicit access-control-allow-origin and credentials support for preview origin.",
+    "After CORS/preflight fix, rerun browser auth checks in strict client mode to confirm no intermittent failures outside same-origin route." 
+  ],
+  "critical_code_review_comments": [
+    "server.py CORSMiddleware allow_methods excludes OPTIONS, consistent with repeated preflight 400 outcome.",
+    "Auth lockout logic now correctly prioritizes valid credential verification before lockout gate and clears login_attempts on successful sign-in.",
+    "server.py is very large and mixes auth/catalog/admin concerns; split into modules to reduce regression risk."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration10_email_login_lockout_regression.py",
+    "/app/test_reports/iteration_10.json"
+  ],
+  "success_rate": {
+    "backend": "75% (3/4 passing in this suite)",
+    "frontend": "100% for requested browser flows"
+  },
+  "seed_data_creation": "Created temporary customer test identity for lockout validation and removed test user + login_attempts record via cleanup.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Customer login (p0check_1790113956@example.com/TestPass123!) succeeded repeatedly in API and browser; auth-error-message appears for wrong password and clears immediately on credential edit; profile link reliably opens /account with no 'Package is not defined'/runtime overlay markers; admin deepak143/deepak143 routes to /admin successfully. Only failing check is OPTIONS preflight/CORS headers.",
+  "rca of the issue": "Repro: send OPTIONS /api/auth/login with Origin=https://dashboard-design-20.preview.emergentagent.com + Access-Control-Request-Method POST + content-type. Result: 400, allow-credentials=true, but missing allow-origin. Code also sets allow_methods without OPTIONS. Likely combined app CORS config plus ingress/gateway handling of preflight. Mitigation: include OPTIONS (or '*') in allow_methods and validate ingress forwards preflight correctly with explicit origin reflection."
+}

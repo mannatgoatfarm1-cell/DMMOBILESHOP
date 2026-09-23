@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="MobileCart">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#9d45ff"/>
+      <stop offset=".52" stop-color="#6239e8"/>
+      <stop offset="1" stop-color="#1889f7"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="116" fill="#0b1122"/>
+  <rect x="28" y="28" width="456" height="456" rx="94" fill="url(#g)"/>
+  <path d="M133 143h48l30 181h153l35-119H201" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="34"/>
+  <circle cx="235" cy="387" r="23" fill="#fff"/>
+  <circle cx="352" cy="387" r="23" fill="#fff"/>
+  <path d="M258 204h83" stroke="#dff2ff" stroke-linecap="round" stroke-width="28"/>
+</svg>
