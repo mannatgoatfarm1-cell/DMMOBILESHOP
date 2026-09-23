@@ -351,10 +351,10 @@ class MediaFile(BaseModel):
 
 
 MANAGED_RESOURCES = {
-    "vendors", "brands", "campaigns", "coupons", "subscriptions", "app-manager",
+    "vendors", "brands", "campaigns", "coupons", "subscriptions", "app-manager", "announcements",
     "banners", "notifications", "wallet-withdrawals", "shipping", "gst-tax", "settings",
 }
-PUBLIC_RESOURCES = {"brands", "campaigns", "coupons", "banners", "shipping"}
+PUBLIC_RESOURCES = {"brands", "campaigns", "coupons", "banners", "shipping", "announcements"}
 
 
 def now() -> str:
@@ -989,6 +989,9 @@ async def create_product(input: ProductInput, _: Annotated[dict[str, Any], Depen
     timestamp = now()
     product = {"id": str(uuid.uuid4()), **input.model_dump(), "created_at": timestamp, "updated_at": timestamp}
     await db.products.insert_one(product.copy())
+    if product["active"]:
+        announcement = {"id": str(uuid.uuid4()), "resource": "announcements", "title": f"New arrival: {product['name']}", "description": f"अब MobileCart पर ₹{product['price']:,} में उपलब्ध", "status": "published", "data": {"product_id": product["id"], "image_url": product["images"][0] if product["images"] else ""}, "created_at": timestamp, "updated_at": timestamp}
+        await db.admin_announcements.insert_one(announcement.copy())
     return product_payload(product)
 
 

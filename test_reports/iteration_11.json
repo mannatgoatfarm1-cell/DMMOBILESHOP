@@ -1,0 +1,52 @@
+{
+  "summary": "Completed backend pytest + multi-context UI integration testing for live product/announcement sync, admin product/resource controls, category grid/list behavior, and customer account regression on preview URL. Core requested flows pass with <=2s visibility checks. One backend auth preflight/CORS issue remains.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "/api/auth/login (OPTIONS preflight)",
+        "issue": "Preflight still returns 400 and omits access-control-allow-origin for preview origin; access-control-allow-credentials=true is present.",
+        "priority": "CRITICAL"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Category list view CSS",
+        "issues": [
+          "List-view CSS targets .prod-image/.prod-info/.add-cart selectors, but JSX uses .product-media/.product-info/.add-cart-btn; list view still toggles, but fine-grained intended layout styling is partially mismatched."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration11_live_sync_announcements_and_admin_controls.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Fix auth CORS preflight behavior for /api/auth/login: include OPTIONS handling and explicit access-control-allow-origin reflection for credentialed requests from preview origin.",
+    "Align category list-view CSS selectors with actual ProductCard class names (.product-media/.product-info/.add-cart-btn) for predictable list layout styling.",
+    "Optionally add a low-cost cleanup workflow for inactive TEST_* products/announcements to avoid admin catalog clutter during repeated QA runs."
+  ],
+  "critical_code_review_comments": [
+    "backend/server.py is very large and mixes auth/catalog/admin/resource concerns; split modules to reduce regression risk and speed root-cause isolation.",
+    "CORS preflight behavior remains inconsistent with credentialed browser expectations despite same-origin paths working in normal flows.",
+    "Live sync architecture (1s polling + cache-busting + mobilecart:live-update/localStorage signal) is functioning end-to-end in browser tests for product + announcement updates."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration11_live_sync_announcements_and_admin_controls.py",
+    "/app/test_reports/iteration_11.json"
+  ],
+  "success_rate": {
+    "backend": "80% (4/5 passing in iteration-11 pytest suite)",
+    "frontend": "96% (all requested functional flows passed; one initial script-only assertion bug was corrected in targeted retest)"
+  },
+  "seed_data_creation": "Created temporary TEST live products and TEST announcements via admin APIs/UI; cleanup attempted. Note: product delete endpoint unpublishes (active=false) rather than hard-delete, so inactive test records may remain.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Validated no-manual-reload <=2s visibility for new active product + auto announcement (API + home strip) using separate admin/storefront browser contexts. Verified edit propagation <=2.2s in targeted retest. Category grid/list toggle works on desktop/mobile and toggle buttons do not overlap on 390x844. Customer account page loads wallet/history/orders/address sections without runtime errors. Console showed expected 401s for unauthenticated initial /auth/me probes only; no blocking runtime UI errors detected.",
+  "rca of the issue": "Auth preflight failure reproduces with OPTIONS /api/auth/login (Origin=https://dashboard-design-20.preview.emergentagent.com, Access-Control-Request-Method=POST, Access-Control-Request-Headers=content-type). Response is 400 with allow-credentials=true but missing allow-origin; allow-methods also excludes OPTIONS. Mitigation: include OPTIONS (or '*') in app CORS methods and verify ingress/CDN preserves reflected origin for credentialed preflight responses."
+}
