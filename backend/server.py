@@ -155,6 +155,8 @@ class ProductInput(BaseModel):
     variants: list[Variant] = Field(default_factory=list, max_length=100)
     active: bool = True
     featured: bool = False
+    qc_grade: Literal["new", "excellent", "good", "fair"] = "new"
+    qc_status: dict[str, Literal["pass", "fail", "unknown"]] = Field(default_factory=dict)
 
     @field_validator("images")
     @classmethod
