@@ -355,6 +355,11 @@ class RazorpayVerifyInput(BaseModel):
     razorpay_signature: str = Field(min_length=8, max_length=256)
 
 
+class RazorpayFailureInput(BaseModel):
+    order_id: str = Field(min_length=1, max_length=80)
+    reason: str = Field(default="payment_cancelled", max_length=120)
+
+
 class CouponCheckInput(BaseModel):
     code: str = Field(min_length=2, max_length=40)
     subtotal: int = Field(ge=0)
@@ -860,6 +865,17 @@ async def add_cart_item(input: CartItemInput, user: Annotated[dict[str, Any], De
 async def set_cart_quantity(product_id: str, input: CartItemInput, user: Annotated[dict[str, Any], Depends(require_customer)]) -> CartResponse:
     if product_id != input.product_id:
         raise HTTPException(400, "Product identifier mismatch")
+    product = await db.products.find_one({"id": product_id, "active": True}, {"_id": 0})
+    if not product:
+        raise HTTPException(404, "Product not found")
+    available = product["stock"]
+    if input.variant_sku:
+        variant = next((row for row in product["variants"] if row["sku"] == input.variant_sku), None)
+        if not variant:
+            raise HTTPException(404, "Product variant not found")
+        available = variant["stock"]
+    if input.quantity < 1 or input.quantity > available:
+        raise HTTPException(409, "Requested quantity is not available")
     result = await db.carts.update_one({"user_id": user["id"], "items.product_id": product_id}, {"$set": {"items.$.quantity": input.quantity, "updated_at": now()}})
     if result.modified_count == 0:
         raise HTTPException(404, "Cart item not found")
@@ -1568,6 +1584,8 @@ async def create_razorpay_order(input: RazorpayOrderInput, user: Annotated[dict[
     order = await db.orders.find_one({"id": input.order_id, "user_id": user["id"]}, {"_id": 0})
     if not order:
         raise HTTPException(404, "Order not found")
+    if order.get("payment", {}).get("status") != "pending" or order.get("status") != "payment_pending":
+        raise HTTPException(409, "This order cannot be paid again")
     settings = await get_payment_settings()
     if not (settings.get("razorpay_key_id") and settings.get("razorpay_key_secret")):
         raise HTTPException(400, "Razorpay अभी configure नहीं हुआ है। Admin panel में keys डालें")
@@ -1589,6 +1607,8 @@ async def verify_razorpay_payment(input: RazorpayVerifyInput, user: Annotated[di
     order = await db.orders.find_one({"id": input.order_id, "user_id": user["id"]}, {"_id": 0})
     if not order:
         raise HTTPException(404, "Order not found")
+    if order.get("payment", {}).get("provider_order_id") != input.razorpay_order_id:
+        raise HTTPException(400, "Payment order mismatch")
     settings = await get_payment_settings()
     if not (settings.get("razorpay_key_id") and settings.get("razorpay_key_secret")):
         raise HTTPException(400, "Razorpay अभी configure नहीं हुआ है")
@@ -1600,6 +1620,26 @@ async def verify_razorpay_payment(input: RazorpayVerifyInput, user: Annotated[di
         await db.orders.update_one({"id": order["id"]}, {"$set": {"payment.status": "failed", "updated_at": now()}})
         raise HTTPException(400, "Payment verification विफल रहा") from error
     await db.orders.update_one({"id": order["id"]}, {"$set": {"payment.status": "captured", "payment.transaction_id": input.razorpay_payment_id, "status": "confirmed", "updated_at": now()}})
+    updated = await db.orders.find_one({"id": order["id"]}, {"_id": 0})
+    return Order(**updated)
+
+
+@api.post("/payments/razorpay/fail", response_model=Order)
+async def fail_razorpay_payment(input: RazorpayFailureInput, user: Annotated[dict[str, Any], Depends(require_customer)]) -> Order:
+    order = await db.orders.find_one({"id": input.order_id, "user_id": user["id"]}, {"_id": 0})
+    if not order:
+        raise HTTPException(404, "Order not found")
+    if order.get("payment", {}).get("status") != "pending":
+        return Order(**order)
+    timestamp = now()
+    event = {"status": "Payment failed", "at": timestamp, "reason": input.reason[:120]}
+    result = await db.orders.update_one(
+        {"id": order["id"], "user_id": user["id"], "payment.status": "pending"},
+        {"$set": {"payment.status": "failed", "payment.failure_reason": input.reason[:120], "status": "payment_failed", "updated_at": timestamp}, "$push": {"tracking.events": event}},
+    )
+    if result.modified_count:
+        for item in order.get("items", []):
+            await db.products.update_one({"id": item["product_id"]}, {"$inc": {"stock": int(item["quantity"])}, "$set": {"updated_at": timestamp}})
     updated = await db.orders.find_one({"id": order["id"]}, {"_id": 0})
     return Order(**updated)
 

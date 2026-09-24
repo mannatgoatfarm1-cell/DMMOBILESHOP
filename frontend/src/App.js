@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BrowserRouter, Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { Toaster, toast } from "sonner";
 import { GoogleOAuthProvider, useGoogleLogin } from "@react-oauth/google";
+import { useRazorpay } from "react-razorpay";
 import {
   Search, ShoppingCart, MapPin, ChevronRight, ChevronLeft, ChevronDown, Sparkles, Gavel, Heart, UserRound,
   Menu, X, Plus, ArrowLeft, Minus, Trash2, Check, Star, Store, Zap, Clock, Download, Apple as AppleIcon,
@@ -99,7 +100,7 @@ function Topbar({ cartCount, wishCount = 0, user, onSearch, onLogout, onMenu }) 
         </label>
         <button className="deliver" data-testid="deliver-to-button"><MapPin size={16} /><span>Deliver to<b>New Delhi 110085</b></span><ChevronDown size={13} /></button>
         <div className="top-actions">
-          <button className="top-link" onClick={() => navigate("/account")} data-testid="wishlist-button"><span className="ic"><Heart size={20} />{wishCount > 0 && <i>{wishCount}</i>}</span></button>
+          <button className="top-link" onClick={() => navigate(user ? "/account#wishlist" : "/login?next=/account%23wishlist")} data-testid="wishlist-button"><span className="ic"><Heart size={20} />{wishCount > 0 && <i>{wishCount}</i>}</span></button>
           <Link className="top-link" to="/cart" data-testid="cart-header-button"><span className="ic"><ShoppingCart size={20} />{cartCount > 0 && <i>{cartCount}</i>}</span></Link>
           {user
             ? <Link className="top-link acct" to="/account" data-testid="account-profile-link"><UserRound size={20} /><span className="acct-copy"><small>Hi,</small><b>{user.name.split(" ")[0]}</b></span></Link>
@@ -137,10 +138,10 @@ function FooterBar() {
 
 function ProductCard({ product, onAdd, onWish, badge }) {
   if (!product) return null;
-  const rating = rateFor(product.id);
+  const rating = rateFor(product.id); const outOfStock = product.stock <= 0;
   return (
     <article className="product-card" data-testid={`product-card-${product.id}`}>
-      {badge && <span className="card-badge">{badge}</span>}
+      {outOfStock ? <span className="stock-badge out" data-testid={`out-of-stock-${product.id}`}>OUT OF STOCK</span> : badge && <span className="card-badge">{badge}</span>}
       <button className="wish" onClick={() => onWish(product.id)} data-testid={`wishlist-${product.id}`} aria-label={`Save ${product.name}`}><Heart size={15} /></button>
       <Link to={`/product/${product.id}`} data-testid={`product-link-${product.id}`} className="product-media">
         <img src={product.image} alt={product.name} />
@@ -151,7 +152,7 @@ function ProductCard({ product, onAdd, onWish, badge }) {
         <div className="rating-line"><span className="stars"><Star size={12} fill="currentColor" /> {rating.stars}</span><small>({rating.count})</small></div>
         <div className="price-row"><strong>{money(product.price)}</strong><del>{money(product.old)}</del><em>{product.off}</em></div>
       </div>
-      <button className="add-cart-btn" onClick={() => onAdd(product)} data-testid={`add-product-${product.id}`}><ShoppingCart size={14} /> Add to Cart</button>
+      <button className="add-cart-btn" disabled={outOfStock} onClick={() => onAdd(product)} data-testid={`add-product-${product.id}`}>{outOfStock ? "Out of Stock" : <><ShoppingCart size={14} /> Add to Cart</>}</button>
     </article>
   );
 }
@@ -377,7 +378,7 @@ function ProductPage({ onAdd, onWish, common }) {
   }, [id]);
   if (loading) return <><Topbar {...common} /><main className="detail-page"><Loading /></main><FooterBar /></>;
   if (!product) return <Navigate to="/" replace />;
-  const rating = rateFor(product.id);
+  const rating = rateFor(product.id); const outOfStock = product.stock <= 0;
   return (
     <>
       <Topbar {...common} />
@@ -392,12 +393,12 @@ function ProductPage({ onAdd, onWish, common }) {
             <div className="rating"><Star size={14} fill="currentColor" /> {rating.stars} <span>({rating.count} Reviews)</span></div>
             <div className="price-line"><strong>{money(product.price)}</strong><del>{money(product.old)}</del><em>{product.off}</em></div>
             <small className="emi">EMI from {money(Math.round(product.price / 20))}/month</small>
-            <div className="chips">{(product.variants?.length ? product.variants.map((variant) => variant.name) : ["Assured", "In Stock", "Fast Delivery"]).map((value) => <button key={value} data-testid={`variant-${String(value).toLowerCase().replaceAll(" ", "-")}`}>{value}</button>)}</div>
+            <div className="chips">{(product.variants?.length ? product.variants.map((variant) => variant.name) : ["Assured", outOfStock ? "Out of Stock" : "In Stock", "Fast Delivery"]).map((value) => <button key={value} data-testid={`variant-${String(value).toLowerCase().replaceAll(" ", "-")}`}>{value}</button>)}</div>
             <div className="delivery"><MapPin size={18} /><span>Deliver to <b>New Delhi 110085</b><small>Free delivery in 3-5 days</small></span><Link to="/account" data-testid="change-address-button">Change</Link></div>
             <div className="seller"><Store size={20} /><div>Sold by <b>CellPoint Store</b></div><strong>Top Rated Seller<br />4.7 ★</strong></div>
             <div className="detail-actions">
-              <button className="ghost-btn" onClick={() => onAdd(product)} data-testid="detail-add-to-cart">Add to Cart</button>
-              <button className="primary-btn" onClick={() => onAdd(product, true)} data-testid="detail-buy-now">Buy Now</button>
+              <button className="ghost-btn" disabled={outOfStock} onClick={() => onAdd(product)} data-testid="detail-add-to-cart">{outOfStock ? "Out of Stock" : "Add to Cart"}</button>
+              <button className="primary-btn" disabled={outOfStock} onClick={() => onAdd(product, true)} data-testid="detail-buy-now">{outOfStock ? "Currently unavailable" : "Buy Now"}</button>
             </div>
           </div>
         </div>
@@ -463,6 +464,7 @@ function AddressForm({ onDone }) {
 }
 
 function Checkout({ cart, user, refreshUser, refreshCart, common }) {
+  const { Razorpay, isLoading: razorpayLoading, error: razorpayLoadError } = useRazorpay();
   const [paid, setPaid] = useState(false);
   const [method, setMethod] = useState("upi");
   const [paymentConfig, setPaymentConfig] = useState(null);
@@ -470,6 +472,7 @@ function Checkout({ cart, user, refreshUser, refreshCart, common }) {
   const [couponCode, setCouponCode] = useState("");
   const [coupon, setCoupon] = useState(null);
   const [couponBusy, setCouponBusy] = useState(false);
+  const paymentSucceeded = useRef(false);
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const total = Math.max(0, subtotal - (coupon?.discount || 0) + 99);
   const address = user?.addresses?.[0];
@@ -483,10 +486,24 @@ function Checkout({ cart, user, refreshUser, refreshCart, common }) {
     if (paymentMethods.length && !paymentMethods.some(([value]) => value === method)) setMethod(paymentMethods[0][0]);
   }, [method, paymentMethods]);
   const applyCoupon = async () => { if (!couponCode.trim()) return; setCouponBusy(true); try { const { data } = await api.post("/api/coupons/validate", { code: couponCode, subtotal }); setCoupon(data); toast.success(`${data.code} applied`); } catch (error) { setCoupon(null); toast.error(apiError(error)); } finally { setCouponBusy(false); } };
+  const markFailed = async (orderId, reason) => { try { await api.post("/api/payments/razorpay/fail", { order_id: orderId, reason }); } catch {} };
+  const openRazorpay = async (order) => {
+    if (razorpayLoadError || !Razorpay) throw new Error("Secure payment checkout could not load. Please try again.");
+    const { data: paymentOrder } = await api.post("/api/payments/razorpay/order", { order_id: order.id });
+    paymentSucceeded.current = false;
+    const checkout = new Razorpay({
+      key: paymentOrder.key_id, amount: paymentOrder.amount, currency: paymentOrder.currency, order_id: paymentOrder.razorpay_order_id, name: "MobileCart", description: `Order ${paymentOrder.order_number}`,
+      prefill: { name: paymentOrder.name, email: paymentOrder.email }, theme: { color: "#6840dc" },
+      method: { upi: method === "upi", card: method === "card", netbanking: method === "net_banking", wallet: false },
+      handler: async (response) => { try { const { data } = await api.post("/api/payments/razorpay/verify", { order_id: order.id, razorpay_order_id: response.razorpay_order_id, razorpay_payment_id: response.razorpay_payment_id, razorpay_signature: response.razorpay_signature }); paymentSucceeded.current = true; setPaid(data); await refreshCart(); toast.success("Payment verified. Order confirmed!"); } catch (error) { await markFailed(order.id, "verification_failed"); toast.error(apiError(error)); } finally { setBusy(false); } },
+      modal: { ondismiss: async () => { if (!paymentSucceeded.current) { await markFailed(order.id, "checkout_dismissed_or_failed"); toast.error("Payment was not completed. Your order was not processed."); } setBusy(false); } },
+    });
+    checkout.open();
+  };
   const place = async () => {
     if (!address) return; setBusy(true);
-    try { const { data } = await api.post("/api/orders", { address_id: address.id, payment_method: method, coupon_code: coupon?.code || null }); setPaid(data); await refreshCart(); toast.success("Order placed successfully"); }
-    catch (error) { toast.error(apiError(error)); } finally { setBusy(false); }
+    try { const { data } = await api.post("/api/orders", { address_id: address.id, payment_method: method, coupon_code: coupon?.code || null }); if (["cod", "wallet"].includes(method)) { setPaid(data); await refreshCart(); toast.success("Order placed successfully"); setBusy(false); } else { try { await openRazorpay(data); } catch (error) { await markFailed(data.id, "razorpay_order_creation_failed"); toast.error(apiError(error)); setBusy(false); } } }
+    catch (error) { toast.error(apiError(error)); setBusy(false); }
   };
   return (
     <>
@@ -502,6 +519,7 @@ function Checkout({ cart, user, refreshUser, refreshCart, common }) {
               <div className="checkout-section"><h3>Delivery address <Link to="/account" data-testid="change-checkout-address">Change</Link></h3><div className="address-card"><b>{address.label}</b><p>{address.recipient_name}</p><span>{address.line1}<br />{address.city} - {address.postal_code}<br />{address.phone}</span></div></div>
               <div className="checkout-section"><h3>Payment Options</h3>
                 {paymentConfig?.partial_payment_enabled && method !== "cod" && method !== "wallet" && <p className="partial-payment-note" data-testid="partial-payment-note">आज सिर्फ़ {paymentConfig.partial_payment_percent}% advance दें — बाकी delivery से पहले।</p>}
+                {method === "upi" && <div className="upi-checkout-note" data-testid="upi-checkout-note"><Smartphone size={16} /><span><b>UPI QR & app payment</b><small>Paytm, PhonePe, Google Pay या किसी भी installed UPI app को Razorpay secure checkout में चुनें।</small></span></div>}
                 {paymentMethods.map(([value, label, detail]) => (
                   <label className="payment-option" key={value}><input type="radio" name="payment" checked={method === value} onChange={() => setMethod(value)} data-testid={`payment-${value}`} /><span>{label}<small>{detail}</small></span><ChevronRight size={15} /></label>
                 ))}
@@ -517,7 +535,7 @@ function Checkout({ cart, user, refreshUser, refreshCart, common }) {
               <div><span>Delivery</span><b className="green-text">FREE</b></div>
               <hr />
               <div className="total"><span>Payable Now</span><strong>{money(total)}</strong></div>
-              <button onClick={place} disabled={busy || !cart.length || !paymentMethods.length} className="primary-btn full" data-testid="place-order-button">{busy ? "Placing order…" : method === "cod" ? "Place COD Order" : `Pay ${money(total)} Now`}</button>
+              <button onClick={place} disabled={busy || razorpayLoading || !cart.length || !paymentMethods.length} className="primary-btn full" data-testid="place-order-button">{busy || razorpayLoading ? "Preparing secure payment…" : method === "cod" ? "Place COD Order" : `Pay ${money(total)} Now`}</button>
               <small className="secure"><ShieldCheck size={12} /> 100% secure payment</small>
             </aside>
           </div>
@@ -630,12 +648,15 @@ function ThemeControl({ theme, onThemeChange }) {
 }
 
 function Account({ user, setUser, common, theme, onThemeChange, refreshUser, onAdd, refreshWish }) {
+  const location = useLocation();
+  const wishlistRef = useRef(null);
   const [orders, setOrders] = useState([]);
   const [wallet, setWallet] = useState(null);
   const [loading, setLoading] = useState(true);
   useEffect(() => { if (user) Promise.all([api.get("/api/orders"), api.get("/api/wallet")]).then(([orderResponse, walletResponse]) => { setOrders(orderResponse.data.items); setWallet(walletResponse.data); }).catch((error) => toast.error(apiError(error))).finally(() => setLoading(false)); }, [user]);
+  useEffect(() => { if (location.hash === "#wishlist") window.setTimeout(() => wishlistRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 240); else if (location.hash) window.setTimeout(() => document.querySelector(location.hash)?.scrollIntoView({ behavior: "smooth", block: "start" }), 120); }, [location.hash]);
   if (!user) return <Navigate to="/login?next=/account" replace />;
-  const menuItems = [[Package, "My Orders", "Track, return & manage", "/my-orders"], [Heart, "My Wishlist", "Saved products", "/account"], [ShoppingCart, "My Cart", `${common.cartCount} items in cart`, "/cart"], [Wallet, "My Wallet", "Balance & transactions", "#wallet"], [Tag, "Coupons", "Apply at checkout", "/cart"], [Gavel, "Auction Bids", "Live bids & watchlist", "/auctions"], [MapPin, "Addresses", "Manage delivery addresses", "#addresses"], [Sparkles, "AI Deals", "Discover smarter deals", "/category?sort=price_desc"]];
+  const menuItems = [[Package, "My Orders", "Track, return & manage", "/my-orders"], [Heart, "My Wishlist", "Saved products", "/account#wishlist"], [ShoppingCart, "My Cart", `${common.cartCount} items in cart`, "/cart"], [Wallet, "My Wallet", "Balance & transactions", "#wallet"], [Tag, "Coupons", "Apply at checkout", "/cart"], [Gavel, "Auction Bids", "Live bids & watchlist", "/auctions"], [MapPin, "Addresses", "Manage delivery addresses", "#addresses"], [Sparkles, "AI Deals", "Discover smarter deals", "/category?sort=price_desc"]];
   return (
     <>
       <Topbar {...common} />
@@ -646,6 +667,7 @@ function Account({ user, setUser, common, theme, onThemeChange, refreshUser, onA
         </div>
         <section className="checkout-section" id="addresses"><h3>Saved addresses</h3>{user.addresses?.length ? user.addresses.map((address) => <div className="address-card" key={address.id} data-testid={`saved-address-${address.id}`}><b>{address.label}</b><p>{address.recipient_name}</p><span>{address.line1}, {address.city} - {address.postal_code}</span></div>) : <p data-testid="account-no-addresses">No saved addresses yet. Add one during checkout.</p>}</section>
         <section className="admin-panel table-panel orders-panel" id="orders"><div className="panel-head"><h2>My Orders</h2></div>{loading ? <Loading label="Loading orders…" /> : <table data-testid="orders-table"><thead><tr><th>Order ID</th><th>Total</th><th>Status</th><th>Date</th></tr></thead><tbody>{orders.length ? orders.map((order) => <tr key={order.id}><td>{order.order_number}</td><td>{money(order.total)}</td><td className={`status-${order.status}`}>{order.status.replaceAll("_", " ")}</td><td>{new Date(order.created_at).toLocaleDateString("en-IN")}</td></tr>) : <tr><td colSpan="4" data-testid="account-empty-orders">No orders yet</td></tr>}</tbody></table>}</section>
+        <AccountExtras orders={orders} refreshWish={refreshWish} wishlistRef={wishlistRef} />
       </main>
       <FooterBar />
       <BottomNav active="Account" />
@@ -727,7 +749,7 @@ function App() {
     return () => { disposed = true; clearInterval(liveSync); window.removeEventListener("mobilecart:live-update", liveRefresh); window.removeEventListener("storage", storageSync); };
   }, [refreshProducts, refreshAuctions, refreshAnnouncements]);
   useEffect(() => { if (!authLoading) { refreshCart(); refreshWish(); } }, [authLoading, user, refreshCart, refreshWish]);
-  const add = async (product, buyNow = false) => { if (!user) { toast.error("Please sign in to save your cart"); navigate("/login?next=/cart"); return; } try { await api.post("/api/cart/items", { product_id: product.id, quantity: 1 }); await refreshCart(); toast.success(`${product.name} added to cart`); speakHindi(`${product.name} कार्ट में जोड़ दिया गया`); if (buyNow) navigate("/cart"); } catch (error) { toast.error(apiError(error)); } };
+  const add = async (product, buyNow = false) => { if (product.stock <= 0) { toast.error("This product is out of stock"); return; } if (!user) { toast.error("Please sign in to save your cart"); navigate("/login?next=/cart"); return; } try { await api.post("/api/cart/items", { product_id: product.id, quantity: 1 }); await refreshCart(); toast.success(`${product.name} added to cart`); speakHindi(`${product.name} कार्ट में जोड़ दिया गया`); if (buyNow) navigate("/cart"); } catch (error) { toast.error(apiError(error)); } };
   const setQuantity = async (item, quantity) => { try { if (quantity < 1) await api.delete(`/api/cart/items/${item.id}`); else await api.patch(`/api/cart/items/${item.id}`, { product_id: item.id, quantity }); await refreshCart(); } catch (error) { toast.error(apiError(error)); } };
   const remove = async (id) => { try { await api.delete(`/api/cart/items/${id}`); await refreshCart(); toast.success("Removed from cart"); speakHindi("कार्ट से हटा दिया गया"); } catch (error) { toast.error(apiError(error)); } };
   const wish = async (id) => { if (!user) { navigate("/login"); return; } try { await api.put(`/api/wishlist/${id}`); await refreshWish(); toast.success("Saved to wishlist"); speakHindi("विशलिस्ट में सेव कर दिया गया"); } catch (error) { toast.error(apiError(error)); } };
