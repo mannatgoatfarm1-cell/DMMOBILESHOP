@@ -59,6 +59,7 @@ Build a production-ready MobileCart storefront and web admin panel with product 
 - Strengthened Profile Light Mode secondary-text contrast across wallet, account cards, product metadata, and header copy. Automated checks confirm sampled text meets WCAG AA contrast and preference persists after reload.
 - QA Iteration 13: frontend flows passed; backend 6/7 passed. The one outstanding failure remains the external preview gateway rejecting credentialed auth OPTIONS preflight before app routing. **Razorpay real checkout remains unconfigured; no external payment was attempted.**
 - Stabilized admin search behavior: matching rows now preserve their original catalog order while typing, product search only considers product name/URL slug (not broad category/tag text), provides an explicit no-results message, and admin product API ordering is fixed by creation date instead of changing after every edit.
+- Completed a visual readability pass: increased small-text sizing and contrast in admin workspace controls, strengthened light-mode account/wallet copy, and restored high-contrast gold text for the dark MobileCart Gold banner when Light Mode is active. Fresh browser verification confirms the banner heading/body and profile text are visible.
 
 ## Prioritized Backlog
 - P0: Preview gateway rejects credentialed `OPTIONS /api/auth/login` before FastAPI even for the configured preview origin. App-side CORS is configured and same-origin login works; ingress/gateway configuration needs an explicit allowlist change for third-party cross-origin clients.
