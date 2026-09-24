@@ -6,7 +6,7 @@ import {
   Search, ShoppingCart, MapPin, ChevronRight, ChevronLeft, ChevronDown, Sparkles, Gavel, Heart, UserRound,
   Menu, X, Plus, ArrowLeft, Minus, Trash2, Check, Star, Store, Zap, Clock, Download, Apple as AppleIcon,
   Smartphone, Laptop, Watch, Tablet, Headphones, Gamepad2, Camera, Home as HomeIcon, Percent, LayoutGrid, Package,
-  Truck, RotateCcw, ShieldCheck, BadgeCheck, LoaderCircle, LogOut, Wallet, Tag, ZoomIn,
+  Truck, RotateCcw, ShieldCheck, BadgeCheck, LoaderCircle, LogOut, Wallet, Tag, ZoomIn, Sun, Moon,
 } from "lucide-react";
 import { api, apiError, cardProduct } from "@/api";
 import { speakHindi } from "@/lib/adminFeedback";
@@ -623,7 +623,12 @@ function Login({ setUser }) {
   );
 }
 
-function Account({ user, setUser, common, refreshUser, onAdd, refreshWish }) {
+function ThemeControl({ theme, onThemeChange }) {
+  const light = theme === "light";
+  return <section className="theme-control" data-testid="profile-theme-control"><div className="theme-control-copy"><span className="theme-icon">{light ? <Sun size={17} /> : <Moon size={17} />}</span><div><b>{light ? "Light mode" : "Dark mode"}</b><small>Swipe to change website appearance</small></div></div><label className="theme-switch"><input type="checkbox" checked={light} onChange={(event) => onThemeChange(event.target.checked ? "light" : "dark")} aria-label="Toggle light mode" data-testid="profile-theme-toggle" /><span /></label></section>;
+}
+
+function Account({ user, setUser, common, theme, onThemeChange, refreshUser, onAdd, refreshWish }) {
   const [orders, setOrders] = useState([]);
   const [wallet, setWallet] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -635,7 +640,7 @@ function Account({ user, setUser, common, refreshUser, onAdd, refreshWish }) {
       <Topbar {...common} />
       <main className="simple-page account-page">
         <div className="account-command-grid">
-          <aside className="account-menu-panel" data-testid="account-menu-panel"><div className="account-identity"><span className="account-avatar" data-testid="account-avatar">{user.name.slice(0, 1).toUpperCase()}</span><div><span className="eyebrow">MY MOBILECART</span><h1 data-testid="account-user-name">{user.name}</h1><p data-testid="account-user-email">{user.email}</p></div></div><div className="gold-mini-card" data-testid="account-gold-card"><span>★</span><div><b>MobileCart Gold</b><small>Premium benefits & early access</small></div><Link to="/category?sort=price_desc" data-testid="account-gold-explore-link">Explore <ChevronRight size={14} /></Link></div><nav className="account-action-grid">{menuItems.map(([Icon, title, detail, to]) => <Link to={to} key={title} data-testid={`account-menu-${title.toLowerCase().replaceAll(" ", "-")}`}><span><Icon size={18} /></span><div><b>{title}</b><small>{detail}</small></div><ChevronRight size={15} /></Link>)}</nav><button className="account-logout" onClick={async () => { await api.post("/api/auth/logout"); setUser(null); }} data-testid="account-signout-button"><LogOut size={16} /> Sign out</button></aside>
+          <aside className="account-menu-panel" data-testid="account-menu-panel"><div className="account-identity"><span className="account-avatar" data-testid="account-avatar">{user.name.slice(0, 1).toUpperCase()}</span><div><span className="eyebrow">MY MOBILECART</span><h1 data-testid="account-user-name">{user.name}</h1><p data-testid="account-user-email">{user.email}</p></div></div><div className="gold-mini-card" data-testid="account-gold-card"><span>★</span><div><b>MobileCart Gold</b><small>Premium benefits & early access</small></div><Link to="/category?sort=price_desc" data-testid="account-gold-explore-link">Explore <ChevronRight size={14} /></Link></div><ThemeControl theme={theme} onThemeChange={onThemeChange} /><nav className="account-action-grid">{menuItems.map(([Icon, title, detail, to]) => <Link to={to} key={title} data-testid={`account-menu-${title.toLowerCase().replaceAll(" ", "-")}`}><span><Icon size={18} /></span><div><b>{title}</b><small>{detail}</small></div><ChevronRight size={15} /></Link>)}</nav><button className="account-logout" onClick={async () => { await api.post("/api/auth/logout"); setUser(null); }} data-testid="account-signout-button"><LogOut size={16} /> Sign out</button></aside>
           <section className="account-main-panel"><section className="gold-showcase" data-testid="account-gold-showcase"><div><span className="eyebrow">MOBILECART GOLD</span><h2>Smarter shopping, unlocked.</h2><p>Enjoy early deal access, delivery benefits and priority support.</p></div><span className="gold-crown">♛</span></section><section className="wallet-account" id="wallet" data-testid="customer-wallet-card"><div><span className="eyebrow">MOBILECART WALLET</span><strong data-testid="customer-wallet-balance">{money(wallet?.balance || 0)}</strong><small>Available balance</small></div><Wallet size={32} /></section><section className="wallet-history" data-testid="customer-wallet-history"><div className="panel-head"><h3>Recent Transactions</h3><span>{wallet?.transactions?.length || 0} entries</span></div>{wallet?.transactions?.length ? wallet.transactions.slice(0, 4).map((transaction) => <div className="ledger-row" key={transaction.id} data-testid={`customer-wallet-transaction-${transaction.id}`}><span className={transaction.kind === "credit" ? "credit" : "debit"}>{transaction.kind === "credit" ? "+" : "−"}{money(transaction.amount)}</span><p>{transaction.note}<small>{new Date(transaction.created_at).toLocaleString("en-IN")}</small></p><b>{money(transaction.balance_after)}</b></div>) : <p className="account-muted" data-testid="customer-wallet-empty-state">Wallet transactions will appear here.</p>}</section></section>
         </div>
         <section className="checkout-section" id="addresses"><h3>Saved addresses</h3>{user.addresses?.length ? user.addresses.map((address) => <div className="address-card" key={address.id} data-testid={`saved-address-${address.id}`}><b>{address.label}</b><p>{address.recipient_name}</p><span>{address.line1}, {address.city} - {address.postal_code}</span></div>) : <p data-testid="account-no-addresses">No saved addresses yet. Add one during checkout.</p>}</section>
@@ -684,6 +689,7 @@ function App() {
   const [wishCount, setWishCount] = useState(0);
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [theme, setTheme] = useState(() => localStorage.getItem("mobilecart-theme") || "dark");
   const liveRefreshInFlight = useRef(false);
   const refreshProducts = useCallback(async (params = "") => { try { const connector = params ? "&" : "?"; const { data } = await api.get(`/api/products${params}${connector}_live=${Date.now()}`); setProducts(data.items.map(cardProduct)); } catch (error) { toast.error(apiError(error)); } }, []);
   const refreshAuctions = useCallback(async () => { try { const { data } = await api.get(`/api/auctions?_live=${Date.now()}`); setAuctions(data.map((entry) => ({ ...entry, product: entry.product ? cardProduct(entry.product) : null }))); } catch (error) { toast.error(apiError(error)); } }, []);
@@ -691,6 +697,7 @@ function App() {
   const refreshCart = useCallback(async () => { if (!user) { setCart([]); return; } try { const { data } = await api.get("/api/cart"); setCart(data.items.map((item) => ({ ...cardProduct(item.product), quantity: item.quantity, variant_sku: item.variant_sku }))); } catch (error) { if (error.response?.status === 401) setUser(null); else toast.error(apiError(error)); } }, [user]);
   const refreshWish = useCallback(async () => { if (!user) { setWishCount(0); return; } try { const { data } = await api.get("/api/wishlist"); setWishCount(data.length); } catch { setWishCount(0); } }, [user]);
   const refreshUser = useCallback(async () => { try { const { data } = await api.get("/api/auth/me"); setUser(data); return data; } catch { return null; } }, []);
+  useEffect(() => { document.body.dataset.theme = theme; localStorage.setItem("mobilecart-theme", theme); }, [theme]);
   useEffect(() => { api.get("/api/auth/me").then(({ data }) => setUser(data)).catch(() => setUser(null)).finally(() => setAuthLoading(false)); api.get(`/api/categories?_live=${Date.now()}`).then(({ data }) => setCategories(data)).catch(() => setCategories([])); refreshProducts(); refreshAuctions(); refreshAnnouncements(); }, [refreshProducts, refreshAuctions, refreshAnnouncements]);
   useEffect(() => {
     let refreshQueued = false;
@@ -724,7 +731,7 @@ function App() {
   if (authLoading) return <Loading label="Connecting to MobileCart…" />;
   return (
     <>
-      <Toaster theme="dark" position="bottom-right" />
+      <Toaster theme={theme} position="bottom-right" />
       <Routes>
         <Route path="/auth/google" element={<GoogleCallback setUser={setUser} />} />
         <Route path="/login" element={<Login setUser={setUser} />} />
@@ -734,7 +741,7 @@ function App() {
         <Route path="/checkout" element={user ? <Checkout cart={cart} user={user} refreshUser={refreshUser} refreshCart={refreshCart} common={common} /> : <Navigate to="/login?next=/checkout" replace />} />
         <Route path="/auctions" element={<Auctions auctions={auctions} user={user} refreshAuctions={refreshAuctions} common={common} />} />
         <Route path="/sell" element={<SellPage common={common} />} />
-        <Route path="/account" element={<Account user={user} setUser={setUser} common={common} />} />
+        <Route path="/account" element={<Account user={user} setUser={setUser} common={common} theme={theme} onThemeChange={setTheme} />} />
         <Route path="/category" element={<CategoryPage products={products} onAdd={add} onWish={wish} common={common} refreshProducts={refreshProducts} categories={categories} />} />
         <Route path="*" element={<StoreHome products={products} auctions={auctions} announcements={announcements} onAdd={add} onWish={wish} common={common} />} />
       </Routes>

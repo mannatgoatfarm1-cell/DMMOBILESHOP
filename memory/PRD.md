@@ -52,6 +52,7 @@ Build a production-ready MobileCart storefront and web admin panel with product 
 - Added dynamic Razorpay payment settings with masked secret fields, test/live mode, payment-method switches, partial-payment controls, public checkout configuration, and server-side protection against disabled checkout methods.
 - Hardened live catalog reads with cache-busting product detail requests, no-store server response headers, and overlap-free one-second polling. Immediate create-to-customer QC verification now passes.
 - QA: production frontend build passes; Python compilation passes; Iteration 12 backend suite passes 7/8. The only failed check is preview-gateway credentialed OPTIONS handling, which rejects the configured preview origin before the app; same-origin MobileCart login/API journeys work.
+- Added a persistent Light / Dark swipe switch inside the customer Profile hub. The selected theme applies instantly across customer-facing header, cards, checkout, and account surfaces and persists after reload.
 
 ## Prioritized Backlog
 - P0: Preview gateway rejects credentialed `OPTIONS /api/auth/login` before FastAPI even for the configured preview origin. App-side CORS is configured and same-origin login works; ingress/gateway configuration needs an explicit allowlist change for third-party cross-origin clients.
