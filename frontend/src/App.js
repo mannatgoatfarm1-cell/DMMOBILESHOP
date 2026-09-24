@@ -7,7 +7,7 @@ import {
   Search, ShoppingCart, MapPin, ChevronRight, ChevronLeft, ChevronDown, Sparkles, Gavel, Heart, UserRound,
   Menu, X, Plus, ArrowLeft, Minus, Trash2, Check, Star, Store, Zap, Clock, Download, Apple as AppleIcon,
   Smartphone, Laptop, Watch, Tablet, Headphones, Gamepad2, Camera, Home as HomeIcon, Percent, LayoutGrid, Package,
-  Truck, RotateCcw, ShieldCheck, BadgeCheck, LoaderCircle, LogOut, Wallet, Tag, ZoomIn, Sun, Moon, Clock3, Landmark,
+  Truck, RotateCcw, ShieldCheck, BadgeCheck, LoaderCircle, LogOut, Wallet, Tag, ZoomIn, Sun, Moon, Clock3, Landmark, Crown, PiggyBank, PackageOpen, Flame,
 } from "lucide-react";
 import { api, apiError, cardProduct } from "@/api";
 import { speakHindi } from "@/lib/adminFeedback";
@@ -158,6 +158,11 @@ function ProductCard({ product, onAdd, onWish, badge }) {
   );
 }
 
+function NeonDealRows({ products, onAdd, onWish }) {
+  const rows = [["top", Crown, "Top Selling", "Deal of the Day", "Our best sellers · Limited stock", "mobiles"], ["save", PiggyBank, "Save Money", "Deal", "Best price · More savings", "laptops"], ["bulk", PackageOpen, "Bulk", "Deal", "Buy more · Save more", "accessories"], ["today", Flame, "Today", "Deal", "Limited time · Grab fast", "mobiles"], ["stock", Sparkles, "New Stock", "Deal", "Latest models · Fresh arrivals", ""]];
+  return <section className="neon-deal-stack" data-testid="neon-deal-stack">{rows.map(([tone, Icon, title, accent, copy, category], rowIndex) => { const rowProducts = products.filter((item) => !category || item.category_slug === category); const picks = (rowProducts.length ? rowProducts : products).slice(rowIndex, rowIndex + 5); return <article className={`neon-deal-row ${tone}`} key={tone} data-testid={`neon-deal-${tone}`}><div className="neon-deal-promo"><Icon size={35} /><h2>{title} <em>{accent}</em></h2><p>{copy}</p><Link to={category ? `/category?category=${category}` : "/category"} data-testid={`neon-view-all-${tone}`}>View All <ChevronRight size={15} /></Link></div><div className="neon-product-strip">{picks.map((product) => <div className="neon-product" key={`${tone}-${product.id}`} data-testid={`neon-product-${tone}-${product.id}`}><span>{product.off || "DEAL"}</span><img src={product.image} alt={product.name} /><b>{product.name}</b><strong>{money(product.price)}</strong><button onClick={() => onAdd(product)} data-testid={`neon-grab-${tone}-${product.id}`}><ShoppingCart size={13} /> Grab Deal</button></div>)}</div></article>; })}</section>;
+}
+
 function SectionTitle({ title, action = "View All", to = "/category", extra }) {
   return <div className="section-title"><h2>{title}</h2>{extra}<Link to={to} data-testid={`view-${title.toLowerCase().replaceAll(" ", "-")}-link`}>{action} <ChevronRight size={15} /></Link></div>;
 }
@@ -234,6 +239,7 @@ function StoreHome({ products, auctions, onAdd, onWish, common, announcements = 
             );
           })}
         </section>
+        <NeonDealRows products={display} onAdd={onAdd} onWish={onWish} />
 
         <section className="promo-row">
           <div className="promo promo-a" data-testid="promo-iphone">

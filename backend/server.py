@@ -1245,8 +1245,11 @@ async def update_order_status(order_id: str, status: str = Query(pattern=r"^(con
 
 @api.post("/admin/auctions", response_model=Auction, status_code=201)
 async def create_auction(input: AuctionInput, _: Annotated[dict[str, Any], Depends(admin_user)]) -> Auction:
-    if not await db.products.find_one({"id": input.product_id}, {"_id": 0, "id": 1}):
+    product = await db.products.find_one({"id": input.product_id}, {"_id": 0, "id": 1, "active": 1, "stock": 1})
+    if not product:
         raise HTTPException(404, "Product not found")
+    if not product.get("active") or int(product.get("stock", 0)) < 1:
+        raise HTTPException(422, "Auction product must be active and in stock")
     if input.ends_at <= input.starts_at:
         raise HTTPException(422, "Auction end must be after start")
     auction = {"id": str(uuid.uuid4()), **input.model_dump(), "current_bid": input.starting_price, "bid_count": 0, "status": "upcoming" if input.starts_at > now() else "live", "winner_user_id": None}

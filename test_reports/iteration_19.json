@@ -1,0 +1,82 @@
+{
+  "summary": "Executed backend+frontend validation for admin auction dashboard parity, admin auction lifecycle APIs, auth playbook checks, and customer auction regression using public preview URL.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "/api/admin/auctions",
+        "issue": "Allows creating auctions for inactive products (expected validation reject).",
+        "priority": "HIGH"
+      }
+    ],
+    "minor": [
+      {
+        "endpoint": "/api/auth/login (CORS headers observed via preview ingress)",
+        "issue": "access-control-allow-origin header was missing in test response while access-control-allow-credentials=true was present; likely preview ingress/proxy header behavior but should be validated end-to-end."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "AdminAuctionDashboard auction cards / ending soon list",
+        "issue": "Auction images render broken/blank because UI reads auction.product.image while backend product payload provides images[] array.",
+        "selector": "[data-testid^='auction-card-'] img, .ending-auction img",
+        "priority": "HIGH"
+      },
+      {
+        "component": "Admin auction search",
+        "issue": "Search result ordering not stable during filtering; observed mismatch between expected filtered order and rendered order.",
+        "selector": "[data-testid='admin-section-search-input'], [data-testid^='auction-card-']",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Customer auction bid from /auctions",
+        "issue": "Bid click returned 409 in-console (auction became non-live), but UI handled gracefully with message and no crash.",
+        "affected_selectors": [
+          "[data-testid='place-bid-button']"
+        ]
+      }
+    ],
+    "design_issues": [
+      {
+        "screen": "Admin Auction Dashboard",
+        "issues": [
+          "Key informational blocks (Ending soon rows, Recent bids rows, summary/revenue blocks) lack dedicated data-testid hooks despite testability guideline for key info elements."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration19_admin_auction_dashboard_and_auth.py",
+    "/app/test_reports/pytest/pytest_results.xml",
+    "/root/.emergent/automation_output/20260924_165536/console_20260924_165536.log",
+    "/root/.emergent/automation_output/20260924_165651/console_20260924_165651.log"
+  ],
+  "action_items": [
+    "Backend: enforce product eligibility in POST /api/admin/auctions (active=true and stock>0) before creating auction.",
+    "Frontend: replace auction.product.image usage with auction.product.images?.[0] in AdminAuctionDashboard card + ending list renders.",
+    "Frontend: make admin auction search deterministic (preserve source order while filtering under live refresh or debounce/hold refresh while query active).",
+    "Frontend: add data-testid for ending-soon items, recent-bid items, auction summary panel, and revenue panel for robust automation.",
+    "Infra/App validation: confirm CORS allow-origin propagation through preview ingress for auth routes when Origin header is present."
+  ],
+  "critical_code_review_comments": [
+    "server.py create_auction validates product existence but not product active/stock state, enabling auctions on inactive inventory.",
+    "AdminAuctionDashboard polls every second and performs N+1 bid-history calls (up to 24 extra requests per tick), increasing race conditions and UI reorder jitter.",
+    "AdminAuctionDashboard references product.image while Product schema and API payload use images list, causing broken image rendering."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration19_admin_auction_dashboard_and_auth.py",
+    "/app/test_reports/iteration_19.json"
+  ],
+  "success_rate": {
+    "backend": "71% (5/7 passing)",
+    "frontend": "78% (core dashboard and modal flows passed; search-order and image rendering issues found)"
+  },
+  "seed_data_creation": "Created disposable TEST products and auctions via admin API, placed test bids via customer session, and closed/soft-deactivated test entities during cleanup.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Admin route was reachable using API-authenticated browser session (cookie-based workaround), so login redirect flakiness from prior run was not blocking this iteration. Preserve this approach if preview login intermittently sticks.",
+  "rca of the issue": "RCA-1: Inactive product auction creation reproduced by creating active=false product then POST /api/admin/auctions; endpoint returned 201 because server only checks product_id existence. RCA-2: Admin auction card images blank due to UI field mismatch (expects product.image, backend sends product.images[]). RCA-3: Search ordering instability likely from 1-second live refresh + repeated data reload while query is active, causing list mutation during filter rendering."
+}
