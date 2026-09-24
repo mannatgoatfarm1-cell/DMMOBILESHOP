@@ -53,6 +53,7 @@ Build a production-ready MobileCart storefront and web admin panel with product 
 - Hardened live catalog reads with cache-busting product detail requests, no-store server response headers, and overlap-free one-second polling. Immediate create-to-customer QC verification now passes.
 - QA: production frontend build passes; Python compilation passes; Iteration 12 backend suite passes 7/8. The only failed check is preview-gateway credentialed OPTIONS handling, which rejects the configured preview origin before the app; same-origin MobileCart login/API journeys work.
 - Added a persistent Light / Dark swipe switch inside the customer Profile hub. The selected theme applies instantly across customer-facing header, cards, checkout, and account surfaces and persists after reload.
+- Rebuilt the storefront announcement strip as an auto-scrolling Live Update ticker with a mobile icon label and per-announcement mobile icons. It pauses on hover and respects reduced-motion browser settings.
 
 ## Prioritized Backlog
 - P0: Preview gateway rejects credentialed `OPTIONS /api/auth/login` before FastAPI even for the configured preview origin. App-side CORS is configured and same-origin login works; ingress/gateway configuration needs an explicit allowlist change for third-party cross-origin clients.

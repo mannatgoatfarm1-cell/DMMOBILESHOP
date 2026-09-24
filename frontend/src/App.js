@@ -184,7 +184,7 @@ function StoreHome({ products, auctions, onAdd, onWish, common, announcements = 
   return (
     <>
       <Topbar {...common} />
-      {announcements.length > 0 && <section className="announcement-strip" data-testid="website-announcement-strip"><span>✦ LIVE UPDATE</span><div>{announcements.slice(0, 3).map((announcement) => <Link to="/category" key={announcement.id} data-testid={`announcement-${announcement.id}`}><b>{announcement.title}</b>{announcement.description && <small>{announcement.description}</small>}</Link>)}</div></section>}
+      {announcements.length > 0 && <section className="announcement-strip" data-testid="website-announcement-strip"><div className="announcement-label" data-testid="website-announcement-label"><Smartphone size={14} /><span>LIVE UPDATE</span></div><div className="announcement-viewport"><div className="announcement-track"><div className="announcement-group">{announcements.slice(0, 6).map((announcement) => <Link to="/category" key={announcement.id} data-testid={`announcement-${announcement.id}`}><Smartphone size={13} /><b>{announcement.title}</b>{announcement.description && <small>{announcement.description}</small>}</Link>)}</div><div className="announcement-group announcement-copy" aria-hidden="true">{announcements.slice(0, 6).map((announcement) => <span key={`copy-${announcement.id}`}><Smartphone size={13} /><b>{announcement.title}</b>{announcement.description && <small>{announcement.description}</small>}</span>)}</div></div></div></section>}
       <main className="store-page">
         <section className="hero-grid">
           <div className="hero-banner" data-testid="hero-banner">
