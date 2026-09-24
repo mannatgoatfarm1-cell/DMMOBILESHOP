@@ -1042,7 +1042,7 @@ async def dashboard(_: Annotated[dict[str, Any], Depends(admin_user)]) -> Dashbo
 @api.get("/admin/products", response_model=ProductList)
 async def admin_products(_: Annotated[dict[str, Any], Depends(admin_user)], page: int = 1, page_size: int = 50) -> ProductList:
     total = await db.products.count_documents({})
-    rows = await db.products.find({}, {"_id": 0}).sort("updated_at", -1).skip((page - 1) * page_size).limit(page_size).to_list(page_size)
+    rows = await db.products.find({}, {"_id": 0}).sort([("created_at", -1), ("id", 1)]).skip((page - 1) * page_size).limit(page_size).to_list(page_size)
     return ProductList(items=[product_payload(row) for row in rows], page=page, page_size=page_size, total=total, pages=max(1, (total + page_size - 1) // page_size))
 
 
