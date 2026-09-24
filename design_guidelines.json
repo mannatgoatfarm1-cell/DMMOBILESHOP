@@ -1,140 +1,107 @@
 {
   "theme": "dark",
-  "archetype": "ARCHETYPE 7: ELECTRIC & NEON",
   "typography": {
     "headings": {
-      "family": "Unbounded, sans-serif",
-      "weight": "font-black to font-bold",
-      "rules": "Use tight tracking (tracking-tighter) for large sizes. Break standard bold conventions."
+      "fontFamily": "Outfit, sans-serif",
+      "strategy": "Bold, tech-focused, tight letter spacing (tracking-tight or tracking-tighter). Avoid Inter."
     },
     "body": {
-      "family": "Manrope, sans-serif",
-      "weight": "font-normal",
-      "rules": "Keep readable and clean, text-sm to text-base, with high contrast."
+      "fontFamily": "'Plus Jakarta Sans', sans-serif",
+      "strategy": "Clean, highly legible geometric sans for product details."
+    },
+    "scale_hierarchy": {
+      "h1": "text-4xl sm:text-5xl lg:text-6xl tracking-tighter font-extrabold",
+      "h2": "text-2xl sm:text-3xl lg:text-4xl tracking-tight font-bold",
+      "body": "text-base text-slate-300",
+      "labels": "text-xs uppercase tracking-[0.2em] text-cyan-400"
     }
   },
   "colors": {
-    "background": {
-      "main": "#050505",
-      "surface": "#0a0a0a",
-      "glass": "bg-black/60 backdrop-blur-xl"
-    },
-    "text": {
-      "primary": "#ffffff",
-      "secondary": "#a1a1aa",
-      "muted": "#71717a"
-    },
-    "neon_accents": {
-      "top_selling": "#FF007F",
-      "save_money": "#FFD700",
-      "bulk_deal": "#00FFFF",
-      "today_deal": "#39FF14",
-      "new_stock": "#7000FF"
-    }
+    "archetype": "Electric & Neon",
+    "background": "#070b15",
+    "surface": "#0c1222",
+    "primary": "#00e5ff",
+    "secondary": "#8b5cf6",
+    "accent": "#f43f5e",
+    "text_primary": "#ffffff",
+    "text_muted": "#94a3b8",
+    "border": "rgba(255,255,255,0.08)",
+    "rules": "Avoid pure black. Use deep indigo/blue-black (#070b15). Neon cyan and purple should be used strictly for highlights, active states, and the running animations."
   },
   "visual_enhancers": {
-    "borders": "1px solid border-white/10 for neutral, 1px solid neon color for active/hover states.",
-    "shadows": "Neon glows on hover (e.g., shadow-[0_0_15px_rgba(255,0,127,0.5)]).",
-    "corners": "Sharp or slightly rounded (rounded-md to rounded-lg max) for a tech/electric feel."
+    "tracing_beam_animation": "MANDATORY: Implement the 'running highlight animation' on the active Category tile in the sidebar, and on Product Cards during hover. Create this using a spinning conic-gradient wrapper with an inner dark card to mask the center, exposing only a 1px or 2px animated border.",
+    "glassmorphism": "Use backdrop-blur-xl with bg-[#070b15]/70 for sticky headers and sidebar to maintain depth. CRITICAL: DO NOT use complete transparent background in header or surfaces with content under it.",
+    "hover_scaling": "MANDATORY: Product cards must scale up slightly (hover:scale-[1.02]) on hover to fulfill the 'eska size thora bda kro' requirement.",
+    "glow_effects": "Use subtle colored box-shadows (e.g., shadow-[0_0_15px_rgba(0,229,255,0.3)]) when a card is active or hovered."
   },
-  "components": [
-    {
-      "name": "Header",
-      "path": "/app/frontend/src/components/Header.jsx",
-      "instructions": "Sticky header (z-50) using crystal glassmorphism (bg-black/60 backdrop-blur-xl border-b border-white/10). Include 'DM Mobile' branding in Unbounded font, bold. Include a cart icon. DO NOT use complete transparent backgrounds."
-    },
-    {
-      "name": "DealRow",
-      "path": "/app/frontend/src/components/DealRow.jsx",
-      "instructions": "A stacked section representing one deal category. Layout: flex-col on mobile, lg:flex-row on desktop. Gap of gap-4 to gap-6."
-    },
-    {
-      "name": "PromoPanel",
-      "path": "/app/frontend/src/components/PromoPanel.jsx",
-      "instructions": "Left-side panel for the deal row (w-full lg:w-1/4 or 1/3). Dark background with a specific neon gradient glow or border. Prominent text for the deal name (e.g., 'Top Selling Deal'). Includes a 'View All' link with an arrow icon. Deep padding (p-6 to p-8)."
-    },
-    {
-      "name": "ProductStrip",
-      "path": "/app/frontend/src/components/ProductStrip.jsx",
-      "instructions": "Right-side container. Must be a horizontally scrollable strip on mobile and desktop: flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4. Hide the scrollbar (no-scrollbar)."
-    },
-    {
-      "name": "ProductCard",
-      "path": "/app/frontend/src/components/ProductCard.jsx",
-      "instructions": "Individual product card. Min-width around 240px to 280px to fit 5 cards nicely. Dark surface (bg-[#0a0a0a]), border-white/10. On hover: border lights up with the section's neon color, and card lifts up slightly. Includes Product Image (max-h-40 object-contain), Title, Price, and a 'Grab Deal' CTA button. 'Grab Deal' button must have a subtle neon outline or solid neon color on hover."
-    }
-  ],
-  "grids_and_layouts": {
-    "main_container": "max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12",
-    "mobile_first": "Rows stack vertically on mobile. Product strips swipe horizontally (snap-x). Use subgrid or flex-shrink-0 for cards to maintain width."
+  "layouts": {
+    "page_structure": "Sidebar + Main Content area. Mobile: Sidebar becomes horizontal scrollable chips or bottom sheet. Desktop: Sidebar spans 3 cols (w-64), main content spans remaining space.",
+    "bento_grid": "Use high density grids (grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6) for products.",
+    "spacing": "Generous padding inside hero banners (p-8 to p-12). Compact data-dense padding for product specs."
   },
   "motion": {
-    "interactions": "Use Framer Motion for hover lifts (hover:-translate-y-1) and glowing shadow transitions on product cards. Use subtle entry animations for the rows staggering in.",
-    "buttons": "Active/press states should scale down slightly (scale-95). Glow intensifies on hover."
+    "running_border": "CSS keyframe spinning a conic gradient layer behind a solid dark background inset.",
+    "entrance": "Staggered fade-up for product grids.",
+    "micro_interactions": "Smooth transitions for scale, shadow, and border color (transition-all duration-300 ease-out)."
   },
-  "accessibility": {
-    "contrast": "Ensure text over glowing neon panels is dark (e.g., text-black) if the background is brightly colored, or keep text white if the background is dark with only neon accents.",
-    "testing": "All interactive elements (cards, buttons, links) MUST include data-testid. Examples: data-testid='grab-deal-button', data-testid='view-all-link'."
+  "components": {
+    "sidebar_navigation": "Vertical list of categories. The *active* category must feature the neon running border animation.",
+    "hero_banner": "Large dark neon banner at the top of the category view. Overlay image with bg-gradient-to-r from-[#070b15] via-[#070b15]/80 to-transparent. Bold H1.",
+    "product_card": "Dark surface. On hover: running neon border appears, scales up, and product image slightly zooms.",
+    "category_tiles": "Large 2x4 grid as requested in the screenshot reference, acting as navigation hubs."
   },
-  "media": {
-    "icons": "lucide-react (ChevronRight, ShoppingCart, Tag, Zap, Box, Star)",
-    "images": [
+  "image_urls": {
+    "mobile_phones": [
       {
-        "category": "Smartphones",
-        "url": "https://images.unsplash.com/photo-1511140973288-19bf21d7e771?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxNzV8MHwxfHNlYXJjaHwzfHxtb2Rlcm4lMjBzbWFydHBob25lJTIwaXNvbGF0ZWQlMjBkYXJrfGVufDB8fHx8MTc5MDI2OTE4NXww&ixlib=rb-4.1.0&q=85",
-        "description": "Black iPhone turned on (Dark mode)"
+        "url": "https://images.pexels.com/photos/7151033/pexels-photo-7151033.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Glowing smartphone screen, use for Mobile category or hero"
       },
       {
-        "category": "Smartphones",
-        "url": "https://images.pexels.com/photos/10885666/pexels-photo-10885666.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
-        "description": "Sleek smartphone triple camera"
-      },
-      {
-        "category": "Smartphones",
-        "url": "https://images.pexels.com/photos/26109750/pexels-photo-26109750.png?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
-        "description": "Minimalist smartphone on dark background"
-      },
-      {
-        "category": "Accessories (Earbuds)",
-        "url": "https://images.pexels.com/photos/9204671/pexels-photo-9204671.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
-        "description": "Sleek white earbuds on dark background"
-      },
-      {
-        "category": "Accessories (Earbuds)",
-        "url": "https://images.pexels.com/photos/33936400/pexels-photo-33936400.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
-        "description": "Wireless earbuds glowing case"
-      },
-      {
-        "category": "Smartwatches",
-        "url": "https://images.pexels.com/photos/13610156/pexels-photo-13610156.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
-        "description": "Smartwatch with neon glowing display"
-      },
-      {
-        "category": "Smartwatches",
-        "url": "https://images.unsplash.com/photo-1610991138614-0d4d78ac6de8?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1NzZ8MHwxfHNlYXJjaHwxfHxzbWFydHdhdGNoJTIwbmVvbiUyMGRhcmt8ZW58MHx8fHwxNzkwMjY5MTg1fDA&ixlib=rb-4.1.0&q=85",
-        "description": "Black and silver digital watch"
+        "url": "https://images.unsplash.com/photo-1541956767510-95dd97f7eb02?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzNTl8MHwxfHNlYXJjaHwzfHxtb2JpbGUlMjBwaG9uZSUyMGdsb3dpbmclMjBuZW9uJTIwZGFya3xlbnwwfHx8fDE3OTAyNjk4NTZ8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Person holding glowing phone in dark, use for product highlight"
       }
     ],
-    "usage_instructions": "Distribute these images across the 5 deal sections (Top Selling, Save Money, Bulk Deal, Today Deal, New Stock Deal) to simulate live product data."
+    "smartwatches": [
+      {
+        "url": "https://images.unsplash.com/photo-1579586337278-3befd40fd17a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1OTV8MHwxfHNlYXJjaHwxfHxzbWFydHdhdGNoJTIwdGVjaCUyMGdhZGdldHxlbnwwfHx8fDE3OTAyNjk4NTZ8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Smartwatch dark textured band, use for wearables category"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1546868871-7041f2a55e12?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1OTV8MHwxfHNlYXJjaHwyfHxzbWFydHdhdGNoJTIwdGVjaCUyMGdhZGdldHxlbnwwfHx8fDE3OTAyNjk4NTZ8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Space gray smartwatch, use for product"
+      }
+    ],
+    "audio_gaming": [
+      {
+        "url": "https://images.unsplash.com/photo-1599669454699-248893623440?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzZ8MHwxfHNlYXJjaHwyfHxnYW1pbmclMjBoZWFkcGhvbmVzJTIwZGFya3xlbnwwfHx8fDE3OTAyNjk4NTZ8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Black wireless headphones on dark surface"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1610041321327-b794c052db27?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzZ8MHwxfHNlYXJjaHwzfHxnYW1pbmclMjBoZWFkcGhvbmVzJTIwZGFya3xlbnwwfHx8fDE3OTAyNjk4NTZ8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Gaming headphones, use for Audio/Gaming category tile"
+      }
+    ]
+  },
+  "accessibility": {
+    "focus_states": "Visible neon cyan focus rings for keyboard navigation.",
+    "contrast": "Ensure text over neon elements remains readable. Use dark text on cyan backgrounds if needed.",
+    "motion_preference": "Respect prefers-reduced-motion for the spinning border."
   },
   "instructions_to_main_agent": [
-    "You MUST build the layout described in the problem statement: multi-section deal layout, stacked vertically. Each row has a left promo panel and a horizontal 5-card product strip.",
-    "Use the ARCHETYPE 7 (Electric & Neon) color palette to style borders and buttons. Make each section stand out with its unique neon color accent on hover or in the left promo panel.",
-    "Implement horizontal scrolling using Tailwind's 'overflow-x-auto snap-x snap-mandatory flex gap-4' on the product strips. Do NOT wrap the product strip to the next line; it must stay on one single horizontal row per section.",
-    "Do NOT use 'Inter', 'Roboto', 'Open Sans', or 'Lato'. Use 'Unbounded' for headings, and 'Manrope' for body text. Make sure to import them from Google Fonts in the CSS or index.html.",
-    "Buttons for 'Grab Deal' should have high-impact neon styles when hovered.",
-    "All elements MUST have a data-testid for testing (e.g., data-testid='product-card', data-testid='grab-deal-button', data-testid='view-all').",
-    "Never use purely transparent backgrounds on the header or layered cards; use bg-black/60 and backdrop-blur-xl or solid bg-[#0a0a0a].",
-    "Mock product data mapping to the provided images to fill out 5 sections x 5 cards."
+    "CRITICAL: Implement the 'running highlight animation' requested by the user. Use a custom CSS class in index.css (e.g., using @keyframes with a conic-gradient and mask, or border-image) to create an animated neon border. Apply this to the active category in the sidebar and to product cards on hover.",
+    "CRITICAL: Enlarge the product size slightly on interaction. Add 'transform hover:scale-[1.02] transition-transform duration-300' to the product cards.",
+    "CRITICAL: Build the UI to mirror the provided screenshot layout: Sidebar on the left for categories, Hero banner on top of the main area, and large tiles for subcategories/products.",
+    "Ensure 'jab catgory pe click kre' functionality: clicking a sidebar category must dynamically update the main content area (hero, products) and show the sidebar item as 'active' (with the neon highlight).",
+    "Use lucide-react for icons.",
+    "Use the images provided in the guidelines for categories and dummy products. DO NOT use placeholder services.",
+    "Implement the dark/neon aesthetic heavily: deep backgrounds (#070b15) with cyan (#00e5ff) and purple (#8b5cf6) glows.",
+    "Do not use .tsx extensions, provide the JS guidelines and components in .js/.jsx format as per the existing codebase."
   ],
-  "universal_guidelines_for_main_agent": [
-    "Do not converge toward generic outputs. Use deep layered elements with z-index and glassmorphism.",
-    "Avoid applying universal transitions (transition: all). Use specific transitions (transition: transform 0.2s ease, opacity 0.2s ease) to prevent breaking transforms.",
-    "Do not center-align the main App container globally.",
-    "Use modern button styles (pill-shaped or sharp) with interaction animations.",
-    "Never use AI assistant Emojis for icons. Use lucide-react.",
-    "Every interaction needs micro-animations - hover states, transitions, entrance animations. Static = dead.",
-    "Use generous spacing. Cramped designs look cheap.",
-    "Use sonner for toast notifications if any interactions require them (e.g., Add to cart)."
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
+    "Never use generic centered layouts or flat grays for this theme.",
+    "Create depth through layered design elements with z-index hierarchy (e.g., glowing effects behind cards).",
+    "Do NOT apply 'transition: all'. Apply specific transitions to avoid breaking transform animations.",
+    "Do NOT center align the app container. Text should flow naturally (left-aligned).",
+    "All interactive elements MUST include a `data-testid` attribute to facilitate robust automated testing."
   ]
 }
