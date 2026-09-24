@@ -54,6 +54,10 @@ Build a production-ready MobileCart storefront and web admin panel with product 
 - QA: production frontend build passes; Python compilation passes; Iteration 12 backend suite passes 7/8. The only failed check is preview-gateway credentialed OPTIONS handling, which rejects the configured preview origin before the app; same-origin MobileCart login/API journeys work.
 - Added a persistent Light / Dark swipe switch inside the customer Profile hub. The selected theme applies instantly across customer-facing header, cards, checkout, and account surfaces and persists after reload.
 - Rebuilt the storefront announcement strip as an auto-scrolling Live Update ticker with a mobile icon label and per-announcement mobile icons. It pauses on hover and respects reduced-motion browser settings.
+- Redesigned the Admin Add Product QC editor: compact condition-grade chips and per-check icon-only Pass / Defect / Not-checked controls replace the oversized selection rows. QC create/update persistence and customer-facing read-through are verified.
+- Redesigned Razorpay & Payments with a secure connection panel, Test/Live segmented controls, compact payment method cards, advance-payment slider, and admin-only Merchant UPI ID input. UPI IDs are validated, persisted, never exposed publicly, and secrets remain masked.
+- Strengthened Profile Light Mode secondary-text contrast across wallet, account cards, product metadata, and header copy. Automated checks confirm sampled text meets WCAG AA contrast and preference persists after reload.
+- QA Iteration 13: frontend flows passed; backend 6/7 passed. The one outstanding failure remains the external preview gateway rejecting credentialed auth OPTIONS preflight before app routing. **Razorpay real checkout remains unconfigured; no external payment was attempted.**
 
 ## Prioritized Backlog
 - P0: Preview gateway rejects credentialed `OPTIONS /api/auth/login` before FastAPI even for the configured preview origin. App-side CORS is configured and same-origin login works; ingress/gateway configuration needs an explicit allowlist change for third-party cross-origin clients.

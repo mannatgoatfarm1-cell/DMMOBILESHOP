@@ -322,12 +322,21 @@ class PaymentSettingsInput(BaseModel):
     razorpay_webhook_secret: str = Field(default="", max_length=200)
     mode: Literal["test", "live"] = "test"
     upi_enabled: bool = True
+    upi_id: str = Field(default="", max_length=160)
     card_enabled: bool = True
     netbanking_enabled: bool = True
     cod_enabled: bool = True
     wallet_enabled: bool = True
     partial_payment_enabled: bool = False
     partial_payment_percent: int = Field(default=100, ge=10, le=100)
+
+    @field_validator("upi_id")
+    @classmethod
+    def validate_upi_id(cls, upi_id: str) -> str:
+        value = upi_id.strip().lower()
+        if value and not re.fullmatch(r"[a-z0-9._-]{2,128}@[a-z0-9._-]{2,64}", value):
+            raise ValueError("UPI ID format is invalid")
+        return value
 
 
 class RazorpayOrderInput(BaseModel):
@@ -1418,6 +1427,7 @@ def public_payment_config(settings: dict[str, Any]) -> dict[str, Any]:
             "cod": settings.get("cod_enabled", True),
             "wallet": settings.get("wallet_enabled", True),
         },
+        "upi_id_configured": bool(settings.get("upi_id")),
         "partial_payment_enabled": settings.get("partial_payment_enabled", False),
         "partial_payment_percent": settings.get("partial_payment_percent", 100),
     }
@@ -1437,6 +1447,7 @@ async def admin_get_payment_settings(_: Annotated[dict[str, Any], Depends(admin_
         "razorpay_webhook_secret_set": bool(settings.get("razorpay_webhook_secret")),
         "mode": settings.get("mode", "test"),
         "upi_enabled": settings.get("upi_enabled", True),
+        "upi_id": settings.get("upi_id", ""),
         "card_enabled": settings.get("card_enabled", True),
         "netbanking_enabled": settings.get("netbanking_enabled", True),
         "cod_enabled": settings.get("cod_enabled", True),
@@ -1464,6 +1475,7 @@ async def admin_save_payment_settings(input: PaymentSettingsInput, _: Annotated[
         "razorpay_webhook_secret_set": bool(saved.get("razorpay_webhook_secret")),
         "mode": saved.get("mode", "test"),
         "upi_enabled": saved.get("upi_enabled", True),
+        "upi_id": saved.get("upi_id", ""),
         "card_enabled": saved.get("card_enabled", True),
         "netbanking_enabled": saved.get("netbanking_enabled", True),
         "cod_enabled": saved.get("cod_enabled", True),
