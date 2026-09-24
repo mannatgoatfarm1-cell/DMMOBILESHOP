@@ -7,6 +7,7 @@ import AdminProductManager from "@/components/AdminProductManager";
 import AdminResourceManager from "@/components/AdminResourceManager";
 import AdminWalletManager from "@/components/AdminWalletManager";
 import AdminPaymentSettings from "@/components/AdminPaymentSettings";
+import { AdminOrderManager } from "@/components/OrderViews";
 import { CategoryManager, UserManager, WorkflowManager } from "@/components/AdminOperationsManager";
 
 const sectionGroups = [
@@ -84,6 +85,6 @@ function Dashboard() {
   );
 }
 
-function Content({ section, query }) { const item = sectionGroups.find(([id]) => id === section) || sectionGroups[0]; const [, label, type] = item; if (type === "dashboard" || type === "reports") return <Dashboard />; if (type === "products") return <AdminProductManager query={query} />; if (type === "payment-settings") return <AdminPaymentSettings />; if (type === "wallet") return <AdminWalletManager query={query} />; if (type === "categories") return <CategoryManager query={query} />; if (type === "users") return <UserManager query={query} />; if (type === "admin-users") return <UserManager admins query={query} />; if (type === "resource") return <AdminResourceManager resource={section} label={label} query={query} />; return <WorkflowManager kind={type} query={query} />; }
+function Content({ section, query }) { const item = sectionGroups.find(([id]) => id === section) || sectionGroups[0]; const [, label, type] = item; if (type === "dashboard" || type === "reports") return <Dashboard />; if (type === "products") return <AdminProductManager query={query} />; if (type === "orders") return <AdminOrderManager query={query} />; if (type === "payment-settings") return <AdminPaymentSettings />; if (type === "wallet") return <AdminWalletManager query={query} />; if (type === "categories") return <CategoryManager query={query} />; if (type === "users") return <UserManager query={query} />; if (type === "admin-users") return <UserManager admins query={query} />; if (type === "resource") return <AdminResourceManager resource={section} label={label} query={query} />; return <WorkflowManager kind={type} query={query} />; }
 
 export default function AdminWorkspace() { const location = useLocation(); const [open, setOpen] = useState(false); const [query, setQuery] = useState(""); const segment = location.pathname.split("/")[2] || "dashboard"; const active = sectionGroups.some(([id]) => id === segment) ? segment : "dashboard"; const title = sectionGroups.find(([id]) => id === active)?.[1] || "Dashboard"; useEffect(() => setQuery(""), [active]); return <div className="admin-shell"><Sidebar active={active} open={open} onClose={() => setOpen(false)} /><main className="admin-main"><Header title={active === "dashboard" ? "MobileCart Live Control" : title} onMenu={() => setOpen(true)} query={query} setQuery={setQuery} /><Content section={active} query={query} /></main></div>; }

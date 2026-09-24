@@ -13,6 +13,7 @@ import { speakHindi } from "@/lib/adminFeedback";
 import { QC_CHECKS, QC_GRADES, gradeLabel } from "@/lib/qc";
 import AdminWorkspace from "@/components/AdminWorkspace";
 import AccountExtras from "@/components/AccountExtras";
+import { CustomerOrderDetail, CustomerOrders } from "@/components/OrderViews";
 import "@/App.css";
 
 const money = (value = 0) => `₹${Number(value).toLocaleString("en-IN")}`;
@@ -634,7 +635,7 @@ function Account({ user, setUser, common, theme, onThemeChange, refreshUser, onA
   const [loading, setLoading] = useState(true);
   useEffect(() => { if (user) Promise.all([api.get("/api/orders"), api.get("/api/wallet")]).then(([orderResponse, walletResponse]) => { setOrders(orderResponse.data.items); setWallet(walletResponse.data); }).catch((error) => toast.error(apiError(error))).finally(() => setLoading(false)); }, [user]);
   if (!user) return <Navigate to="/login?next=/account" replace />;
-  const menuItems = [[Package, "My Orders", "Track, return & manage", "#orders"], [Heart, "My Wishlist", "Saved products", "/account"], [ShoppingCart, "My Cart", `${common.cartCount} items in cart`, "/cart"], [Wallet, "My Wallet", "Balance & transactions", "#wallet"], [Tag, "Coupons", "Apply at checkout", "/cart"], [Gavel, "Auction Bids", "Live bids & watchlist", "/auctions"], [MapPin, "Addresses", "Manage delivery addresses", "#addresses"], [Sparkles, "AI Deals", "Discover smarter deals", "/category?sort=price_desc"]];
+  const menuItems = [[Package, "My Orders", "Track, return & manage", "/my-orders"], [Heart, "My Wishlist", "Saved products", "/account"], [ShoppingCart, "My Cart", `${common.cartCount} items in cart`, "/cart"], [Wallet, "My Wallet", "Balance & transactions", "#wallet"], [Tag, "Coupons", "Apply at checkout", "/cart"], [Gavel, "Auction Bids", "Live bids & watchlist", "/auctions"], [MapPin, "Addresses", "Manage delivery addresses", "#addresses"], [Sparkles, "AI Deals", "Discover smarter deals", "/category?sort=price_desc"]];
   return (
     <>
       <Topbar {...common} />
@@ -655,14 +656,6 @@ function Account({ user, setUser, common, theme, onThemeChange, refreshUser, onA
 function CategoryPage({ products, onAdd, onWish, common, refreshProducts, categories }) {
   const location = useLocation();
   const [view, setView] = useState("grid");
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const value = new URLSearchParams();
-    if (params.get("category")) value.set("category", params.get("category"));
-    if (params.get("search")) value.set("query", params.get("search"));
-    if (params.get("sort")) value.set("sort", params.get("sort"));
-    refreshProducts(value.toString() ? `?${value}` : "");
-  }, [location.search, refreshProducts]);
   return (
     <>
       <Topbar {...common} />
@@ -681,6 +674,7 @@ function AdminRoute({ user }) { return user?.role === "admin" ? <AdminWorkspace 
 
 function App() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [auctions, setAuctions] = useState([]);
@@ -691,14 +685,25 @@ function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [theme, setTheme] = useState(() => localStorage.getItem("mobilecart-theme") || "dark");
   const liveRefreshInFlight = useRef(false);
-  const refreshProducts = useCallback(async (params = "") => { try { const connector = params ? "&" : "?"; const { data } = await api.get(`/api/products${params}${connector}_live=${Date.now()}`); setProducts(data.items.map(cardProduct)); } catch (error) { toast.error(apiError(error)); } }, []);
+  const catalogParamsRef = useRef("");
+  const catalogParams = useMemo(() => {
+    if (location.pathname !== "/category") return "";
+    const source = new URLSearchParams(location.search);
+    const value = new URLSearchParams();
+    if (source.get("category")) value.set("category", source.get("category"));
+    if (source.get("search")) value.set("query", source.get("search"));
+    if (source.get("sort")) value.set("sort", source.get("sort"));
+    return value.toString() ? `?${value}` : "";
+  }, [location.pathname, location.search]);
+  const refreshProducts = useCallback(async (params) => { const activeParams = params === undefined ? catalogParamsRef.current : params; if (params !== undefined) catalogParamsRef.current = params; try { const connector = activeParams ? "&" : "?"; const { data } = await api.get(`/api/products${activeParams}${connector}_live=${Date.now()}`); setProducts(data.items.map(cardProduct)); } catch (error) { toast.error(apiError(error)); } }, []);
   const refreshAuctions = useCallback(async () => { try { const { data } = await api.get(`/api/auctions?_live=${Date.now()}`); setAuctions(data.map((entry) => ({ ...entry, product: entry.product ? cardProduct(entry.product) : null }))); } catch (error) { toast.error(apiError(error)); } }, []);
   const refreshAnnouncements = useCallback(async () => { try { const { data } = await api.get(`/api/content/announcements?_live=${Date.now()}`); setAnnouncements(data); } catch { setAnnouncements([]); } }, []);
   const refreshCart = useCallback(async () => { if (!user) { setCart([]); return; } try { const { data } = await api.get("/api/cart"); setCart(data.items.map((item) => ({ ...cardProduct(item.product), quantity: item.quantity, variant_sku: item.variant_sku }))); } catch (error) { if (error.response?.status === 401) setUser(null); else toast.error(apiError(error)); } }, [user]);
   const refreshWish = useCallback(async () => { if (!user) { setWishCount(0); return; } try { const { data } = await api.get("/api/wishlist"); setWishCount(data.length); } catch { setWishCount(0); } }, [user]);
   const refreshUser = useCallback(async () => { try { const { data } = await api.get("/api/auth/me"); setUser(data); return data; } catch { return null; } }, []);
   useEffect(() => { document.body.dataset.theme = theme; localStorage.setItem("mobilecart-theme", theme); }, [theme]);
-  useEffect(() => { api.get("/api/auth/me").then(({ data }) => setUser(data)).catch(() => setUser(null)).finally(() => setAuthLoading(false)); api.get(`/api/categories?_live=${Date.now()}`).then(({ data }) => setCategories(data)).catch(() => setCategories([])); refreshProducts(); refreshAuctions(); refreshAnnouncements(); }, [refreshProducts, refreshAuctions, refreshAnnouncements]);
+  useEffect(() => { api.get("/api/auth/me").then(({ data }) => setUser(data)).catch(() => setUser(null)).finally(() => setAuthLoading(false)); api.get(`/api/categories?_live=${Date.now()}`).then(({ data }) => setCategories(data)).catch(() => setCategories([])); refreshAuctions(); refreshAnnouncements(); }, [refreshAuctions, refreshAnnouncements]);
+  useEffect(() => { refreshProducts(catalogParams); }, [catalogParams, refreshProducts]);
   useEffect(() => {
     let refreshQueued = false;
     let disposed = false;
@@ -739,10 +744,12 @@ function App() {
         <Route path="/product/:id" element={<ProductPage onAdd={add} onWish={wish} common={common} />} />
         <Route path="/cart" element={user ? <CartPage cart={cart} onAdd={add} onSet={setQuantity} onRemove={remove} common={common} /> : <Navigate to="/login?next=/cart" replace />} />
         <Route path="/checkout" element={user ? <Checkout cart={cart} user={user} refreshUser={refreshUser} refreshCart={refreshCart} common={common} /> : <Navigate to="/login?next=/checkout" replace />} />
+        <Route path="/my-orders" element={user ? <><Topbar {...common} /><CustomerOrders /><FooterBar /><BottomNav active="Account" /></> : <Navigate to="/login?next=/my-orders" replace />} />
+        <Route path="/my-orders/:id" element={user ? <><Topbar {...common} /><CustomerOrderDetail /><FooterBar /><BottomNav active="Account" /></> : <Navigate to="/login?next=/my-orders" replace />} />
         <Route path="/auctions" element={<Auctions auctions={auctions} user={user} refreshAuctions={refreshAuctions} common={common} />} />
         <Route path="/sell" element={<SellPage common={common} />} />
         <Route path="/account" element={<Account user={user} setUser={setUser} common={common} theme={theme} onThemeChange={setTheme} />} />
-        <Route path="/category" element={<CategoryPage products={products} onAdd={add} onWish={wish} common={common} refreshProducts={refreshProducts} categories={categories} />} />
+        <Route path="/category" element={<CategoryPage products={products} onAdd={add} onWish={wish} common={common} categories={categories} />} />
         <Route path="*" element={<StoreHome products={products} auctions={auctions} announcements={announcements} onAdd={add} onWish={wish} common={common} />} />
       </Routes>
     </>

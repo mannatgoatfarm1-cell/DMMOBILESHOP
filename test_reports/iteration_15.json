@@ -1,0 +1,51 @@
+{
+  "summary": "Executed backend pytest and frontend Playwright for auth lockout, CORS preflight layer diagnosis, admin user detail/status authorization, admin users drawer UI, order regressions, storefront search stability, and console runtime checks.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "/api/auth/login (OPTIONS preflight via preview URL)",
+        "issue": "Credentialed preflight still fails at public gateway/ingress with 400 'Disallowed CORS origin' while the same preflight to app-local http://localhost:8001/api/auth/login passes with 200 and correct CORS headers.",
+        "priority": "CRITICAL"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Admin/customer route transitions and login",
+        "issue": "Browser console still logs 401 resource errors during unauthenticated / auth-transition states.",
+        "affected_selectors": []
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration15_admin_users_auth_cors_regression.py",
+    "/app/test_reports/pytest/pytest_results.xml",
+    "/root/.emergent/automation_output/20260924_145100/console_20260924_145100.log",
+    "/root/.emergent/automation_output/20260924_145024/console_20260924_145024.log"
+  ],
+  "action_items": [
+    "Fix ingress/public-layer handling for credentialed OPTIONS /api/auth/login so configured preview origin is accepted and reflected.",
+    "Optionally reduce expected startup/auth-transition 401 console noise for cleaner runtime logs."
+  ],
+  "critical_code_review_comments": [
+    "CORS middleware config in app is effective locally, but external behavior diverges; the break appears before/above app middleware (gateway/ingress path).",
+    "backend/server.py remains a large monolith (>1600 LOC), increasing regression risk when touching auth/admin/order surfaces."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration15_admin_users_auth_cors_regression.py",
+    "/app/test_reports/iteration_15.json"
+  ],
+  "success_rate": {
+    "backend": "90% (9/10 passing)",
+    "frontend": "96% (all requested UI workflows passed; only console 401 noise observed)"
+  },
+  "seed_data_creation": "Created disposable lockout/suspend/hash-format users; suspended disposable user was restored to active=true in test finally block.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Verified fixes: brute-force lockout now enforces 429 after 5 failed attempts even with valid password; admin user APIs return active flag and sanitized detail shape (user/orders/returns/wallet), non-admin gets 403 on admin user detail/status patch, suspend/activate endpoint blocks suspended user protected access and restore works. Frontend verified: Admin Users page stayed dark even with customer light mode set, drawer shows wallet/address/orders/returns and state control, customer My Orders/detail/invoice and admin order drawer functional, storefront search stayed stable after >3s.",
+  "rca of the issue": "Reproduction: send OPTIONS /api/auth/login with Origin=https://dashboard-design-20.preview.emergentagent.com and Access-Control-Request-Method=POST. Public preview endpoint returns 400 'Disallowed CORS origin'; direct app-local endpoint http://localhost:8001/api/auth/login returns 200 with access-control-allow-origin and allow-credentials=true. RCA indicates CORS rejection at gateway/ingress layer, not FastAPI app middleware. Mitigation: align ingress CORS allowlist/headers for preview origin and credentialed preflight, then retest same OPTIONS path end-to-end."
+}

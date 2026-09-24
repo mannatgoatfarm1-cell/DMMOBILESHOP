@@ -1,156 +1,126 @@
 {
-  "theme": "dark",
+  "theme": "light",
+  "archetype": "Archetype 4: Swiss & High-Contrast (Authority, Clarity, Truth)",
   "typography": {
-    "font_family": {
-      "headings": "Manrope, sans-serif",
-      "body": "Inter, sans-serif"
+    "headings": {
+      "family": "'Cabinet Grotesk', sans-serif",
+      "weights": "bold, black",
+      "rules": "Must use tracking-tight or tracking-tighter for sizes > 32px. No 'Inter' for headings. Never exceed text-6xl for main headings."
+    },
+    "body": {
+      "family": "'IBM Plex Sans', sans-serif",
+      "weights": "regular, medium",
+      "rules": "Leading-relaxed for readability. Left-aligned for all dense content."
+    },
+    "labels": {
+      "rules": "Uppercase, tiny, wide spacing (tracking-[0.2em])."
     },
     "hierarchy": {
-      "h1": "text-3xl sm:text-4xl font-bold tracking-tight text-white",
-      "h2": "text-xl sm:text-2xl font-semibold tracking-tight text-white",
-      "h3": "text-lg font-medium text-white",
-      "body": "text-sm text-slate-300",
-      "label": "text-xs font-semibold tracking-wider uppercase text-slate-400"
+      "h1": "text-4xl sm:text-5xl lg:text-5xl tracking-tighter font-black",
+      "h2": "text-2xl sm:text-3xl lg:text-4xl tracking-tight font-bold",
+      "h3": "text-xl sm:text-2xl font-bold",
+      "h4": "text-lg sm:text-xl font-semibold",
+      "body": "text-base sm:text-sm",
+      "small": "text-xs uppercase tracking-widest font-semibold"
     }
   },
   "colors": {
     "background": {
-      "base": "#0B0F19",
-      "surface": "#131C31",
-      "surface_glass": "rgba(19, 28, 49, 0.7)"
+      "primary": "bg-[#FAFAFA]",
+      "secondary": "bg-[#F3F4F6] (Tinted off-white for depth)",
+      "surface": "bg-white",
+      "inverse": "bg-[#0A0A0B] (Tinted black)"
     },
-    "accents": {
-      "primary": "#8B5CF6", 
-      "secondary": "#06B6D4",
-      "gradient_stat": "bg-gradient-to-br from-purple-500/20 to-cyan-500/20"
-    },
-    "status": {
-      "success": {
-        "text": "text-emerald-400",
-        "bg": "bg-emerald-400/10",
-        "border": "border-emerald-400/20"
-      },
-      "warning": {
-        "text": "text-amber-400",
-        "bg": "bg-amber-400/10",
-        "border": "border-amber-400/20"
-      },
-      "info": {
-        "text": "text-blue-400",
-        "bg": "bg-blue-400/10",
-        "border": "border-blue-400/20"
-      },
-      "danger": {
-        "text": "text-rose-400",
-        "bg": "bg-rose-400/10",
-        "border": "border-rose-400/20"
-      }
+    "accent": {
+      "primary": "bg-[#0024D6] (International Klein Blue for critical actions)",
+      "secondary": "bg-[#FF3333] (Signal Red for alerts/cancellations)",
+      "warning": "bg-[#FFCC00]"
     },
     "text": {
-      "primary": "#FFFFFF",
-      "secondary": "#94A3B8",
-      "muted": "#64748B"
+      "primary": "text-[#0A0A0B]",
+      "secondary": "text-[#4B5563]",
+      "inverse": "text-white"
     },
-    "border": "rgba(255, 255, 255, 0.08)"
-  },
-  "visual_enhancers": {
-    "glassmorphism": "bg-[#131C31]/80 backdrop-blur-xl border border-white/10",
-    "glow_effects": {
-      "primary": "shadow-[0_0_20px_rgba(139,92,246,0.3)]",
-      "secondary": "shadow-[0_0_20px_rgba(6,182,212,0.3)]",
-      "active_sidebar": "shadow-[inset_4px_0_0_0_rgba(139,92,246,1)] bg-purple-500/10"
+    "borders": {
+      "default": "border-slate-200",
+      "strong": "border-[#0A0A0B]"
     },
-    "gradients": {
-      "text": "bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-cyan-400",
-      "border": "bg-gradient-to-r from-purple-500/50 to-cyan-500/50"
-    }
+    "rules": "Monochrome base. 95% of UI is monochrome. Color exists only to guide action. High contrast text. Use APCA contrast. explicitly set text color on hover. Do not use pure #000000 or #808080."
   },
   "layouts": {
-    "app_shell": "flex h-screen w-full bg-[#0B0F19] text-white overflow-hidden",
-    "sidebar": "w-64 h-full bg-[#131C31] border-r border-white/10 flex flex-col z-20 flex-shrink-0 overflow-y-auto",
-    "main_wrapper": "flex-1 flex flex-col h-full min-w-0 overflow-hidden relative",
-    "header": "h-16 w-full border-b border-white/10 bg-[#0B0F19]/80 backdrop-blur-md flex items-center justify-between px-6 z-10",
-    "content_area": "flex-1 overflow-y-auto p-6 md:p-8 space-y-8",
-    "dashboard_grid": "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6",
-    "charts_grid": "grid grid-cols-1 lg:grid-cols-3 gap-6"
-  },
-  "components": {
-    "stat_card": "relative overflow-hidden rounded-xl bg-[#131C31]/80 backdrop-blur-md border border-white/10 p-6 transition-all duration-300 hover:shadow-[0_0_25px_rgba(139,92,246,0.15)] hover:-translate-y-1 group",
-    "status_pill": "inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium border",
-    "table": {
-      "container": "w-full overflow-x-auto rounded-xl border border-white/10 bg-[#131C31]/50 backdrop-blur-md",
-      "header": "bg-[#0B0F19] text-xs font-semibold tracking-wider text-slate-400 uppercase text-left",
-      "row": "border-b border-white/5 hover:bg-white/[0.02] transition-colors",
-      "cell": "whitespace-nowrap px-6 py-4 text-sm text-slate-300"
+    "spacing_scale": "Generous Spacing Philosophy. Use p-6, p-8, p-12 for breathing room. Avoid cramped default paddings.",
+    "customer_ui": {
+      "my_orders_list": "Mode A: Bento Grid with wide gap-8 to gap-12. Asymmetrical cards. Left align content.",
+      "order_detail": "Bento layout. Left side: Order items and tracking timeline (col-span-8). Right side: Payment summary, address, Bill download (col-span-4).",
+      "tracking_timeline": "Vertical stepped progress with rigid geometric lines (1px solid). Completed steps in Klein Blue, pending in 10% Grey."
     },
-    "input": "w-full bg-[#0B0F19]/50 border border-white/10 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all",
-    "button": {
-      "primary": "bg-purple-600 hover:bg-purple-700 text-white rounded-lg px-4 py-2 font-medium transition-colors shadow-[0_0_15px_rgba(139,92,246,0.4)]",
-      "secondary": "bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-lg px-4 py-2 font-medium transition-colors"
-    },
-    "tabs": "flex space-x-1 rounded-xl bg-white/5 p-1",
-    "tab_trigger": "flex-1 rounded-lg px-3 py-1.5 text-sm font-medium transition-all data-[state=active]:bg-purple-500/20 data-[state=active]:text-purple-300 data-[state=active]:shadow-[0_0_10px_rgba(139,92,246,0.2)]"
-  },
-  "motion": {
-    "stagger_children": "transition: { staggerChildren: 0.1 }",
-    "fade_up": { "initial": { "opacity": 0, "y": 20 }, "animate": { "opacity": 1, "y": 0 } },
-    "hover_glow": "transition-shadow duration-300 ease-in-out hover:shadow-[0_0_25px_rgba(139,92,246,0.3)]"
-  },
-  "accessibility": {
-    "focus_ring": "focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B0F19]",
-    "contrast": "Ensure text meets APCA standards. Use slate-300 or white on dark backgrounds.",
-    "testing": "All interactive elements MUST include data-testid attribute"
-  },
-  "media": {
-    "image_urls": {
-      "admin_avatar": {
-        "url": "https://images.unsplash.com/photo-1544723795-3fb6469f5b39?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NjV8MHwxfHNlYXJjaHwyfHxhZG1pbiUyMHByb2ZpbGUlMjBwaWN0dXJlfGVufDB8fHx8MTc5MDEzNjc4MHww&ixlib=rb-4.1.0&q=85",
-        "description": "Admin profile picture",
-        "category": "Avatar"
-      },
-      "product_placeholder": {
-        "url": "https://images.unsplash.com/photo-1605236453806-6ff36851218e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzh8MHwxfHNlYXJjaHwxfHxwcm9kdWN0JTIwc21hcnRwaG9uZXxlbnwwfHx8fDE3OTAxMzY3ODZ8MA&ixlib=rb-4.1.0&q=85",
-        "description": "Smartphone product placeholder",
-        "category": "Products"
-      }
+    "admin_ui": {
+      "order_table": "Grid Borders (The Technical Look). Dense data layout. Container border-collapse. Subdued borders. Horizontal scrolling.",
+      "order_drawer": "Slide-out from right (Sheet component). Dense, form-heavy layout. Solid background (no glassmorphism). Sharp 1px borders.",
+      "dashboard_grid": "Mode B: High Density Grid (gap-4 or gap-6). Summary widgets (col-span-1), Main table (col-span-full)."
     }
   },
-  "libraries_and_tools": [
-    "lucide-react for icons",
-    "recharts for Revenue Area Chart, Order Status Donut Chart, Orders by Category Donut Chart",
-    "@hello-pangea/dnd or framer-motion for draggable Sections list in App Manager",
-    "date-fns for date formatting"
-  ],
-  "instructions_to_main_agent": {
-    "setup": "Apply CSS variables in index.css for the dark theme colors. Use Tailwind arbitrary values for specific hexes if needed, or update tailwind.config.js to include #0B0F19 (bg-base) and #131C31 (bg-surface).",
-    "routing": "Since it's a SPA with an existing FastAPI backend, ensure all admin routes render within the defined App Shell (Sidebar + Header layout). Do NOT break existing data flow.",
-    "components": [
-      "Create a reusable StatCard component that accepts icon, label, value, trend, and an optional gradient glow color.",
-      "Implement the 'Customer App Manager' panel using a two-column layout: Draggable section list on the left, mobile phone preview frame in the center, and edit form on the right.",
-      "For forms like 'Razorpay Settings', use the glassmorphism input styles.",
-      "Tables should be data-dense. Status pills must use color-coded variants matching the data."
-    ],
-    "animations": "Add subtle Framer Motion enter animations for the dashboard cards and table rows.",
-    "icons": "Use lucide-react. Standardize stroke-width to 1.5 for a clean, modern look."
+  "components": {
+    "cards": {
+      "customer": "Flat solid surfaces. 1px subtle border. No soft shadow. Crisp, architectural feel.",
+      "admin": "Flat solid, rigid. border-r border-b on grid items for technical skeleton look."
+    },
+    "buttons": {
+      "primary": "Sharp corners or max 4px radius. High contrast (Black or Klein Blue bg). transition: transform 0.2s ease, opacity 0.2s ease.",
+      "secondary": "Outline or Ghost, rigid borders. hover:bg-slate-100 hover:text-black."
+    },
+    "headers": {
+      "style": "Solid Background with a hard bottom border. Never fully transparent.",
+      "navigation": "Visible links on desktop. Logo on left, links in center/right."
+    },
+    "tables": {
+      "style": "Shadcn Table. Custom padding. Header row: uppercase labels, text-xs. Row hover state: slight grey translation."
+    },
+    "badges": {
+      "style": "Rectangular, no pill-shapes. 1px solid border matching text color. Example: text-blue-600 border-blue-600 bg-blue-50."
+    }
   },
-  "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
-    "You tend to converge toward generic, 'on distribution' outputs. In frontend design, this creates what users call the 'AI slop' aesthetic. Avoid this: make creative, distinctive frontends that surprise and delight.",
-    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients.",
-    "Don't make generic centered layouts, simplistic gradients, and uniform styling.",
-    "Create depth through layered design elements with z-index hierarchy.",
-    "Use glass-morphism effects with backdrop filters (12-24px blur).",
-    "You MUST NOT apply universal transition. Eg: transition: all. This results in breaking transforms. Always add transitions for specific interactive elements like button, input excluding transforms.",
-    "You MUST NOT center align the app container, ie do not add .App { text-align: center; } in the css file. This disrupts the human natural reading flow of text.",
-    "Always use modern button styles like pill-shaped, or sharp button with interaction animations & color relevant to the app style.",
-    "NEVER: use AI assistant Emoji characters like 🤖🧠💭💡🔮🎯 etc for icons.",
-    "Every interaction needs micro-animations - hover states, transitions, parallax effects, and entrance animations. Static = dead.",
-    "Use 2-3x more spacing than feels comfortable. Cramped designs look cheap.",
-    "Subtle grain textures, noise overlays, custom cursors, selection states, and loading animations: separates good from extraordinary.",
-    "Main agent relies on these image URLs. Missing categories (especially sponsor logos) = main agent will use placeholder text which is FORBIDDEN.",
-    "Prioritize using pre-existing components from src/components/ui when applicable.",
-    "Create new components that match the style and conventions of existing components when needed.",
-    "Examine existing components to understand the project's component patterns before creating new ones.",
-    "Use sonner for toasts.",
-    "Sonner component are located in /app/src/components/ui/sonner.tsx"
-  ]
+  "visual_enhancers": {
+    "surfaces": "Use Grid Borders style for Admin (border-collapse, expose skeleton). Flat Solid for Customer app (no glassmorphism to prevent medical/clinical feel, keep it concrete).",
+    "motion": "Minimalistic micro-interactions. hover:translate-y-[-2px] on cards. Staggered entrance for list items using framer-motion.",
+    "textures": "Grain/noise overlay on dark areas if any, but primarily rely on crisp typographic contrast."
+  },
+  "accessibility": {
+    "contrast": "Normal Text > 4.5:1. Large Text > 3:1. ALWAYS explicitly set hover text color.",
+    "motion": "Respect prefers-reduced-motion. Meaningful focus states (focus:ring-2 focus:ring-[#0024D6] focus:outline-none).",
+    "testing": "All interactive elements MUST include data-testid attribute (e.g., data-testid='download-bill-button')."
+  },
+  "media": {
+    "icons": {
+      "library": "@phosphor-icons/react",
+      "weight": "regular or duotone",
+      "usage": "Use Phosphor icons for high-end look."
+    },
+    "images": {
+      "rules": "Never use placeholder URLs. Mobile height limit: 80vh.",
+      "urls": [
+        {
+          "url": "https://images.unsplash.com/photo-1580674285054-bed31e145f59?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2OTF8MHwxfHNlYXJjaHwzfHxlY29tbWVyY2UlMjBkZWxpdmVyeSUyMGJveCUyMHBhY2thZ2V8ZW58MHx8fHwxNzkwMjU5OTIyfDA&ixlib=rb-4.1.0&q=85",
+          "category": "hero_background",
+          "description": "A stack of cardboard shipping boxes inside the back of a delivery van"
+        },
+        {
+          "url": "https://images.unsplash.com/photo-1624137527136-66e631bdaa0e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2OTF8MHwxfHNlYXJjaHw0fHxlY29tbWVyY2UlMjBkZWxpdmVyeSUyMGJveCUyMHBhY2thZ2V8ZW58MHx8fHwxNzkwMjU5OTIyfDA&ixlib=rb-4.1.0&q=85",
+          "category": "product_placeholder",
+          "description": "A stack of brown cardboard boxes against a solid brown background"
+        },
+        {
+          "url": "https://images.pexels.com/photos/4440800/pexels-photo-4440800.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+          "category": "tracking_delivery_illustration",
+          "description": "A stack of brown cardboard boxes with shipping labels ready for mail delivery"
+        }
+      ]
+    }
+  },
+  "instructions_to_main_agent": {
+    "component_path": "/app/frontend/src/components/ui/",
+    "routing": "Customer view routes: /my-orders, /my-orders/:id. Admin view routes: /admin/orders.",
+    "general": "Do not center align app containers. Use React (.js) strictly. Ensure robust data tables for Admin and narrative-driven bento details for Customers. Implement Shadcn Dropdown, Table, Sheet, Button, Tabs, Badge."
+  },
+  "universal_guidelines_for_main_agent": "You tend to converge toward generic outputs. Break the mold. Use asymmetric bento grids for customer views. Emphasize rigid Swiss typography. NEVER use transition: all. Avoid emoji icons; strictly use Phosphor icons. Provide extensive spacing (p-8, p-12). Incorporate framer-motion for smooth list mounting and detail view expansion. Ensure toast notifications use Sonner."
 }

@@ -5,6 +5,7 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
 import asyncio
+from io import BytesIO
 import logging
 import os
 import re
@@ -21,9 +22,12 @@ from authlib.integrations.starlette_client import OAuth
 from fastapi import APIRouter, Depends, FastAPI, File, HTTPException, Query, Request, Response, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, EmailStr, Field, field_validator
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -86,6 +90,7 @@ class UserPublic(BaseModel):
     email: EmailStr
     name: str
     role: Literal["customer", "admin"]
+    active: bool = True
     phone: str | None = None
     addresses: list[Address] = []
     created_at: str
@@ -370,6 +375,13 @@ class WalletSummary(BaseModel):
     updated_at: str
 
 
+class AdminUserDetail(BaseModel):
+    user: UserPublic
+    orders: list[Order]
+    returns: list[ManagedRecord]
+    wallet: WalletSummary
+
+
 class WalletTransaction(BaseModel):
     id: str
     user_id: str
@@ -632,16 +644,14 @@ async def login(input: LoginInput, request: Request, response: Response) -> User
     identifier = input.identifier.strip().lower()
     user = await db.users.find_one({"$or": [{"email": identifier}, {"username": identifier}]}, {"_id": 0})
     attempt = await db.login_attempts.find_one({"identifier": identifier}, {"_id": 0})
-    # A valid credential must always restore access, even if the user previously mistyped it.
-    # Incorrect attempts remain protected by the lockout policy below.
+    if attempt and attempt.get("locked_until", "") > now():
+        raise HTTPException(429, "Too many sign-in attempts. Please try again in 15 minutes")
     if user and verify_password(input.password, user["password_hash"]):
         if not user.get("active", True):
             raise HTTPException(403, "This account is inactive")
         await db.login_attempts.delete_one({"identifier": identifier})
         set_session(response, user)
         return public_user(user)
-    if attempt and attempt.get("locked_until", "") > now():
-        raise HTTPException(429, "Too many sign-in attempts. Please try again in 15 minutes")
     failures = (attempt or {}).get("failures", 0) + 1
     update: dict[str, Any] = {"failures": failures, "updated_at": now()}
     if failures >= 5:
@@ -964,6 +974,63 @@ async def get_order(order_id: str, user: Annotated[dict[str, Any], Depends(requi
     return Order(**order)
 
 
+@api.get("/orders/{order_id}/invoice")
+async def download_order_invoice(order_id: str, user: Annotated[dict[str, Any], Depends(require_customer)]) -> StreamingResponse:
+    filter_query: dict[str, Any] = {"id": order_id}
+    if user["role"] != "admin":
+        filter_query["user_id"] = user["id"]
+    order = await db.orders.find_one(filter_query, {"_id": 0})
+    if not order:
+        raise HTTPException(404, "Order not found")
+    output = BytesIO()
+    pdf = canvas.Canvas(output, pagesize=A4)
+    width, height = A4
+    pdf.setFillColorRGB(0.08, 0.11, 0.2)
+    pdf.rect(0, height - 110, width, 110, fill=1, stroke=0)
+    pdf.setFillColorRGB(1, 1, 1)
+    pdf.setFont("Helvetica-Bold", 24)
+    pdf.drawString(48, height - 62, "MobileCart")
+    pdf.setFont("Helvetica", 10)
+    pdf.drawString(48, height - 82, "Tax Invoice / Order Bill")
+    pdf.setFillColorRGB(0.1, 0.14, 0.24)
+    pdf.setFont("Helvetica-Bold", 14)
+    pdf.drawString(48, height - 145, f"Invoice for {order['order_number']}")
+    pdf.setFont("Helvetica", 10)
+    pdf.drawString(48, height - 164, f"Order date: {str(order['created_at'])[:10]}     Status: {order['status'].replace('_', ' ').title()}")
+    address = order.get("delivery_address", {})
+    pdf.setFont("Helvetica-Bold", 10)
+    pdf.drawString(48, height - 198, "Deliver to")
+    pdf.setFont("Helvetica", 10)
+    for index, line in enumerate([address.get("recipient_name", ""), address.get("line1", ""), f"{address.get('city', '')} - {address.get('postal_code', '')}"]):
+        pdf.drawString(48, height - 216 - index * 15, str(line))
+    y = height - 285
+    pdf.setFont("Helvetica-Bold", 10)
+    pdf.drawString(48, y, "Item")
+    pdf.drawRightString(440, y, "Qty")
+    pdf.drawRightString(540, y, "Amount")
+    pdf.line(48, y - 8, 548, y - 8)
+    pdf.setFont("Helvetica", 10)
+    for item in order.get("items", []):
+        y -= 24
+        if y < 100:
+            pdf.showPage(); y = height - 60
+        pdf.drawString(48, y, str(item.get("name", "Product"))[:58])
+        pdf.drawRightString(440, y, str(item.get("quantity", 1)))
+        pdf.drawRightString(540, y, f"Rs. {int(item.get('price', 0)) * int(item.get('quantity', 1)):,}")
+    y -= 28
+    pdf.line(330, y, 548, y)
+    for label, value in [("Subtotal", order.get("subtotal", 0)), ("Discount", -order.get("discount", 0)), ("Platform fee", order.get("platform_fee", 0)), ("Total paid", order.get("total", 0))]:
+        y -= 19
+        pdf.setFont("Helvetica-Bold" if label == "Total paid" else "Helvetica", 10)
+        pdf.drawString(360, y, label)
+        pdf.drawRightString(540, y, f"Rs. {int(value):,}")
+    pdf.setFont("Helvetica", 8)
+    pdf.drawString(48, 42, "Thank you for shopping with MobileCart. This is a computer-generated invoice.")
+    pdf.save()
+    output.seek(0)
+    return StreamingResponse(output, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="MobileCart-{order["order_number"]}-invoice.pdf"'})
+
+
 @api.get("/wallet")
 async def customer_wallet(user: Annotated[dict[str, Any], Depends(require_customer)]) -> dict[str, Any]:
     wallet = await db.wallets.find_one({"user_id": user["id"]}, {"_id": 0}) or {"user_id": user["id"], "balance": 0, "updated_at": user["created_at"]}
@@ -1095,7 +1162,7 @@ async def create_category(input: CategoryInput, _: Annotated[dict[str, Any], Dep
 async def update_order_status(order_id: str, status: str = Query(pattern=r"^(confirmed|packed|shipped|delivered|cancelled)$"), tracking_number: str | None = None, _: Annotated[dict[str, Any], Depends(admin_user)] = None) -> Order:
     event = {"status": status.replace("_", " ").title(), "at": now()}
     update: dict[str, Any] = {"status": status, "updated_at": now(), "tracking.status": event["status"]}
-    if tracking_number:
+    if tracking_number is not None:
         update["tracking.number"] = tracking_number
     result = await db.orders.update_one({"id": order_id}, {"$set": update, "$push": {"tracking.events": event}})
     if result.modified_count == 0:
@@ -1304,6 +1371,17 @@ async def set_user_active(user_id: str, input: UserManagementUpdate, admin: Anno
         raise HTTPException(404, "User not found")
     user = await db.users.find_one({"id": user_id}, {"_id": 0})
     return public_user(user)
+
+
+@api.get("/admin/users/{user_id}/detail", response_model=AdminUserDetail)
+async def admin_user_detail(user_id: str, _: Annotated[dict[str, Any], Depends(admin_user)]) -> AdminUserDetail:
+    user = await db.users.find_one({"id": user_id}, {"_id": 0})
+    if not user:
+        raise HTTPException(404, "User not found")
+    orders = await db.orders.find({"user_id": user_id}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    returns = await db.returns.find({"user_id": user_id}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    wallet = await db.wallets.find_one({"user_id": user_id}, {"_id": 0}) or {"user_id": user_id, "balance": 0, "updated_at": user.get("created_at", now())}
+    return AdminUserDetail(user=public_user(user), orders=[Order(**row) for row in orders], returns=[managed_payload(row) for row in returns], wallet=WalletSummary(user_id=user["id"], user_name=user["name"], user_email=user["email"], balance=wallet["balance"], updated_at=wallet["updated_at"]))
 
 
 @api.post("/admin/users", response_model=UserPublic, status_code=201)
@@ -1530,7 +1608,7 @@ app.include_router(api)
 app.add_middleware(SessionMiddleware, secret_key=JWT_SECRET, same_site="lax", https_only=True)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[FRONTEND_URL.rstrip("/")],
+    allow_origins=sorted({FRONTEND_URL.rstrip("/"), *GOOGLE_ALLOWED_ORIGINS}),
     allow_origin_regex=r"^https://[a-z0-9-]+\.preview\.emergentagent\.com$",
     allow_credentials=True,
     allow_methods=["*"],
