@@ -17,6 +17,7 @@ import AccountExtras from "@/components/AccountExtras";
 import { CustomerOrderDetail, CustomerOrders } from "@/components/OrderViews";
 import { CustomerLiveChat } from "@/components/LiveChat";
 import "@/App.css";
+import "@/category-hub.css";
 
 const money = (value = 0) => `₹${Number(value).toLocaleString("en-IN")}`;
 
