@@ -15,6 +15,7 @@ import { QC_CHECKS, QC_GRADES, gradeLabel } from "@/lib/qc";
 import AdminWorkspace from "@/components/AdminWorkspace";
 import AccountExtras from "@/components/AccountExtras";
 import { CustomerOrderDetail, CustomerOrders } from "@/components/OrderViews";
+import { CustomerLiveChat } from "@/components/LiveChat";
 import "@/App.css";
 
 const money = (value = 0) => `₹${Number(value).toLocaleString("en-IN")}`;
@@ -194,7 +195,7 @@ function StoreHome({ products, auctions, onAdd, onWish, common, announcements = 
               <span className="eyebrow">PREMIUM TECH. SMARTER PRICES.</span>
               <h1>Upgrade<br /><span className="grad">Your World</span></h1>
               <p className="hero-sub">New &amp; Pre-owned Devices • Verified Sellers • Best Deals</p>
-              <div className="hero-badge"><b>{primaryProduct?.name || "MobileCart picks"}</b><span>Up to <em>40% OFF</em></span></div>
+              <div className="hero-badge"><b>{primaryProduct?.name || "DM Mobile picks"}</b><span>Up to <em>40% OFF</em></span></div>
               <div className="hero-cta">
                 <Link to="/category" className="primary-btn" data-testid="hero-shop-now">Shop Now <ChevronRight size={15} /></Link>
                 <Link to="/sell" className="ghost-btn" data-testid="hero-sell-device">Sell Your Device</Link>
@@ -270,7 +271,7 @@ function StoreHome({ products, auctions, onAdd, onWish, common, announcements = 
             </div>
           </div>
           <aside className="why-choose" data-testid="why-choose">
-            <b>Why Choose MobileCart?</b>
+            <b>Why Choose DM Mobile?</b>
             {[[BadgeCheck, "Verified Sellers", "Only trusted & verified sellers"], [ShieldCheck, "Quality Checked", "Every product inspected"], [Percent, "Best Prices", "Unbeatable deals on top brands"], [Wallet, "Secure Payments", "100% safe & encrypted"], [RotateCcw, "7-Day Returns", "Hassle-free returns"], [Headphones, "Dedicated Support", "We're here to help"]].map(([Icon, title, sub]) => (
               <div className="why-row" key={title}><span><Icon size={16} /></span><div><b>{title}</b><small>{sub}</small></div></div>
             ))}
@@ -473,6 +474,7 @@ function Checkout({ cart, user, refreshUser, refreshCart, common }) {
   const [coupon, setCoupon] = useState(null);
   const [couponBusy, setCouponBusy] = useState(false);
   const [availableCoupons, setAvailableCoupons] = useState([]);
+  const [walletBalance, setWalletBalance] = useState(null);
   const [proofFile, setProofFile] = useState(null);
   const [reviewOrder, setReviewOrder] = useState(null);
   const paymentSucceeded = useRef(false);
@@ -483,7 +485,7 @@ function Checkout({ cart, user, refreshUser, refreshCart, common }) {
     ["upi", "UPI", "Pay using any UPI app"], ["bank_transfer", "Direct bank transfer", "UPI / account transfer + payment proof"], ["card", "Credit / Debit Card", "Visa, Mastercard, RuPay"], ["net_banking", "Net Banking", "All major banks"], ["wallet", "DMobileMart Wallet", "Use your available wallet balance"], ["cod", "COD", "Cash on Delivery"],
   ].filter(([value]) => paymentConfig?.methods?.[value] !== false), [paymentConfig]);
   useEffect(() => {
-    Promise.all([api.get("/api/payment-config"), api.get("/api/content/coupons")]).then(([payment, coupons]) => { setPaymentConfig(payment.data); setAvailableCoupons(coupons.data); }).catch(() => setPaymentConfig({ methods: { upi: true, bank_transfer: true, card: true, net_banking: true, wallet: true, cod: true } }));
+    Promise.all([api.get("/api/payment-config"), api.get("/api/content/coupons"), api.get("/api/wallet")]).then(([payment, coupons, wallet]) => { setPaymentConfig(payment.data); setAvailableCoupons(coupons.data); setWalletBalance(wallet.data.balance); }).catch(() => setPaymentConfig({ methods: { upi: true, bank_transfer: true, card: true, net_banking: true, wallet: true, cod: true } }));
   }, []);
   useEffect(() => {
     if (paymentMethods.length && !paymentMethods.some(([value]) => value === method)) setMethod(paymentMethods[0][0]);
@@ -495,7 +497,7 @@ function Checkout({ cart, user, refreshUser, refreshCart, common }) {
     const { data: paymentOrder } = await api.post("/api/payments/razorpay/order", { order_id: order.id });
     paymentSucceeded.current = false;
     const checkout = new Razorpay({
-      key: paymentOrder.key_id, amount: paymentOrder.amount, currency: paymentOrder.currency, order_id: paymentOrder.razorpay_order_id, name: "MobileCart", description: `Order ${paymentOrder.order_number}`,
+      key: paymentOrder.key_id, amount: paymentOrder.amount, currency: paymentOrder.currency, order_id: paymentOrder.razorpay_order_id, name: "DMobileMart", description: `Order ${paymentOrder.order_number}`,
       prefill: { name: paymentOrder.name, email: paymentOrder.email }, theme: { color: "#6840dc" },
       method: { upi: method === "upi", card: method === "card", netbanking: method === "net_banking", wallet: false },
       handler: async (response) => { try { const { data } = await api.post("/api/payments/razorpay/verify", { order_id: order.id, razorpay_order_id: response.razorpay_order_id, razorpay_payment_id: response.razorpay_payment_id, razorpay_signature: response.razorpay_signature }); paymentSucceeded.current = true; setPaid(data); await refreshCart(); toast.success("Payment verified. Order confirmed!"); } catch (error) { await markFailed(order.id, "verification_failed"); toast.error(apiError(error)); } finally { setBusy(false); } },
@@ -529,7 +531,7 @@ function Checkout({ cart, user, refreshUser, refreshCart, common }) {
                 {method === "upi" && <div className="upi-checkout-note" data-testid="upi-checkout-note"><Smartphone size={16} /><span><b>UPI QR & app payment</b><small>Paytm, PhonePe, Google Pay या किसी भी installed UPI app को Razorpay secure checkout में चुनें।</small></span></div>}
                 {method === "bank_transfer" && <div className="manual-transfer-card" data-testid="manual-transfer-details"><h4><Landmark size={16} /> Direct transfer details</h4><p>Transfer the exact amount, then upload a screenshot. Order is confirmed only after admin review.</p><div><span>Account name</span><b>{paymentConfig?.manual_transfer?.account_name || "DMobileMart"}</b></div><div><span>Account number</span><b>{paymentConfig?.manual_transfer?.account_number || "Not configured"}</b></div><div><span>IFSC code</span><b>{paymentConfig?.manual_transfer?.ifsc_code || "Not configured"}</b></div>{paymentConfig?.manual_transfer?.upi_id && <div><span>UPI ID</span><b>{paymentConfig.manual_transfer.upi_id}</b></div>}<label className="payment-proof-upload"><input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setProofFile(event.target.files?.[0] || null)} data-testid="payment-proof-upload-input" /><span>{proofFile ? proofFile.name : "Upload payment screenshot (JPG, PNG or WebP · max 5MB)"}</span></label></div>}
                 {paymentMethods.map(([value, label, detail]) => (
-                  <label className="payment-option" key={value}><input type="radio" name="payment" checked={method === value} onChange={() => setMethod(value)} data-testid={`payment-${value}`} /><span>{label}<small>{detail}</small></span><ChevronRight size={15} /></label>
+                  <label className="payment-option" key={value}><input type="radio" name="payment" checked={method === value} onChange={() => setMethod(value)} data-testid={`payment-${value}`} /><span>{label}<small>{value === "wallet" && walletBalance !== null ? `Available balance: ${money(walletBalance)} · ${detail}` : detail}</small>{value === "wallet" && <Link to="/account#wallet" className="wallet-topup-link" data-testid="wallet-add-money-link">Add money</Link>}</span><ChevronRight size={15} /></label>
                 ))}
                 {!paymentMethods.length && <p className="payment-unavailable" data-testid="payment-methods-unavailable">अभी कोई payment method उपलब्ध नहीं है। कृपया थोड़ी देर बाद कोशिश करें।</p>}
               </div>
@@ -645,7 +647,7 @@ function Login({ setUser }) {
         <button className="primary-btn full" disabled={busy} data-testid="auth-submit-button">{busy ? "Please wait…" : mode === "register" ? "Create account" : mode === "forgot" ? "Request reset" : mode === "reset" ? "Save new password" : "Sign in"}</button>
         {mode === "login" && !isAdminLogin && <GoogleSignInButton />}
         {mode === "login" && <button type="button" className="auth-switch" onClick={() => setMode("forgot")} data-testid="forgot-password-button">Forgot password?</button>}
-        {mode === "forgot" || mode === "reset" ? <button type="button" className="auth-switch" onClick={() => setMode("login")} data-testid="auth-back-to-login-button">Back to sign in</button> : !isAdminLogin && <button type="button" className="auth-switch" onClick={() => setMode(mode === "register" ? "login" : "register")} data-testid="auth-switch-button">{mode === "register" ? "Already have an account? Sign in" : "New to MobileCart? Create account"}</button>}
+        {mode === "forgot" || mode === "reset" ? <button type="button" className="auth-switch" onClick={() => setMode("login")} data-testid="auth-back-to-login-button">Back to sign in</button> : !isAdminLogin && <button type="button" className="auth-switch" onClick={() => setMode(mode === "register" ? "login" : "register")} data-testid="auth-switch-button">{mode === "register" ? "Already have an account? Sign in" : "New to DMobileMart? Create account"}</button>}
       </form>
     </main>
   );
@@ -671,7 +673,7 @@ function Account({ user, setUser, common, theme, onThemeChange, refreshUser, onA
       <Topbar {...common} />
       <main className="simple-page account-page">
         <div className="account-command-grid">
-          <aside className="account-menu-panel" data-testid="account-menu-panel"><div className="account-identity"><span className="account-avatar" data-testid="account-avatar">{user.name.slice(0, 1).toUpperCase()}</span><div><span className="eyebrow">MY MOBILECART</span><h1 data-testid="account-user-name">{user.name}</h1><p data-testid="account-user-email">{user.email}</p></div></div><div className="gold-mini-card" data-testid="account-gold-card"><span>★</span><div><b>MobileCart Gold</b><small>Premium benefits & early access</small></div><Link to="/category?sort=price_desc" data-testid="account-gold-explore-link">Explore <ChevronRight size={14} /></Link></div><ThemeControl theme={theme} onThemeChange={onThemeChange} /><nav className="account-action-grid">{menuItems.map(([Icon, title, detail, to]) => <Link to={to} key={title} data-testid={`account-menu-${title.toLowerCase().replaceAll(" ", "-")}`}><span><Icon size={18} /></span><div><b>{title}</b><small>{detail}</small></div><ChevronRight size={15} /></Link>)}</nav><button className="account-logout" onClick={async () => { await api.post("/api/auth/logout"); setUser(null); }} data-testid="account-signout-button"><LogOut size={16} /> Sign out</button></aside>
+          <aside className="account-menu-panel" data-testid="account-menu-panel"><div className="account-identity"><span className="account-avatar" data-testid="account-avatar">{user.name.slice(0, 1).toUpperCase()}</span><div><span className="eyebrow">MY DMOBILEMART</span><h1 data-testid="account-user-name">{user.name}</h1><p data-testid="account-user-email">{user.email}</p></div></div><div className="gold-mini-card" data-testid="account-gold-card"><span>★</span><div><b>DMobileMart Gold</b><small>Premium benefits & early access</small></div><Link to="/category?sort=price_desc" data-testid="account-gold-explore-link">Explore <ChevronRight size={14} /></Link></div><ThemeControl theme={theme} onThemeChange={onThemeChange} /><nav className="account-action-grid">{menuItems.map(([Icon, title, detail, to]) => <Link to={to} key={title} data-testid={`account-menu-${title.toLowerCase().replaceAll(" ", "-")}`}><span><Icon size={18} /></span><div><b>{title}</b><small>{detail}</small></div><ChevronRight size={15} /></Link>)}</nav><button className="account-logout" onClick={async () => { await api.post("/api/auth/logout"); setUser(null); }} data-testid="account-signout-button"><LogOut size={16} /> Sign out</button></aside>
           <section className="account-main-panel"><section className="gold-showcase" data-testid="account-gold-showcase"><div><span className="eyebrow">MOBILECART GOLD</span><h2>Smarter shopping, unlocked.</h2><p>Enjoy early deal access, delivery benefits and priority support.</p></div><span className="gold-crown">♛</span></section><section className="wallet-account" id="wallet" data-testid="customer-wallet-card"><div><span className="eyebrow">MOBILECART WALLET</span><strong data-testid="customer-wallet-balance">{money(wallet?.balance || 0)}</strong><small>Available balance</small></div><Wallet size={32} /></section><section className="wallet-history" data-testid="customer-wallet-history"><div className="panel-head"><h3>Recent Transactions</h3><span>{wallet?.transactions?.length || 0} entries</span></div>{wallet?.transactions?.length ? wallet.transactions.slice(0, 4).map((transaction) => <div className="ledger-row" key={transaction.id} data-testid={`customer-wallet-transaction-${transaction.id}`}><span className={transaction.kind === "credit" ? "credit" : "debit"}>{transaction.kind === "credit" ? "+" : "−"}{money(transaction.amount)}</span><p>{transaction.note}<small>{new Date(transaction.created_at).toLocaleString("en-IN")}</small></p><b>{money(transaction.balance_after)}</b></div>) : <p className="account-muted" data-testid="customer-wallet-empty-state">Wallet transactions will appear here.</p>}</section></section>
         </div>
         <section className="checkout-section" id="addresses"><h3>Saved addresses</h3>{user.addresses?.length ? user.addresses.map((address) => <div className="address-card" key={address.id} data-testid={`saved-address-${address.id}`}><b>{address.label}</b><p>{address.recipient_name}</p><span>{address.line1}, {address.city} - {address.postal_code}</span></div>) : <p data-testid="account-no-addresses">No saved addresses yet. Add one during checkout.</p>}</section>
@@ -771,7 +773,7 @@ function App() {
   const wish = async (id) => { if (!user) { navigate("/login"); return; } try { await api.put(`/api/wishlist/${id}`); await refreshWish(); toast.success("Saved to wishlist"); speakHindi("विशलिस्ट में सेव कर दिया गया"); } catch (error) { toast.error(apiError(error)); } };
   const logout = async () => { try { await api.post("/api/auth/logout"); } finally { setUser(null); setCart([]); setWishCount(0); navigate("/"); toast.success("Signed out"); } };
   const common = { cartCount: cart.reduce((sum, item) => sum + item.quantity, 0), wishCount, user, onSearch: (query) => refreshProducts(`?query=${encodeURIComponent(query)}`), onMenu: () => navigate("/account") };
-  if (authLoading) return <Loading label="Connecting to MobileCart…" />;
+  if (authLoading) return <Loading label="Connecting to DMobileMart…" />;
   return (
     <>
       <Toaster theme={theme} position="bottom-right" />
@@ -791,6 +793,7 @@ function App() {
         <Route path="/category" element={<CategoryPage products={products} onAdd={add} onWish={wish} common={common} categories={categories} />} />
         <Route path="*" element={<StoreHome products={products} auctions={auctions} announcements={announcements} onAdd={add} onWish={wish} common={common} />} />
       </Routes>
+      <CustomerLiveChat user={user} hidden={location.pathname === "/login" || location.pathname === "/register"} />
     </>
   );
 }

@@ -12,7 +12,7 @@ const label = (value = "") => value.replaceAll("_", " ").replace(/\b\w/g, (lette
 export function OrderStatus({ status }) { return <span className={`order-status status-${status}`} data-testid={`order-status-${status}`}>{label(status)}</span>; }
 
 function BillButton({ id }) {
-  const download = async () => { try { const response = await api.get(`/api/orders/${id}/invoice`, { responseType: "blob" }); const url = URL.createObjectURL(response.data); const link = document.createElement("a"); link.href = url; link.download = `MobileCart-${id}-invoice.pdf`; link.click(); URL.revokeObjectURL(url); toast.success("Invoice download started"); } catch (error) { toast.error(apiError(error)); } };
+  const download = async () => { try { const response = await api.get(`/api/orders/${id}/invoice`, { responseType: "blob" }); const url = URL.createObjectURL(response.data); const link = document.createElement("a"); link.href = url; link.download = `DMobileMart-${id}-invoice.pdf`; link.click(); URL.revokeObjectURL(url); toast.success("Invoice download started"); } catch (error) { toast.error(apiError(error)); } };
   return <button className="order-secondary-button" onClick={download} data-testid={`download-bill-${id}`}><Download size={15} /> Download bill</button>;
 }
 

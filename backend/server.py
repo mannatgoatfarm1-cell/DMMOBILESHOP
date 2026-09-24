@@ -165,6 +165,7 @@ class ProductInput(BaseModel):
     qc_status: dict[str, Literal["pass", "fail", "unknown"]] = Field(default_factory=dict)
     imei_number: str = Field(default="", max_length=40)
     barcode: str = Field(default="", max_length=80)
+    warranty_days: int = Field(default=0, ge=0, le=1095)
 
     @field_validator("images")
     @classmethod
@@ -377,6 +378,32 @@ class RazorpayFailureInput(BaseModel):
 class ManualPaymentReviewInput(BaseModel):
     action: Literal["capture", "reject"]
     note: str = Field(default="", max_length=240)
+
+
+class ReturnClaimInput(BaseModel):
+    order_id: str = Field(min_length=1, max_length=80)
+    reason: Literal["defective", "wrong_item", "damaged", "warranty_claim", "other"]
+    detail: str = Field(min_length=8, max_length=1000)
+    photo_file_ids: list[str] = Field(min_length=2, max_length=2)
+    video_file_id: str = Field(min_length=1, max_length=80)
+
+
+class ReturnDecisionInput(BaseModel):
+    decision: Literal["approve", "disapprove"]
+    reason: str = Field(min_length=4, max_length=500)
+
+
+class ChatMessageInput(BaseModel):
+    message: str = Field(min_length=1, max_length=1000)
+
+
+class ChatMessage(BaseModel):
+    id: str
+    thread_id: str
+    sender_role: Literal["customer", "admin"]
+    sender_name: str
+    message: str
+    created_at: str
 
 
 class CouponCheckInput(BaseModel):
@@ -984,7 +1011,7 @@ async def create_order(input: OrderCreate, user: Annotated[dict[str, Any], Depen
         result = await db.products.update_one({"id": cart_item.product_id, "stock": {"$gte": cart_item.quantity}}, {"$inc": {"stock": -cart_item.quantity}, "$set": {"updated_at": now()}})
         if result.modified_count == 0:
             raise HTTPException(409, f"{cart_item.product.name} is no longer in stock")
-        order_items.append({"product_id": cart_item.product_id, "name": cart_item.product.name, "image": cart_item.product.images[0], "price": cart_item.product.price, "quantity": cart_item.quantity, "variant_sku": cart_item.variant_sku, "imei_number": cart_item.product.imei_number, "barcode": cart_item.product.barcode})
+        order_items.append({"product_id": cart_item.product_id, "name": cart_item.product.name, "image": cart_item.product.images[0], "price": cart_item.product.price, "quantity": cart_item.quantity, "variant_sku": cart_item.variant_sku, "imei_number": cart_item.product.imei_number, "barcode": cart_item.product.barcode, "warranty_days": cart_item.product.warranty_days})
     manual = input.payment_method == "bank_transfer"
     order = {"id": str(uuid.uuid4()), "order_number": f"DM-{secrets.randbelow(900000) + 100000}", "user_id": user["id"], "items": order_items, "delivery_address": address, "subtotal": cart.subtotal, "discount": discount, "coupon_code": coupon_code, "platform_fee": 99, "total": total, "status": "payment_pending" if not manual else "payment_proof_required", "tracking": {"status": "Order placed", "events": [{"status": "Order placed", "at": created}]}, "payment": {"provider": "manual_transfer" if manual else ("mobilecart_wallet" if input.payment_method == "wallet" else "razorpay"), "method": input.payment_method, "status": payment_status, "provider_order_id": None, "transaction_id": None}, "created_at": created, "updated_at": created}
     if input.payment_method in {"cod", "wallet"}:
@@ -1263,12 +1290,28 @@ async def download_media(file_id: str) -> Response:
     record = await db.media_files.find_one({"id": file_id, "is_deleted": False}, {"_id": 0})
     if not record:
         raise HTTPException(404, "Image not found")
+    if str(record.get("kind", "")).startswith("return_") or record.get("kind") == "payment_proof":
+        raise HTTPException(403, "This private evidence is available to the assigned reviewer only")
     try:
         content, content_type = await asyncio.to_thread(get_object, record["storage_path"])
     except requests.RequestException as error:
         logger.exception("Media download failed")
         raise HTTPException(502, "Image is temporarily unavailable") from error
     return Response(content=content, media_type=record.get("content_type", content_type))
+
+
+@api.get("/admin/media/{file_id}/content")
+async def admin_download_private_media(file_id: str, _: Annotated[dict[str, Any], Depends(admin_user)]) -> Response:
+    record = await db.media_files.find_one({"id": file_id, "is_deleted": False}, {"_id": 0})
+    if not record:
+        raise HTTPException(404, "Evidence not found")
+    content, content_type = await asyncio.to_thread(get_object, record["storage_path"])
+    return Response(content=content, media_type=record.get("content_type", content_type))
+
+
+@api.get("/admin/media/{file_id}")
+async def admin_download_media_compat(file_id: str, admin: Annotated[dict[str, Any], Depends(admin_user)]) -> Response:
+    return await admin_download_private_media(file_id, admin)
 
 
 @api.delete("/admin/media/{file_id}", status_code=204)
@@ -1709,6 +1752,101 @@ async def upload_manual_payment_proof(order_id: str = Query(min_length=1, max_le
     await db.orders.update_one({"id": order_id, "user_id": user["id"]}, {"$set": {"status": "payment_review", "payment.status": "review_pending", "payment.proof_file_id": file_id, "updated_at": timestamp}, "$push": {"tracking.events": {"status": "Payment proof submitted", "at": timestamp}}})
     updated = await db.orders.find_one({"id": order_id}, {"_id": 0})
     return Order(**updated)
+
+
+@api.post("/returns/evidence")
+async def upload_return_evidence(kind: Literal["photo", "video"], file: UploadFile = File(...), user: Annotated[dict[str, Any], Depends(require_customer)] = None) -> dict[str, Any]:
+    allowed = {"photo": {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}, "video": {"video/mp4": ".mp4", "video/webm": ".webm", "video/quicktime": ".mov"}}
+    if file.content_type not in allowed[kind]:
+        raise HTTPException(415, "Unsupported return evidence format")
+    content = await file.read()
+    limit = 5 * 1024 * 1024 if kind == "photo" else 50 * 1024 * 1024
+    if not content or len(content) > limit:
+        raise HTTPException(413, "Photo must be under 5MB and video must be under 50MB")
+    suffix = allowed[kind][file.content_type]
+    path = f"dmobilemart/returns/{user['id']}/{uuid.uuid4().hex}{suffix}"
+    stored = await asyncio.to_thread(put_object, path, content, file.content_type)
+    file_id = str(uuid.uuid4())
+    await db.media_files.insert_one({"id": file_id, "storage_path": stored["path"], "original_filename": file.filename or f"return-{kind}", "content_type": file.content_type, "size": stored["size"], "owner_id": user["id"], "kind": f"return_{kind}", "is_deleted": False, "created_at": now()})
+    return {"id": file_id, "kind": kind, "filename": file.filename, "size": stored["size"]}
+
+
+@api.post("/returns/claim", response_model=ManagedRecord)
+async def create_return_claim(input: ReturnClaimInput, user: Annotated[dict[str, Any], Depends(require_customer)]) -> ManagedRecord:
+    order = await db.orders.find_one({"id": input.order_id, "user_id": user["id"]}, {"_id": 0})
+    if not order:
+        raise HTTPException(404, "Order not found")
+    eligible_items = [item for item in order.get("items", []) if int(item.get("warranty_days", 0)) > 0]
+    if not eligible_items:
+        raise HTTPException(409, "No warranty is available for this order")
+    evidence = await db.media_files.find({"id": {"$in": [*input.photo_file_ids, input.video_file_id]}, "owner_id": user["id"], "is_deleted": False}, {"_id": 0, "id": 1, "kind": 1}).to_list(3)
+    if len(evidence) != 3 or sum(row["kind"] == "return_photo" for row in evidence) != 2 or not any(row["kind"] == "return_video" for row in evidence):
+        raise HTTPException(422, "Upload front photo, back photo and one-minute device video first")
+    record = {"id": str(uuid.uuid4()), "resource": "returns", "title": f"Warranty return: {order['order_number']}", "description": input.detail, "status": "pending_admin_review", "data": {"order_id": order["id"], "reason": input.reason, "photo_file_ids": input.photo_file_ids, "video_file_id": input.video_file_id, "eligible_items": [item["name"] for item in eligible_items], "admin_reason": ""}, "user_id": user["id"], "created_at": now(), "updated_at": now()}
+    await db.returns.insert_one(record.copy())
+    return managed_payload(record)
+
+
+@api.post("/admin/returns/{return_id}/decision", response_model=ManagedRecord)
+async def decide_return_claim(return_id: str, input: ReturnDecisionInput, _: Annotated[dict[str, Any], Depends(admin_user)]) -> ManagedRecord:
+    status = "approved" if input.decision == "approve" else "disapproved"
+    updated = await db.returns.find_one_and_update({"id": return_id, "status": "pending_admin_review"}, {"$set": {"status": status, "data.admin_reason": input.reason, "updated_at": now()}}, return_document=True, projection={"_id": 0})
+    if not updated:
+        raise HTTPException(409, "Return is not awaiting review")
+    return managed_payload(updated)
+
+
+async def customer_chat_thread(user: dict[str, Any]) -> dict[str, Any]:
+    thread = await db.chat_threads.find_one({"user_id": user["id"]}, {"_id": 0})
+    if thread:
+        return thread
+    thread = {"id": str(uuid.uuid4()), "user_id": user["id"], "user_name": user["name"], "user_email": user["email"], "status": "open", "updated_at": now(), "created_at": now()}
+    await db.chat_threads.insert_one(thread.copy())
+    return thread
+
+
+@api.get("/chat/thread")
+async def get_customer_chat(user: Annotated[dict[str, Any], Depends(require_customer)]) -> dict[str, Any]:
+    thread = await customer_chat_thread(user)
+    messages = await db.chat_messages.find({"thread_id": thread["id"]}, {"_id": 0}).sort("created_at", 1).to_list(200)
+    return {"thread": thread, "messages": [ChatMessage(**message) for message in messages]}
+
+
+@api.post("/chat/messages", response_model=ChatMessage)
+async def send_customer_chat(input: ChatMessageInput, user: Annotated[dict[str, Any], Depends(require_customer)]) -> ChatMessage:
+    thread = await customer_chat_thread(user)
+    message = {"id": str(uuid.uuid4()), "thread_id": thread["id"], "sender_role": "customer", "sender_name": user["name"], "message": input.message.strip(), "created_at": now()}
+    await db.chat_messages.insert_one(message.copy())
+    await db.chat_threads.update_one({"id": thread["id"]}, {"$set": {"updated_at": message["created_at"], "status": "open"}})
+    return ChatMessage(**message)
+
+
+@api.get("/admin/chats")
+async def list_admin_chats(_: Annotated[dict[str, Any], Depends(admin_user)]) -> list[dict[str, Any]]:
+    threads = await db.chat_threads.find({}, {"_id": 0}).sort("updated_at", -1).to_list(200)
+    for thread in threads:
+        thread["unread_customer"] = await db.chat_messages.count_documents({"thread_id": thread["id"], "sender_role": "customer"})
+    return threads
+
+
+@api.get("/admin/chats/{thread_id}")
+async def get_admin_chat(thread_id: str, _: Annotated[dict[str, Any], Depends(admin_user)]) -> dict[str, Any]:
+    thread = await db.chat_threads.find_one({"id": thread_id}, {"_id": 0})
+    if not thread:
+        raise HTTPException(404, "Chat thread not found")
+    messages = await db.chat_messages.find({"thread_id": thread_id}, {"_id": 0}).sort("created_at", 1).to_list(200)
+    return {"thread": thread, "messages": [ChatMessage(**message) for message in messages]}
+
+
+@api.post("/admin/chats/{thread_id}/messages", response_model=ChatMessage)
+async def send_admin_chat(thread_id: str, input: ChatMessageInput, admin: Annotated[dict[str, Any], Depends(admin_user)]) -> ChatMessage:
+    thread = await db.chat_threads.find_one({"id": thread_id}, {"_id": 0})
+    if not thread:
+        raise HTTPException(404, "Chat thread not found")
+    message = {"id": str(uuid.uuid4()), "thread_id": thread_id, "sender_role": "admin", "sender_name": admin["name"], "message": input.message.strip(), "created_at": now()}
+    await db.chat_messages.insert_one(message.copy())
+    await db.chat_threads.update_one({"id": thread_id}, {"$set": {"updated_at": message["created_at"]}})
+    return ChatMessage(**message)
 
 
 @api.get("/admin/orders/{order_id}/payment-proof")
