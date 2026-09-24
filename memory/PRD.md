@@ -46,13 +46,20 @@ Build a production-ready MobileCart storefront and web admin panel with product 
 - Fixed email/password reliability: valid credentials now clear stale failed-attempt records and immediately restore the session; wrong passwords retain the rate-limit protection. Login displays a persistent, readable error message.
 - Iteration 10 validated repeat customer/admin email login, valid-password recovery after lockout, visible auth errors, profile/account session persistence, and no Account runtime overlay.
 
+## Implemented — 2026-09-24
+- Completed and validated the rich MobileCart admin workspace: live dashboard metrics, quick filtering/ranking across product, user, wallet, auction, category, and managed-content tables, plus Hindi feedback for admin save actions.
+- Added the admin Quality Check editor (grade plus pass/fail/unknown device checks) and customer-facing QC Report on product detail pages, including pass/defect totals and a defects-only filter.
+- Added dynamic Razorpay payment settings with masked secret fields, test/live mode, payment-method switches, partial-payment controls, public checkout configuration, and server-side protection against disabled checkout methods.
+- Hardened live catalog reads with cache-busting product detail requests, no-store server response headers, and overlap-free one-second polling. Immediate create-to-customer QC verification now passes.
+- QA: production frontend build passes; Python compilation passes; Iteration 12 backend suite passes 7/8. The only failed check is preview-gateway credentialed OPTIONS handling, which rejects the configured preview origin before the app; same-origin MobileCart login/API journeys work.
+
 ## Prioritized Backlog
-- P0: Validate external preview gateway CORS behavior if a separate-origin client must access APIs; current MobileCart frontend uses same-origin API calls and works.
+- P0: Preview gateway rejects credentialed `OPTIONS /api/auth/login` before FastAPI even for the configured preview origin. App-side CORS is configured and same-origin login works; ingress/gateway configuration needs an explicit allowlist change for third-party cross-origin clients.
 - P0: Configure outbound email delivery for customer-facing password-reset links; reset tokens are generated securely but currently logged by the backend because no email provider is configured.
 - P0: Preview ingress currently rejects credentialed `OPTIONS /api/auth/login` requests before FastAPI; application-level CORS and same-origin login work. Ingress configuration needs an explicit preview-origin allowlist or CORS disabled at gateway.
 - P1: Add full admin management screens for product/category/order/auction CRUD and connect the remaining dashboard navigation sections.
 - P1: Move uploads to managed object storage before scaling beyond a single application instance.
-- P2: Integrate Razorpay payment creation, verification, webhooks, refunds, and reconciliation.
+- P2: Configure real Razorpay Key ID, Key Secret, and Webhook Secret in Admin → Razorpay & Payments, then validate provider checkout, webhooks, refunds, and reconciliation. **Real Razorpay payment is not configured in this environment.**
 - P2: Add auction closing scheduler and live bid synchronization.
 
 ## Next Tasks
@@ -61,3 +68,4 @@ Build a production-ready MobileCart storefront and web admin panel with product 
 3. Add AI Assistant / Deal Engine through the approved LLM integration flow.
 4. Add referrals, bulk-buy and price tracking.
 5. Add auction closing scheduler and real-time bid synchronization.
+6. Keep QA-created inactive test products cleaned periodically; admin delete currently soft-unpublishes products for audit safety.

@@ -1,0 +1,71 @@
+{
+  "summary": "Executed backend pytest regression for health/payment/auth/checkout guard and ran targeted UI integration checks for storefront/admin/search/payment-settings/QC sync. Backend core checks passed except auth preflight CORS origin header. Frontend core flows mostly pass, but 1-second live sync to customer product route is inconsistent for newly created QC products.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "/api/auth/login (OPTIONS preflight)",
+        "issue": "Preflight returns 400 and does not include access-control-allow-origin for explicit preview origin, while allow-credentials=true is present.",
+        "priority": "CRITICAL"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "AdminProductManager QC grade select",
+        "issue": "Console reports hydration warning: <span> cannot be child of <option> while rendering QC grade options.",
+        "selector": "[data-testid=\"product-qc-grade-select\"]",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Admin create product with QC -> customer /product/{slug} visibility within 1s",
+        "issue": "Newly created QC product did not become visible on customer product route within the 1-second target window in repeated runs; product later became visible with correct QC counts.",
+        "affected_selectors": [
+          "[data-testid=\"save-product-button\"]",
+          "[data-testid=\"qc-report\"]",
+          "[data-testid=\"qc-pass-count\"]",
+          "[data-testid=\"qc-fail-count\"]"
+        ]
+      },
+      {
+        "flow": "Store announcement polling",
+        "issue": "Intermittent 503 seen in browser console for /api/content/announcements during admin/product operations.",
+        "affected_selectors": []
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration12_payment_guard_and_admin_live.py",
+    "/app/test_reports/pytest/pytest_results.xml",
+    "/root/.emergent/automation_output/20260924_134608/console_20260924_134608.log",
+    "/root/.emergent/automation_output/20260924_134846/console_20260924_134846.log"
+  ],
+  "action_items": [
+    "Fix auth preflight handling: return explicit access-control-allow-origin for credentialed preview origin and ensure OPTIONS is fully supported.",
+    "Stabilize live sync path for just-created products on customer product route; verify cache-busting/invalidation path for /api/products/{slug_or_id} and frontend product fetch timing.",
+    "Investigate intermittent /api/content/announcements 503 during active admin operations.",
+    "Fix QC grade select rendering warning so option children are plain text nodes only."
+  ],
+  "critical_code_review_comments": [
+    "server.py CORS middleware allow_methods excludes OPTIONS, matching repeated preflight mismatch symptoms.",
+    "Current backend delete product endpoint soft-deletes (active=false), so disposable QA products accumulate as inactive records unless periodic cleanup is added.",
+    "Monolithic backend file size remains high, which increases regression blast radius for auth + commerce changes."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration12_payment_guard_and_admin_live.py",
+    "/app/test_reports/iteration_12.json"
+  ],
+  "success_rate": {
+    "backend": "87.5% (7/8 passing)",
+    "frontend": "70% (major requested flows pass; live 1-second QC sync SLA failed/inconsistent)"
+  },
+  "seed_data_creation": "Created temporary customers in backend lockout/checkout-guard tests and temporary admin QC products for UI sync checks; disposable products were unpublished (soft delete) after testing.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Verified storefront load, admin login/dashboard, admin search precision (exact query -> matching row), Razorpay settings retrieval/toggle persistence, and checkout payment option visibility tied to settings (COD hidden when disabled). Backend guard for disabled COD is validated via pytest (422). Razorpay real payment is not configured in this environment, so only configuration/guard behavior was tested. One created QC test product became visible later with correct pass/fail counts (1/1), but repeated immediate post-create checks failed 1-second SLA.",
+  "rca of the issue": "Repro: create fresh product from admin with QC pass+defect, then immediately open customer /product/{slug} route and poll for qc-report. In repeated runs, qc-report was not visible within strict SLA window despite product creation success; same slug later resolved and showed correct QC counts. Likely transient propagation/caching mismatch between admin write path and product-detail read path (or route-level cache without immediate invalidation). Mitigation: enforce write-through invalidation for product detail endpoint and include deterministic cache-buster/version token in product-detail fetch path after admin publish."
+}

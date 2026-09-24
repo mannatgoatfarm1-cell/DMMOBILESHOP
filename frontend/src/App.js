@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BrowserRouter, Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { Toaster, toast } from "sonner";
 import { GoogleOAuthProvider, useGoogleLogin } from "@react-oauth/google";
@@ -9,6 +9,8 @@ import {
   Truck, RotateCcw, ShieldCheck, BadgeCheck, LoaderCircle, LogOut, Wallet, Tag, ZoomIn,
 } from "lucide-react";
 import { api, apiError, cardProduct } from "@/api";
+import { speakHindi } from "@/lib/adminFeedback";
+import { QC_CHECKS, QC_GRADES, gradeLabel } from "@/lib/qc";
 import AdminWorkspace from "@/components/AdminWorkspace";
 import AccountExtras from "@/components/AccountExtras";
 import "@/App.css";
@@ -324,6 +326,39 @@ function BottomNav({ active = "Home" }) {
   return <nav className="bottom-nav">{items.map(([label, to, Icon]) => <Link className={active === label ? "active" : ""} to={to} key={label} data-testid={`bottom-nav-${label.toLowerCase().replace(" ", "-")}`}><Icon size={19} /><span>{label}</span></Link>)}</nav>;
 }
 
+function QCReport({ product }) {
+  const [defectsOnly, setDefectsOnly] = useState(false);
+  const status = product.qc_status || {};
+  const entries = QC_CHECKS.map((check) => [check, status[check] || "unknown"]);
+  const checked = entries.filter(([, value]) => value !== "unknown");
+  if (!checked.length) return null;
+  const passed = checked.filter(([, value]) => value === "pass").length;
+  const failed = checked.filter(([, value]) => value === "fail").length;
+  const shown = defectsOnly ? entries.filter(([, value]) => value === "fail") : entries.filter(([, value]) => value !== "unknown");
+  return (
+    <section className="qc-report" data-testid="qc-report">
+      <div className="qc-report-head">
+        <div><span className="eyebrow">QUALITY CHECK REPORT</span><h3><ShieldCheck size={16} /> {gradeLabel(product.qc_grade)} · {checked.length}-Point Inspection</h3></div>
+        <label className="qc-defects-toggle" data-testid="qc-defects-toggle"><input type="checkbox" checked={defectsOnly} onChange={(event) => setDefectsOnly(event.target.checked)} /> Show defects only</label>
+      </div>
+      <div className="qc-metrics">
+        <div className="qc-metric pass" data-testid="qc-pass-count"><b>{passed}</b><small>Passed</small></div>
+        <div className="qc-metric fail" data-testid="qc-fail-count"><b>{failed}</b><small>Defects</small></div>
+        <div className="qc-metric total"><b>{checked.length}</b><small>Checked</small></div>
+      </div>
+      <div className="qc-report-grid">
+        {shown.map(([check, value]) => (
+          <div className={`qc-report-item ${value}`} key={check} data-testid={`qc-report-${check}`}>
+            <span className="qc-mark">{value === "pass" ? <Check size={13} /> : value === "fail" ? <X size={13} /> : "—"}</span>
+            <span>{check}</span>
+          </div>
+        ))}
+        {!shown.length && <p className="qc-no-defects" data-testid="qc-no-defects">कोई डिफेक्ट नहीं मिला — सभी चेक पास ✓</p>}
+      </div>
+    </section>
+  );
+}
+
 function ProductPage({ onAdd, onWish, common }) {
   const { id } = useParams();
   const [product, setProduct] = useState(null);
@@ -332,7 +367,7 @@ function ProductPage({ onAdd, onWish, common }) {
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     setLoading(true); setSimilarProducts([]); setZoomed(false);
-    api.get(`/api/products/${id}`).then(async ({ data }) => {
+    api.get(`/api/products/${id}?_live=${Date.now()}`).then(async ({ data }) => {
       const selected = cardProduct(data);
       setProduct(selected);
       const response = await api.get(`/api/products?category=${encodeURIComponent(selected.category_slug)}&page_size=8`);
@@ -365,6 +400,7 @@ function ProductPage({ onAdd, onWish, common }) {
             </div>
           </div>
         </div>
+        <QCReport product={product} />
         {similarProducts.length > 0 && <section className="similar-products" data-testid="similar-products-section"><SectionTitle title="Similar Products" action="View All" to={`/category?category=${product.category_slug}`} /><div className="product-grid grid-4">{similarProducts.map((item, index) => <ProductCard product={item} onAdd={onAdd} onWish={onWish} badge={BADGES[index % BADGES.length]} key={item.id} />)}</div></section>}
       </main>
       {zoomed && <div className="image-lightbox" role="dialog" aria-modal="true" aria-label={`${product.name} image preview`} data-testid="product-image-zoom-modal"><button className="lightbox-backdrop" onClick={() => setZoomed(false)} aria-label="Close image preview" data-testid="product-image-zoom-backdrop" /><div className="lightbox-content"><img src={product.image} alt={`${product.name} enlarged`} /><button className="lightbox-close" onClick={() => setZoomed(false)} aria-label="Close image preview" data-testid="product-image-zoom-close"><X size={20} /></button></div></div>}
@@ -428,6 +464,7 @@ function AddressForm({ onDone }) {
 function Checkout({ cart, user, refreshUser, refreshCart, common }) {
   const [paid, setPaid] = useState(false);
   const [method, setMethod] = useState("upi");
+  const [paymentConfig, setPaymentConfig] = useState(null);
   const [busy, setBusy] = useState(false);
   const [couponCode, setCouponCode] = useState("");
   const [coupon, setCoupon] = useState(null);
@@ -435,6 +472,15 @@ function Checkout({ cart, user, refreshUser, refreshCart, common }) {
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const total = Math.max(0, subtotal - (coupon?.discount || 0) + 99);
   const address = user?.addresses?.[0];
+  const paymentMethods = useMemo(() => [
+    ["upi", "UPI", "Pay using any UPI app"], ["card", "Credit / Debit Card", "Visa, Mastercard, RuPay"], ["net_banking", "Net Banking", "All major banks"], ["wallet", "MobileCart Wallet", "Use your available wallet balance"], ["cod", "COD", "Cash on Delivery"],
+  ].filter(([value]) => paymentConfig?.methods?.[value] !== false), [paymentConfig]);
+  useEffect(() => {
+    api.get("/api/payment-config").then(({ data }) => setPaymentConfig(data)).catch(() => setPaymentConfig({ methods: { upi: true, card: true, net_banking: true, wallet: true, cod: true } }));
+  }, []);
+  useEffect(() => {
+    if (paymentMethods.length && !paymentMethods.some(([value]) => value === method)) setMethod(paymentMethods[0][0]);
+  }, [method, paymentMethods]);
   const applyCoupon = async () => { if (!couponCode.trim()) return; setCouponBusy(true); try { const { data } = await api.post("/api/coupons/validate", { code: couponCode, subtotal }); setCoupon(data); toast.success(`${data.code} applied`); } catch (error) { setCoupon(null); toast.error(apiError(error)); } finally { setCouponBusy(false); } };
   const place = async () => {
     if (!address) return; setBusy(true);
@@ -454,9 +500,11 @@ function Checkout({ cart, user, refreshUser, refreshCart, common }) {
             <section>
               <div className="checkout-section"><h3>Delivery address <Link to="/account" data-testid="change-checkout-address">Change</Link></h3><div className="address-card"><b>{address.label}</b><p>{address.recipient_name}</p><span>{address.line1}<br />{address.city} - {address.postal_code}<br />{address.phone}</span></div></div>
               <div className="checkout-section"><h3>Payment Options</h3>
-                {[["upi", "UPI", "Pay using any UPI app"], ["card", "Credit / Debit Card", "Visa, Mastercard, RuPay"], ["net_banking", "Net Banking", "All major banks"], ["wallet", "MobileCart Wallet", "Use your available wallet balance"], ["cod", "COD", "Cash on Delivery"]].map(([value, label, detail]) => (
+                {paymentConfig?.partial_payment_enabled && method !== "cod" && method !== "wallet" && <p className="partial-payment-note" data-testid="partial-payment-note">आज सिर्फ़ {paymentConfig.partial_payment_percent}% advance दें — बाकी delivery से पहले।</p>}
+                {paymentMethods.map(([value, label, detail]) => (
                   <label className="payment-option" key={value}><input type="radio" name="payment" checked={method === value} onChange={() => setMethod(value)} data-testid={`payment-${value}`} /><span>{label}<small>{detail}</small></span><ChevronRight size={15} /></label>
                 ))}
+                {!paymentMethods.length && <p className="payment-unavailable" data-testid="payment-methods-unavailable">अभी कोई payment method उपलब्ध नहीं है। कृपया थोड़ी देर बाद कोशिश करें।</p>}
               </div>
             </section>
             <aside className="summary">
@@ -468,7 +516,7 @@ function Checkout({ cart, user, refreshUser, refreshCart, common }) {
               <div><span>Delivery</span><b className="green-text">FREE</b></div>
               <hr />
               <div className="total"><span>Payable Now</span><strong>{money(total)}</strong></div>
-              <button onClick={place} disabled={busy || !cart.length} className="primary-btn full" data-testid="place-order-button">{busy ? "Placing order…" : method === "cod" ? "Place COD Order" : `Pay ${money(total)} Now`}</button>
+              <button onClick={place} disabled={busy || !cart.length || !paymentMethods.length} className="primary-btn full" data-testid="place-order-button">{busy ? "Placing order…" : method === "cod" ? "Place COD Order" : `Pay ${money(total)} Now`}</button>
               <small className="secure"><ShieldCheck size={12} /> 100% secure payment</small>
             </aside>
           </div>
@@ -636,6 +684,7 @@ function App() {
   const [wishCount, setWishCount] = useState(0);
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const liveRefreshInFlight = useRef(false);
   const refreshProducts = useCallback(async (params = "") => { try { const connector = params ? "&" : "?"; const { data } = await api.get(`/api/products${params}${connector}_live=${Date.now()}`); setProducts(data.items.map(cardProduct)); } catch (error) { toast.error(apiError(error)); } }, []);
   const refreshAuctions = useCallback(async () => { try { const { data } = await api.get(`/api/auctions?_live=${Date.now()}`); setAuctions(data.map((entry) => ({ ...entry, product: entry.product ? cardProduct(entry.product) : null }))); } catch (error) { toast.error(apiError(error)); } }, []);
   const refreshAnnouncements = useCallback(async () => { try { const { data } = await api.get(`/api/content/announcements?_live=${Date.now()}`); setAnnouncements(data); } catch { setAnnouncements([]); } }, []);
@@ -643,12 +692,33 @@ function App() {
   const refreshWish = useCallback(async () => { if (!user) { setWishCount(0); return; } try { const { data } = await api.get("/api/wishlist"); setWishCount(data.length); } catch { setWishCount(0); } }, [user]);
   const refreshUser = useCallback(async () => { try { const { data } = await api.get("/api/auth/me"); setUser(data); return data; } catch { return null; } }, []);
   useEffect(() => { api.get("/api/auth/me").then(({ data }) => setUser(data)).catch(() => setUser(null)).finally(() => setAuthLoading(false)); api.get(`/api/categories?_live=${Date.now()}`).then(({ data }) => setCategories(data)).catch(() => setCategories([])); refreshProducts(); refreshAuctions(); refreshAnnouncements(); }, [refreshProducts, refreshAuctions, refreshAnnouncements]);
-  useEffect(() => { const liveRefresh = () => { refreshProducts(); refreshAuctions(); refreshAnnouncements(); api.get(`/api/categories?_live=${Date.now()}`).then(({ data }) => setCategories(data)).catch(() => {}); }; const liveSync = setInterval(liveRefresh, 1000); const storageSync = (event) => { if (event.key === "mobilecart-live-update") liveRefresh(); }; window.addEventListener("mobilecart:live-update", liveRefresh); window.addEventListener("storage", storageSync); return () => { clearInterval(liveSync); window.removeEventListener("mobilecart:live-update", liveRefresh); window.removeEventListener("storage", storageSync); }; }, [refreshProducts, refreshAuctions, refreshAnnouncements]);
+  useEffect(() => {
+    let refreshQueued = false;
+    let disposed = false;
+    const liveRefresh = async () => {
+      if (liveRefreshInFlight.current) { refreshQueued = true; return; }
+      liveRefreshInFlight.current = true;
+      try {
+        await Promise.all([
+          refreshProducts(), refreshAuctions(), refreshAnnouncements(),
+          api.get(`/api/categories?_live=${Date.now()}`).then(({ data }) => setCategories(data)).catch(() => {}),
+        ]);
+      } finally {
+        liveRefreshInFlight.current = false;
+        if (refreshQueued && !disposed) { refreshQueued = false; liveRefresh(); }
+      }
+    };
+    const liveSync = setInterval(liveRefresh, 1000);
+    const storageSync = (event) => { if (event.key === "mobilecart-live-update") liveRefresh(); };
+    window.addEventListener("mobilecart:live-update", liveRefresh);
+    window.addEventListener("storage", storageSync);
+    return () => { disposed = true; clearInterval(liveSync); window.removeEventListener("mobilecart:live-update", liveRefresh); window.removeEventListener("storage", storageSync); };
+  }, [refreshProducts, refreshAuctions, refreshAnnouncements]);
   useEffect(() => { if (!authLoading) { refreshCart(); refreshWish(); } }, [authLoading, user, refreshCart, refreshWish]);
-  const add = async (product, buyNow = false) => { if (!user) { toast.error("Please sign in to save your cart"); navigate("/login?next=/cart"); return; } try { await api.post("/api/cart/items", { product_id: product.id, quantity: 1 }); await refreshCart(); toast.success(`${product.name} added to cart`); if (buyNow) navigate("/cart"); } catch (error) { toast.error(apiError(error)); } };
+  const add = async (product, buyNow = false) => { if (!user) { toast.error("Please sign in to save your cart"); navigate("/login?next=/cart"); return; } try { await api.post("/api/cart/items", { product_id: product.id, quantity: 1 }); await refreshCart(); toast.success(`${product.name} added to cart`); speakHindi(`${product.name} कार्ट में जोड़ दिया गया`); if (buyNow) navigate("/cart"); } catch (error) { toast.error(apiError(error)); } };
   const setQuantity = async (item, quantity) => { try { if (quantity < 1) await api.delete(`/api/cart/items/${item.id}`); else await api.patch(`/api/cart/items/${item.id}`, { product_id: item.id, quantity }); await refreshCart(); } catch (error) { toast.error(apiError(error)); } };
-  const remove = async (id) => { try { await api.delete(`/api/cart/items/${id}`); await refreshCart(); toast.success("Removed from cart"); } catch (error) { toast.error(apiError(error)); } };
-  const wish = async (id) => { if (!user) { navigate("/login"); return; } try { await api.put(`/api/wishlist/${id}`); await refreshWish(); toast.success("Saved to wishlist"); } catch (error) { toast.error(apiError(error)); } };
+  const remove = async (id) => { try { await api.delete(`/api/cart/items/${id}`); await refreshCart(); toast.success("Removed from cart"); speakHindi("कार्ट से हटा दिया गया"); } catch (error) { toast.error(apiError(error)); } };
+  const wish = async (id) => { if (!user) { navigate("/login"); return; } try { await api.put(`/api/wishlist/${id}`); await refreshWish(); toast.success("Saved to wishlist"); speakHindi("विशलिस्ट में सेव कर दिया गया"); } catch (error) { toast.error(apiError(error)); } };
   const logout = async () => { try { await api.post("/api/auth/logout"); } finally { setUser(null); setCart([]); setWishCount(0); navigate("/"); toast.success("Signed out"); } };
   const common = { cartCount: cart.reduce((sum, item) => sum + item.quantity, 0), wishCount, user, onSearch: (query) => refreshProducts(`?query=${encodeURIComponent(query)}`), onMenu: () => navigate("/account") };
   if (authLoading) return <Loading label="Connecting to MobileCart…" />;

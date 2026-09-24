@@ -1,119 +1,156 @@
 {
   "theme": "dark",
-  "archetype": "Luxury (Archetype 5) + Swiss High-Contrast (Archetype 4) - Dark Navy/Purple/Blue Luxury Styling",
   "typography": {
-    "headings": {
-      "fontFamily": "Satoshi, sans-serif",
-      "strategy": "Expressive, tight tracking for high-end feel. No generic Inter for headings."
+    "font_family": {
+      "headings": "Manrope, sans-serif",
+      "body": "Inter, sans-serif"
     },
-    "body": {
-      "fontFamily": "IBM Plex Sans, sans-serif",
-      "strategy": "Crisp, highly legible for dense admin data and tables."
-    },
-    "scale": {
-      "h1": "text-3xl sm:text-4xl font-medium tracking-tight",
-      "h2": "text-2xl sm:text-3xl tracking-tight",
-      "h3": "text-xl sm:text-2xl",
-      "h4": "text-lg sm:text-xl",
-      "body": "text-sm",
-      "labels": "text-xs uppercase tracking-[0.2em]"
+    "hierarchy": {
+      "h1": "text-3xl sm:text-4xl font-bold tracking-tight text-white",
+      "h2": "text-xl sm:text-2xl font-semibold tracking-tight text-white",
+      "h3": "text-lg font-medium text-white",
+      "body": "text-sm text-slate-300",
+      "label": "text-xs font-semibold tracking-wider uppercase text-slate-400"
     }
   },
   "colors": {
-    "background": "#090E17",
-    "surface": "#121A2F",
-    "primary": "#4F46E5",
-    "primaryHover": "#6366F1",
-    "accent": "#F59E0B",
-    "text": {
-      "primary": "#F9FAFB",
-      "secondary": "#9CA3AF"
+    "background": {
+      "base": "#0B0F19",
+      "surface": "#131C31",
+      "surface_glass": "rgba(19, 28, 49, 0.7)"
     },
-    "borders": "rgba(255,255,255,0.1)",
-    "success": "#10B981",
-    "danger": "#EF4444",
-    "strategy": "Deep midnight blue/navy background (#090E17) with royal purple/indigo primary actions (#4F46E5). High contrast text for dense data. Avoid #7351B7 and #1B93A4. Strict adherence to luxury e-commerce admin aesthetics."
+    "accents": {
+      "primary": "#8B5CF6", 
+      "secondary": "#06B6D4",
+      "gradient_stat": "bg-gradient-to-br from-purple-500/20 to-cyan-500/20"
+    },
+    "status": {
+      "success": {
+        "text": "text-emerald-400",
+        "bg": "bg-emerald-400/10",
+        "border": "border-emerald-400/20"
+      },
+      "warning": {
+        "text": "text-amber-400",
+        "bg": "bg-amber-400/10",
+        "border": "border-amber-400/20"
+      },
+      "info": {
+        "text": "text-blue-400",
+        "bg": "bg-blue-400/10",
+        "border": "border-blue-400/20"
+      },
+      "danger": {
+        "text": "text-rose-400",
+        "bg": "bg-rose-400/10",
+        "border": "border-rose-400/20"
+      }
+    },
+    "text": {
+      "primary": "#FFFFFF",
+      "secondary": "#94A3B8",
+      "muted": "#64748B"
+    },
+    "border": "rgba(255, 255, 255, 0.08)"
   },
   "visual_enhancers": {
-    "surfaces": "Glassmorphism for sticky headers (bg-[#090E17]/80 backdrop-blur-xl border-b border-white/10). Flat solid for dashboard widgets with max 8px border-radius.",
-    "borders": "1px solid border-white/10. Subtle and sharp. No soft UI.",
-    "shadows": "Minimal ambient glow for active elements (e.g., shadow-[0_0_15px_rgba(79,70,229,0.2)]). Do not use heavy drop shadows on cards."
+    "glassmorphism": "bg-[#131C31]/80 backdrop-blur-xl border border-white/10",
+    "glow_effects": {
+      "primary": "shadow-[0_0_20px_rgba(139,92,246,0.3)]",
+      "secondary": "shadow-[0_0_20px_rgba(6,182,212,0.3)]",
+      "active_sidebar": "shadow-[inset_4px_0_0_0_rgba(139,92,246,1)] bg-purple-500/10"
+    },
+    "gradients": {
+      "text": "bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-cyan-400",
+      "border": "bg-gradient-to-r from-purple-500/50 to-cyan-500/50"
+    }
   },
-  "grids_and_layouts": {
-    "strategy": "High Density Grid (Mode B). Dense data correlation, scanability.",
-    "spacing": "Generous container padding (p-6, p-8) but tight grid gaps (gap-4, gap-6) for widgets.",
-    "structure": "Persistent sidebar navigation (left), sticky top header (glassmorphism), main content area."
+  "layouts": {
+    "app_shell": "flex h-screen w-full bg-[#0B0F19] text-white overflow-hidden",
+    "sidebar": "w-64 h-full bg-[#131C31] border-r border-white/10 flex flex-col z-20 flex-shrink-0 overflow-y-auto",
+    "main_wrapper": "flex-1 flex flex-col h-full min-w-0 overflow-hidden relative",
+    "header": "h-16 w-full border-b border-white/10 bg-[#0B0F19]/80 backdrop-blur-md flex items-center justify-between px-6 z-10",
+    "content_area": "flex-1 overflow-y-auto p-6 md:p-8 space-y-8",
+    "dashboard_grid": "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6",
+    "charts_grid": "grid grid-cols-1 lg:grid-cols-3 gap-6"
   },
   "components": {
-    "buttons": "Max 8px radius. Hover states must explicitly shift to a lighter hue of the primary color (e.g., hover:bg-indigo-500 hover:text-white). Ensure future-proof modularity.",
-    "cards": "Subtle roundness (8px), border border-white/10, solid dark background (#121A2F). No drop shadows, use borders for definition.",
-    "forms_inputs": "Shadcn standard inputs. Custom border colors focus:ring-2 focus:ring-indigo-500. Background #1A243D.",
-    "tables": "Dense layouts. IBM Plex Sans for tabular data (perfect for wallet ledger and product lists). Clear row hover states (hover:bg-white/5).",
-    "toasts": "Sonner for all notifications (e.g., one-click update success).",
-    "dialogs": "Used for quick-add actions, product image previews, and coupon setup."
-  },
-  "icons": {
-    "library": "@phosphor-icons/react",
-    "strategy": "Regular or Duotone weight. Consistent sizing (20px).",
-    "installation": "yarn add @phosphor-icons/react"
+    "stat_card": "relative overflow-hidden rounded-xl bg-[#131C31]/80 backdrop-blur-md border border-white/10 p-6 transition-all duration-300 hover:shadow-[0_0_25px_rgba(139,92,246,0.15)] hover:-translate-y-1 group",
+    "status_pill": "inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium border",
+    "table": {
+      "container": "w-full overflow-x-auto rounded-xl border border-white/10 bg-[#131C31]/50 backdrop-blur-md",
+      "header": "bg-[#0B0F19] text-xs font-semibold tracking-wider text-slate-400 uppercase text-left",
+      "row": "border-b border-white/5 hover:bg-white/[0.02] transition-colors",
+      "cell": "whitespace-nowrap px-6 py-4 text-sm text-slate-300"
+    },
+    "input": "w-full bg-[#0B0F19]/50 border border-white/10 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all",
+    "button": {
+      "primary": "bg-purple-600 hover:bg-purple-700 text-white rounded-lg px-4 py-2 font-medium transition-colors shadow-[0_0_15px_rgba(139,92,246,0.4)]",
+      "secondary": "bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-lg px-4 py-2 font-medium transition-colors"
+    },
+    "tabs": "flex space-x-1 rounded-xl bg-white/5 p-1",
+    "tab_trigger": "flex-1 rounded-lg px-3 py-1.5 text-sm font-medium transition-all data-[state=active]:bg-purple-500/20 data-[state=active]:text-purple-300 data-[state=active]:shadow-[0_0_10px_rgba(139,92,246,0.2)]"
   },
   "motion": {
-    "strategy": "Minimalist micro-interactions. Hover states for all interactive elements. Enter animations for data tables (staggered).",
-    "rules": "Respect prefers-reduced-motion. Never apply 'transition: all'. Target specific properties (e.g., transition-colors duration-200)."
+    "stagger_children": "transition: { staggerChildren: 0.1 }",
+    "fade_up": { "initial": { "opacity": 0, "y": 20 }, "animate": { "opacity": 1, "y": 0 } },
+    "hover_glow": "transition-shadow duration-300 ease-in-out hover:shadow-[0_0_25px_rgba(139,92,246,0.3)]"
   },
   "accessibility": {
-    "contrast": "APCA preferred. Normal text min 4.5:1. Interactive elements min 3:1.",
-    "focus": "Clear focus rings on inputs and buttons.",
-    "testing": "All interactive and key informational elements MUST include data-testid attributes (e.g., data-testid='product-publish-button', data-testid='wallet-credit-btn')."
+    "focus_ring": "focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B0F19]",
+    "contrast": "Ensure text meets APCA standards. Use slate-300 or white on dark backgrounds.",
+    "testing": "All interactive elements MUST include data-testid attribute"
   },
   "media": {
-    "images": [
-      {
-        "url": "https://images.unsplash.com/photo-1760804876422-7efb73b58048?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAxODF8MHwxfHNlYXJjaHw0fHxsdXh1cnklMjBlLWNvbW1lcmNlJTIwcHJvZHVjdHxlbnwwfHx8fDE3OTAxMTQ2OTh8MA&ixlib=rb-4.1.0&q=85",
-        "category": "product_placeholder",
-        "description": "Black box with gold lettering for luxury product placeholders"
+    "image_urls": {
+      "admin_avatar": {
+        "url": "https://images.unsplash.com/photo-1544723795-3fb6469f5b39?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NjV8MHwxfHNlYXJjaHwyfHxhZG1pbiUyMHByb2ZpbGUlMjBwaWN0dXJlfGVufDB8fHx8MTc5MDEzNjc4MHww&ixlib=rb-4.1.0&q=85",
+        "description": "Admin profile picture",
+        "category": "Avatar"
       },
-      {
-        "url": "https://images.unsplash.com/photo-1593418632104-71bd668d1af1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAxODF8MHwxfHNlYXJjaHwxfHxsdXh1cnklMjBlLWNvbW1lcmNlJTIwcHJvZHVjdHxlbnwwfHx8fDE3OTAxMTQ2OTh8MA&ixlib=rb-4.1.0&q=85",
-        "category": "product_preview",
-        "description": "Chanel bag with perfume for product mockups"
-      },
-      {
-        "url": "https://images.pexels.com/photos/7832476/pexels-photo-7832476.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
-        "category": "user_avatar",
-        "description": "Portrait of a young middle eastern man for admin or customer avatar"
-      },
-      {
-        "url": "https://images.unsplash.com/photo-1655841439659-0afc60676b70?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAxODF8MHwxfHNlYXJjaHwyfHxhYnN0cmFjdCUyMGRhcmslMjBibHVlJTIwbHV4dXJ5JTIwYmFja2dyb3VuZHxlbnwwfHx8fDE3OTAxMTQ2OTh8MA&ixlib=rb-4.1.0&q=85",
-        "category": "auth_background",
-        "description": "Dark teal wavy shapes on black for login or banner backgrounds"
+      "product_placeholder": {
+        "url": "https://images.unsplash.com/photo-1605236453806-6ff36851218e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzh8MHwxfHNlYXJjaHwxfHxwcm9kdWN0JTIwc21hcnRwaG9uZXxlbnwwfHx8fDE3OTAxMzY3ODZ8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Smartphone product placeholder",
+        "category": "Products"
       }
-    ],
-    "image_rules": "Never use placeholders. Preserve main subjects. Images over content should use gradient overlays (max bg-black/50)."
+    }
   },
-  "specific_features": {
-    "product_management": "CRUD table with multiple image upload zones. Image previews are mandatory. Provide a 'one-click publish' toggle with instant state update and toast feedback.",
-    "wallet_ledger": "Credit/Debit UI requires high contrast tabular data showing green text for credit (+), red for debit (-). Keep numbers monospaced.",
-    "content_publishing": "Homepage content publishing, banner, campaign, coupon control. Utilize modular forms and sections.",
-    "users_and_orders": "Dashboards for Users, Vendors, Orders, Payments, and Auctions. Display KPIs using high-density grid metrics."
-  },
-  "instructions_to_main_agent": [
-    "Prioritize Shadcn components customized with the dark navy/purple/blue luxury theme.",
-    "Build the dashboard layout with a fixed sidebar and sticky header.",
-    "Implement product CRUD with drag-and-drop multiple image upload previews.",
-    "Ensure the wallet debit/credit ledger is visually distinct and heavily utilizes IBM Plex Sans for monospaced figures.",
-    "Add 'data-testid' to all buttons, inputs, links, and actionable icons.",
-    "Use sonner for success/error toasts after any one-click update operations.",
-    "Avoid fully transparent backgrounds for sticky headers or dropdowns. ALWAYS use solid or heavy backdrop-blur backgrounds.",
-    "Never center-align the app container globally. Maintain a robust structural alignment.",
-    "Ensure all buttons are 'future-ready' (extensible UI components)."
+  "libraries_and_tools": [
+    "lucide-react for icons",
+    "recharts for Revenue Area Chart, Order Status Donut Chart, Orders by Category Donut Chart",
+    "@hello-pangea/dnd or framer-motion for draggable Sections list in App Manager",
+    "date-fns for date formatting"
   ],
+  "instructions_to_main_agent": {
+    "setup": "Apply CSS variables in index.css for the dark theme colors. Use Tailwind arbitrary values for specific hexes if needed, or update tailwind.config.js to include #0B0F19 (bg-base) and #131C31 (bg-surface).",
+    "routing": "Since it's a SPA with an existing FastAPI backend, ensure all admin routes render within the defined App Shell (Sidebar + Header layout). Do NOT break existing data flow.",
+    "components": [
+      "Create a reusable StatCard component that accepts icon, label, value, trend, and an optional gradient glow color.",
+      "Implement the 'Customer App Manager' panel using a two-column layout: Draggable section list on the left, mobile phone preview frame in the center, and edit form on the right.",
+      "For forms like 'Razorpay Settings', use the glassmorphism input styles.",
+      "Tables should be data-dense. Status pills must use color-coded variants matching the data."
+    ],
+    "animations": "Add subtle Framer Motion enter animations for the dashboard cards and table rows.",
+    "icons": "Use lucide-react. Standardize stroke-width to 1.5 for a clean, modern look."
+  },
   "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
-    "Do not apply universal 'transition: all'. Apply transitions strictly to interactive elements excluding transforms.",
-    "Do not add '.App { text-align: center; }'.",
-    "Use 2-3x more spacing than typical for luxurious feel.",
-    "Never use AI assistant Emoji characters (🤖🧠💡).",
-    "Use sonner for toasts, locate it in /app/src/components/ui/sonner.js",
-    "Always use the provided image URLs. NEVER fall back to via.placeholder.com or similar dummy services."
+    "You tend to converge toward generic, 'on distribution' outputs. In frontend design, this creates what users call the 'AI slop' aesthetic. Avoid this: make creative, distinctive frontends that surprise and delight.",
+    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients.",
+    "Don't make generic centered layouts, simplistic gradients, and uniform styling.",
+    "Create depth through layered design elements with z-index hierarchy.",
+    "Use glass-morphism effects with backdrop filters (12-24px blur).",
+    "You MUST NOT apply universal transition. Eg: transition: all. This results in breaking transforms. Always add transitions for specific interactive elements like button, input excluding transforms.",
+    "You MUST NOT center align the app container, ie do not add .App { text-align: center; } in the css file. This disrupts the human natural reading flow of text.",
+    "Always use modern button styles like pill-shaped, or sharp button with interaction animations & color relevant to the app style.",
+    "NEVER: use AI assistant Emoji characters like 🤖🧠💭💡🔮🎯 etc for icons.",
+    "Every interaction needs micro-animations - hover states, transitions, parallax effects, and entrance animations. Static = dead.",
+    "Use 2-3x more spacing than feels comfortable. Cramped designs look cheap.",
+    "Subtle grain textures, noise overlays, custom cursors, selection states, and loading animations: separates good from extraordinary.",
+    "Main agent relies on these image URLs. Missing categories (especially sponsor logos) = main agent will use placeholder text which is FORBIDDEN.",
+    "Prioritize using pre-existing components from src/components/ui when applicable.",
+    "Create new components that match the style and conventions of existing components when needed.",
+    "Examine existing components to understand the project's component patterns before creating new ones.",
+    "Use sonner for toasts.",
+    "Sonner component are located in /app/src/components/ui/sonner.tsx"
   ]
 }

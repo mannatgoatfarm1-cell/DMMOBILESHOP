@@ -15,6 +15,7 @@ from typing import Annotated, Any, Literal
 
 import bcrypt
 import jwt
+import razorpay
 import requests
 from authlib.integrations.starlette_client import OAuth
 from fastapi import APIRouter, Depends, FastAPI, File, HTTPException, Query, Request, Response, UploadFile
@@ -268,6 +269,8 @@ class Dashboard(BaseModel):
     recent_orders: list[Order]
     order_statuses: dict[str, int]
     activities: list[dict[str, str]]
+    top_categories: list[dict[str, Any]] = []
+    revenue_series: list[dict[str, Any]] = []
 
 
 class ManagedRecordInput(BaseModel):
@@ -311,6 +314,31 @@ class AdminUserCreate(BaseModel):
 class PaymentUpdate(BaseModel):
     status: Literal["pending", "captured", "failed", "refunded", "cash_on_delivery"]
     transaction_id: str | None = Field(default=None, max_length=120)
+
+
+class PaymentSettingsInput(BaseModel):
+    razorpay_key_id: str = Field(default="", max_length=120)
+    razorpay_key_secret: str = Field(default="", max_length=200)
+    razorpay_webhook_secret: str = Field(default="", max_length=200)
+    mode: Literal["test", "live"] = "test"
+    upi_enabled: bool = True
+    card_enabled: bool = True
+    netbanking_enabled: bool = True
+    cod_enabled: bool = True
+    wallet_enabled: bool = True
+    partial_payment_enabled: bool = False
+    partial_payment_percent: int = Field(default=100, ge=10, le=100)
+
+
+class RazorpayOrderInput(BaseModel):
+    order_id: str = Field(min_length=1, max_length=80)
+
+
+class RazorpayVerifyInput(BaseModel):
+    order_id: str = Field(min_length=1, max_length=80)
+    razorpay_order_id: str = Field(min_length=4, max_length=120)
+    razorpay_payment_id: str = Field(min_length=4, max_length=120)
+    razorpay_signature: str = Field(min_length=8, max_length=256)
 
 
 class CouponCheckInput(BaseModel):
@@ -740,7 +768,8 @@ async def list_categories() -> list[Category]:
 
 
 @api.get("/products", response_model=ProductList)
-async def list_products(query: str | None = None, category: str | None = None, min_price: int | None = Query(default=None, ge=0), max_price: int | None = Query(default=None, ge=0), page: int = Query(default=1, ge=1), page_size: int = Query(default=24, ge=1, le=100), sort: Literal["newest", "price_asc", "price_desc"] = "newest") -> ProductList:
+async def list_products(response: Response, query: str | None = None, category: str | None = None, min_price: int | None = Query(default=None, ge=0), max_price: int | None = Query(default=None, ge=0), page: int = Query(default=1, ge=1), page_size: int = Query(default=24, ge=1, le=100), sort: Literal["newest", "price_asc", "price_desc"] = "newest") -> ProductList:
+    response.headers["Cache-Control"] = "no-store, max-age=0"
     filter_query: dict[str, Any] = {"active": True}
     if category:
         filter_query["category_slug"] = category
@@ -756,7 +785,8 @@ async def list_products(query: str | None = None, category: str | None = None, m
 
 
 @api.get("/products/{product_id_or_slug}", response_model=Product)
-async def get_product(product_id_or_slug: str) -> Product:
+async def get_product(product_id_or_slug: str, response: Response) -> Product:
+    response.headers["Cache-Control"] = "no-store, max-age=0"
     row = await db.products.find_one({"$and": [{"active": True}, {"$or": [{"id": product_id_or_slug}, {"slug": product_id_or_slug}]}]}, {"_id": 0})
     if not row:
         raise HTTPException(404, "Product not found")
@@ -870,6 +900,16 @@ async def create_order(input: OrderCreate, user: Annotated[dict[str, Any], Depen
     cart = await cart_response(user["id"])
     if not cart.items:
         raise HTTPException(400, "Your cart is empty")
+    payment_settings = await get_payment_settings()
+    method_enabled = {
+        "upi": payment_settings.get("upi_enabled", True),
+        "card": payment_settings.get("card_enabled", True),
+        "net_banking": payment_settings.get("netbanking_enabled", True),
+        "wallet": payment_settings.get("wallet_enabled", True),
+        "cod": payment_settings.get("cod_enabled", True),
+    }
+    if not method_enabled.get(input.payment_method, False):
+        raise HTTPException(422, "यह payment method अभी उपलब्ध नहीं है")
     address = next((row for row in user.get("addresses", []) if row["id"] == input.address_id), None)
     if not address:
         raise HTTPException(404, "Delivery address not found")
@@ -971,8 +1011,23 @@ async def dashboard(_: Annotated[dict[str, Any], Depends(admin_user)]) -> Dashbo
     order_statuses: dict[str, int] = {}
     async for row in db.orders.find({}, {"_id": 0, "status": 1}):
         order_statuses[row["status"]] = order_statuses.get(row["status"], 0) + 1
-    revenue = sum(row["total"] for row in await db.orders.find({"payment.status": {"$in": ["captured", "cash_on_delivery"]}}, {"_id": 0, "total": 1}).to_list(10000))
-    return Dashboard(metrics={"total_revenue": revenue, "total_orders": await db.orders.count_documents({}), "total_users": await db.users.count_documents({"role": "customer"}), "total_products": await db.products.count_documents({}), "total_auctions": await db.auctions.count_documents({})}, recent_orders=[Order(**row) for row in orders], order_statuses=order_statuses, activities=[{"title": "Live catalog connected", "detail": "Products, orders and auctions are using the secure API", "time": "Just now"}])
+    paid_orders = await db.orders.find({"payment.status": {"$in": ["captured", "cash_on_delivery"]}}, {"_id": 0, "total": 1, "created_at": 1}).to_list(10000)
+    revenue = sum(row["total"] for row in paid_orders)
+    # Revenue for the last 7 days, oldest first, for the dashboard chart.
+    today = datetime.now(timezone.utc).date()
+    series_map = {(today - timedelta(days=offset)).isoformat(): 0 for offset in range(6, -1, -1)}
+    for row in paid_orders:
+        day = str(row.get("created_at", ""))[:10]
+        if day in series_map:
+            series_map[day] += row["total"]
+    revenue_series = [{"label": datetime.fromisoformat(day).strftime("%d %b"), "value": value} for day, value in series_map.items()]
+    # Top categories by published product count.
+    category_counts: dict[str, int] = {}
+    async for row in db.products.find({"active": True}, {"_id": 0, "category_slug": 1}):
+        category_counts[row["category_slug"]] = category_counts.get(row["category_slug"], 0) + 1
+    category_names = {row["slug"]: row["name"] for row in await db.categories.find({}, {"_id": 0, "slug": 1, "name": 1}).to_list(200)}
+    top_categories = sorted(({"name": category_names.get(slug, slug.title()), "count": count} for slug, count in category_counts.items()), key=lambda entry: entry["count"], reverse=True)[:6]
+    return Dashboard(metrics={"total_revenue": revenue, "total_orders": await db.orders.count_documents({}), "total_users": await db.users.count_documents({"role": "customer"}), "total_products": await db.products.count_documents({"active": True}), "total_auctions": await db.auctions.count_documents({}), "total_vendors": await db.admin_vendors.count_documents({})}, recent_orders=[Order(**row) for row in orders], order_statuses=order_statuses, activities=[{"title": "Live catalog connected", "detail": "Products, orders and auctions are using the secure API", "time": "Just now"}], top_categories=top_categories, revenue_series=revenue_series)
 
 
 @api.get("/admin/products", response_model=ProductList)
@@ -1343,6 +1398,122 @@ async def update_ticket(ticket_id: str, input: ManagedRecordInput, _: Annotated[
     return managed_payload(record)
 
 
+async def get_payment_settings() -> dict[str, Any]:
+    doc = await db.app_settings.find_one({"id": "payment"}, {"_id": 0})
+    if not doc:
+        return {"id": "payment", **PaymentSettingsInput().model_dump()}
+    merged = {**PaymentSettingsInput().model_dump(), **doc}
+    return merged
+
+
+def public_payment_config(settings: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "key_id": settings.get("razorpay_key_id", "") if settings.get("razorpay_key_secret") else "",
+        "mode": settings.get("mode", "test"),
+        "configured": bool(settings.get("razorpay_key_id") and settings.get("razorpay_key_secret")),
+        "methods": {
+            "upi": settings.get("upi_enabled", True),
+            "card": settings.get("card_enabled", True),
+            "net_banking": settings.get("netbanking_enabled", True),
+            "cod": settings.get("cod_enabled", True),
+            "wallet": settings.get("wallet_enabled", True),
+        },
+        "partial_payment_enabled": settings.get("partial_payment_enabled", False),
+        "partial_payment_percent": settings.get("partial_payment_percent", 100),
+    }
+
+
+@api.get("/payment-config")
+async def payment_config() -> dict[str, Any]:
+    return public_payment_config(await get_payment_settings())
+
+
+@api.get("/admin/payment-settings")
+async def admin_get_payment_settings(_: Annotated[dict[str, Any], Depends(admin_user)]) -> dict[str, Any]:
+    settings = await get_payment_settings()
+    return {
+        "razorpay_key_id": settings.get("razorpay_key_id", ""),
+        "razorpay_key_secret_set": bool(settings.get("razorpay_key_secret")),
+        "razorpay_webhook_secret_set": bool(settings.get("razorpay_webhook_secret")),
+        "mode": settings.get("mode", "test"),
+        "upi_enabled": settings.get("upi_enabled", True),
+        "card_enabled": settings.get("card_enabled", True),
+        "netbanking_enabled": settings.get("netbanking_enabled", True),
+        "cod_enabled": settings.get("cod_enabled", True),
+        "wallet_enabled": settings.get("wallet_enabled", True),
+        "partial_payment_enabled": settings.get("partial_payment_enabled", False),
+        "partial_payment_percent": settings.get("partial_payment_percent", 100),
+    }
+
+
+@api.put("/admin/payment-settings")
+async def admin_save_payment_settings(input: PaymentSettingsInput, _: Annotated[dict[str, Any], Depends(admin_user)]) -> dict[str, Any]:
+    existing = await get_payment_settings()
+    payload = input.model_dump()
+    # Preserve stored secrets when the admin submits the masked (empty) field.
+    if not payload["razorpay_key_secret"]:
+        payload["razorpay_key_secret"] = existing.get("razorpay_key_secret", "")
+    if not payload["razorpay_webhook_secret"]:
+        payload["razorpay_webhook_secret"] = existing.get("razorpay_webhook_secret", "")
+    payload["updated_at"] = now()
+    await db.app_settings.update_one({"id": "payment"}, {"$set": {"id": "payment", **payload}}, upsert=True)
+    saved = await get_payment_settings()
+    return {
+        "razorpay_key_id": saved.get("razorpay_key_id", ""),
+        "razorpay_key_secret_set": bool(saved.get("razorpay_key_secret")),
+        "razorpay_webhook_secret_set": bool(saved.get("razorpay_webhook_secret")),
+        "mode": saved.get("mode", "test"),
+        "upi_enabled": saved.get("upi_enabled", True),
+        "card_enabled": saved.get("card_enabled", True),
+        "netbanking_enabled": saved.get("netbanking_enabled", True),
+        "cod_enabled": saved.get("cod_enabled", True),
+        "wallet_enabled": saved.get("wallet_enabled", True),
+        "partial_payment_enabled": saved.get("partial_payment_enabled", False),
+        "partial_payment_percent": saved.get("partial_payment_percent", 100),
+    }
+
+
+@api.post("/payments/razorpay/order")
+async def create_razorpay_order(input: RazorpayOrderInput, user: Annotated[dict[str, Any], Depends(require_customer)]) -> dict[str, Any]:
+    order = await db.orders.find_one({"id": input.order_id, "user_id": user["id"]}, {"_id": 0})
+    if not order:
+        raise HTTPException(404, "Order not found")
+    settings = await get_payment_settings()
+    if not (settings.get("razorpay_key_id") and settings.get("razorpay_key_secret")):
+        raise HTTPException(400, "Razorpay अभी configure नहीं हुआ है। Admin panel में keys डालें")
+    payable = order["total"]
+    if settings.get("partial_payment_enabled"):
+        payable = max(1, round(order["total"] * settings.get("partial_payment_percent", 100) / 100))
+    try:
+        client = razorpay.Client(auth=(settings["razorpay_key_id"], settings["razorpay_key_secret"]))
+        rz_order = await asyncio.to_thread(client.order.create, {"amount": payable * 100, "currency": "INR", "receipt": order["order_number"][:40], "payment_capture": 1})
+    except Exception as error:
+        logger.warning("Razorpay order creation failed: %s", error)
+        raise HTTPException(502, "Razorpay order बनाने में समस्या आई। Keys जांचें") from error
+    await db.orders.update_one({"id": order["id"]}, {"$set": {"payment.provider_order_id": rz_order["id"], "payment.amount_due": payable, "updated_at": now()}})
+    return {"razorpay_order_id": rz_order["id"], "key_id": settings["razorpay_key_id"], "amount": payable * 100, "currency": "INR", "order_number": order["order_number"], "name": user.get("name", ""), "email": user.get("email", "")}
+
+
+@api.post("/payments/razorpay/verify", response_model=Order)
+async def verify_razorpay_payment(input: RazorpayVerifyInput, user: Annotated[dict[str, Any], Depends(require_customer)]) -> Order:
+    order = await db.orders.find_one({"id": input.order_id, "user_id": user["id"]}, {"_id": 0})
+    if not order:
+        raise HTTPException(404, "Order not found")
+    settings = await get_payment_settings()
+    if not (settings.get("razorpay_key_id") and settings.get("razorpay_key_secret")):
+        raise HTTPException(400, "Razorpay अभी configure नहीं हुआ है")
+    client = razorpay.Client(auth=(settings["razorpay_key_id"], settings["razorpay_key_secret"]))
+    try:
+        client.utility.verify_payment_signature({"razorpay_order_id": input.razorpay_order_id, "razorpay_payment_id": input.razorpay_payment_id, "razorpay_signature": input.razorpay_signature})
+    except Exception as error:
+        logger.warning("Razorpay signature verification failed: %s", error)
+        await db.orders.update_one({"id": order["id"]}, {"$set": {"payment.status": "failed", "updated_at": now()}})
+        raise HTTPException(400, "Payment verification विफल रहा") from error
+    await db.orders.update_one({"id": order["id"]}, {"$set": {"payment.status": "captured", "payment.transaction_id": input.razorpay_payment_id, "status": "confirmed", "updated_at": now()}})
+    updated = await db.orders.find_one({"id": order["id"]}, {"_id": 0})
+    return Order(**updated)
+
+
 app.include_router(api)
 app.add_middleware(SessionMiddleware, secret_key=JWT_SECRET, same_site="lax", https_only=True)
 app.add_middleware(
@@ -1350,6 +1521,6 @@ app.add_middleware(
     allow_origins=[FRONTEND_URL.rstrip("/")],
     allow_origin_regex=r"^https://[a-z0-9-]+\.preview\.emergentagent\.com$",
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+    allow_methods=["*"],
     allow_headers=["Content-Type", "Authorization"],
 )
