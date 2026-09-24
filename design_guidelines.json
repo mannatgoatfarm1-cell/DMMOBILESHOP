@@ -1,126 +1,106 @@
 {
   "theme": "light",
-  "archetype": "Archetype 4: Swiss & High-Contrast (Authority, Clarity, Truth)",
   "typography": {
-    "headings": {
-      "family": "'Cabinet Grotesk', sans-serif",
-      "weights": "bold, black",
-      "rules": "Must use tracking-tight or tracking-tighter for sizes > 32px. No 'Inter' for headings. Never exceed text-6xl for main headings."
-    },
-    "body": {
-      "family": "'IBM Plex Sans', sans-serif",
-      "weights": "regular, medium",
-      "rules": "Leading-relaxed for readability. Left-aligned for all dense content."
-    },
-    "labels": {
-      "rules": "Uppercase, tiny, wide spacing (tracking-[0.2em])."
-    },
-    "hierarchy": {
-      "h1": "text-4xl sm:text-5xl lg:text-5xl tracking-tighter font-black",
-      "h2": "text-2xl sm:text-3xl lg:text-4xl tracking-tight font-bold",
-      "h3": "text-xl sm:text-2xl font-bold",
-      "h4": "text-lg sm:text-xl font-semibold",
-      "body": "text-base sm:text-sm",
-      "small": "text-xs uppercase tracking-widest font-semibold"
-    }
+    "headings": "Outfit, sans-serif",
+    "body": "Work Sans, sans-serif",
+    "rules": [
+      "No Inter or generic sans for headings.",
+      "Headings: tracking-tight, line-height tight.",
+      "Variable weights: use font-light for elegance and font-bold for impact."
+    ]
   },
   "colors": {
-    "background": {
-      "primary": "bg-[#FAFAFA]",
-      "secondary": "bg-[#F3F4F6] (Tinted off-white for depth)",
-      "surface": "bg-white",
-      "inverse": "bg-[#0A0A0B] (Tinted black)"
-    },
-    "accent": {
-      "primary": "bg-[#0024D6] (International Klein Blue for critical actions)",
-      "secondary": "bg-[#FF3333] (Signal Red for alerts/cancellations)",
-      "warning": "bg-[#FFCC00]"
-    },
-    "text": {
-      "primary": "text-[#0A0A0B]",
-      "secondary": "text-[#4B5563]",
-      "inverse": "text-white"
-    },
-    "borders": {
-      "default": "border-slate-200",
-      "strong": "border-[#0A0A0B]"
-    },
-    "rules": "Monochrome base. 95% of UI is monochrome. Color exists only to guide action. High contrast text. Use APCA contrast. explicitly set text color on hover. Do not use pure #000000 or #808080."
-  },
-  "layouts": {
-    "spacing_scale": "Generous Spacing Philosophy. Use p-6, p-8, p-12 for breathing room. Avoid cramped default paddings.",
-    "customer_ui": {
-      "my_orders_list": "Mode A: Bento Grid with wide gap-8 to gap-12. Asymmetrical cards. Left align content.",
-      "order_detail": "Bento layout. Left side: Order items and tracking timeline (col-span-8). Right side: Payment summary, address, Bill download (col-span-4).",
-      "tracking_timeline": "Vertical stepped progress with rigid geometric lines (1px solid). Completed steps in Klein Blue, pending in 10% Grey."
-    },
-    "admin_ui": {
-      "order_table": "Grid Borders (The Technical Look). Dense data layout. Container border-collapse. Subdued borders. Horizontal scrolling.",
-      "order_drawer": "Slide-out from right (Sheet component). Dense, form-heavy layout. Solid background (no glassmorphism). Sharp 1px borders.",
-      "dashboard_grid": "Mode B: High Density Grid (gap-4 or gap-6). Summary widgets (col-span-1), Main table (col-span-full)."
-    }
-  },
-  "components": {
-    "cards": {
-      "customer": "Flat solid surfaces. 1px subtle border. No soft shadow. Crisp, architectural feel.",
-      "admin": "Flat solid, rigid. border-r border-b on grid items for technical skeleton look."
-    },
-    "buttons": {
-      "primary": "Sharp corners or max 4px radius. High contrast (Black or Klein Blue bg). transition: transform 0.2s ease, opacity 0.2s ease.",
-      "secondary": "Outline or Ghost, rigid borders. hover:bg-slate-100 hover:text-black."
-    },
-    "headers": {
-      "style": "Solid Background with a hard bottom border. Never fully transparent.",
-      "navigation": "Visible links on desktop. Logo on left, links in center/right."
-    },
-    "tables": {
-      "style": "Shadcn Table. Custom padding. Header row: uppercase labels, text-xs. Row hover state: slight grey translation."
-    },
-    "badges": {
-      "style": "Rectangular, no pill-shapes. 1px solid border matching text color. Example: text-blue-600 border-blue-600 bg-blue-50."
-    }
+    "primary": "#1D4ED8",
+    "primary_hover": "#1E40AF",
+    "secondary": "#F3F4F6",
+    "accent": "#F59E0B",
+    "background": "#FFFFFF",
+    "surface": "#F8FAFC",
+    "text_primary": "#0F172A",
+    "text_secondary": "#64748B",
+    "border": "#E2E8F0"
   },
   "visual_enhancers": {
-    "surfaces": "Use Grid Borders style for Admin (border-collapse, expose skeleton). Flat Solid for Customer app (no glassmorphism to prevent medical/clinical feel, keep it concrete).",
-    "motion": "Minimalistic micro-interactions. hover:translate-y-[-2px] on cards. Staggered entrance for list items using framer-motion.",
-    "textures": "Grain/noise overlay on dark areas if any, but primarily rely on crisp typographic contrast."
+    "shadows": "Use soft ambient shadows (shadow-sm to shadow-md) on product cards. Avoid heavy drop shadows.",
+    "borders": "1px subtle borders (border-slate-200) on all product and category cards.",
+    "surfaces": "Solid flat backgrounds for most elements. Glassmorphism (backdrop-blur-md bg-white/80) ONLY for sticky headers."
+  },
+  "components": {
+    "category_row": "Horizontal scroll container (overflow-x-auto, no scrollbar) on mobile. Items: Circular image wrapper (w-16 h-16 rounded-full border border-slate-200) with small text underneath.",
+    "product_card": "Minimalist card (no Shadcn Card if it feels rigid), clean image, bold price, add to cart button.",
+    "checkout_manual_payment": "Clean upload zone (dashed border, bg-slate-50). Required fields: Admin managed Account Number, IFSC code, Amount. User must upload screenshot.",
+    "coupon_section": "Show list of available coupons as clickable tags/pills near the input field. On click -> injects value into input & applies."
+  },
+  "grids": {
+    "desktop": "Standard e-commerce grid (grid-cols-4 or 5) for products, grid-cols-8/12 for bento marketing sections.",
+    "mobile": "grid-cols-2 for products, horizontal flex for categories."
+  },
+  "layouts": {
+    "header": "Sticky nav with Logo (DM Mobile), Search, Cart, User.",
+    "footer": "Must display: 'Powered by DMobileMart-Muskan'. Include comprehensive list of policy links (Privacy, Terms, Returns).",
+    "admin_product_form": "Add inputs for IMEI / Barcode.",
+    "admin_order_review": "Show user-uploaded payment screenshot. Add 'Approve & Capture' and 'Reject' buttons. Fix 'Confirm' logic."
+  },
+  "motion": {
+    "hover": "Slight lift (-translate-y-1) and shadow-lg on product cards.",
+    "interactions": "Button active scale down (scale-95). Smooth expansion of coupon sections."
   },
   "accessibility": {
-    "contrast": "Normal Text > 4.5:1. Large Text > 3:1. ALWAYS explicitly set hover text color.",
-    "motion": "Respect prefers-reduced-motion. Meaningful focus states (focus:ring-2 focus:ring-[#0024D6] focus:outline-none).",
-    "testing": "All interactive elements MUST include data-testid attribute (e.g., data-testid='download-bill-button')."
+    "contrast": "Text must meet 4.5:1 ratio on background. Ensure primary blue has good contrast with white.",
+    "testing": "All interactive and key informational elements MUST include a `data-testid` attribute. E.g., `data-testid='category-item'`, `data-testid='payment-upload-button'`."
   },
   "media": {
-    "icons": {
-      "library": "@phosphor-icons/react",
-      "weight": "regular or duotone",
-      "usage": "Use Phosphor icons for high-end look."
-    },
-    "images": {
-      "rules": "Never use placeholder URLs. Mobile height limit: 80vh.",
-      "urls": [
-        {
-          "url": "https://images.unsplash.com/photo-1580674285054-bed31e145f59?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2OTF8MHwxfHNlYXJjaHwzfHxlY29tbWVyY2UlMjBkZWxpdmVyeSUyMGJveCUyMHBhY2thZ2V8ZW58MHx8fHwxNzkwMjU5OTIyfDA&ixlib=rb-4.1.0&q=85",
-          "category": "hero_background",
-          "description": "A stack of cardboard shipping boxes inside the back of a delivery van"
-        },
-        {
-          "url": "https://images.unsplash.com/photo-1624137527136-66e631bdaa0e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2OTF8MHwxfHNlYXJjaHw0fHxlY29tbWVyY2UlMjBkZWxpdmVyeSUyMGJveCUyMHBhY2thZ2V8ZW58MHx8fHwxNzkwMjU5OTIyfDA&ixlib=rb-4.1.0&q=85",
-          "category": "product_placeholder",
-          "description": "A stack of brown cardboard boxes against a solid brown background"
-        },
-        {
-          "url": "https://images.pexels.com/photos/4440800/pexels-photo-4440800.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
-          "category": "tracking_delivery_illustration",
-          "description": "A stack of brown cardboard boxes with shipping labels ready for mail delivery"
-        }
+    "image_urls": {
+      "smartphones": [
+        "https://images.unsplash.com/photo-1483478550801-ceba5fe50e8e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxOTJ8MHwxfHNlYXJjaHwzfHxsYXRlc3QlMjBzbWFydHBob25lJTIwb24lMjBoYW5kfGVufDB8fHx8MTc5MDI2NDM1OHww&ixlib=rb-4.1.0&q=85",
+        "https://images.pexels.com/photos/3756879/pexels-photo-3756879.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+      ],
+      "accessories": [
+        "https://images.unsplash.com/photo-1731616103600-3fe7ccdc5a59?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NDh8MHwxfHNlYXJjaHwzfHxtb2JpbGUlMjBhY2Nlc3NvcmllcyUyMGhlYWRwaG9uZXMlMjBjaGFyZ2Vyc3xlbnwwfHx8fDE3OTAyNjQzNTh8MA&ixlib=rb-4.1.0&q=85",
+        "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NDh8MHwxfHNlYXJjaHwxfHxtb2JpbGUlMjBhY2Nlc3NvcmllcyUyMGhlYWRwaG9uZXMlMjBjaGFyZ2Vyc3xlbnwwfHx8fDE3OTAyNjQzNTh8MA&ixlib=rb-4.1.0&q=85"
+      ],
+      "deliveries": [
+        "https://images.unsplash.com/photo-1580674285054-bed31e145f59?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODF8MHwxfHNlYXJjaHwzfHxlLWNvbW1lcmNlJTIwZGVsaXZlcnklMjBwYWNrYWdlc3xlbnwwfHx8fDE3OTAyNjQzNTh8MA&ixlib=rb-4.1.0&q=85"
       ]
     }
   },
-  "instructions_to_main_agent": {
-    "component_path": "/app/frontend/src/components/ui/",
-    "routing": "Customer view routes: /my-orders, /my-orders/:id. Admin view routes: /admin/orders.",
-    "general": "Do not center align app containers. Use React (.js) strictly. Ensure robust data tables for Admin and narrative-driven bento details for Customers. Implement Shadcn Dropdown, Table, Sheet, Button, Tabs, Badge."
-  },
-  "universal_guidelines_for_main_agent": "You tend to converge toward generic outputs. Break the mold. Use asymmetric bento grids for customer views. Emphasize rigid Swiss typography. NEVER use transition: all. Avoid emoji icons; strictly use Phosphor icons. Provide extensive spacing (p-8, p-12). Incorporate framer-motion for smooth list mounting and detail view expansion. Ensure toast notifications use Sonner."
+  "instructions_to_main_agent": [
+    "Rebrand: Replace all occurrences of old shop names with 'DM Mobile' / 'DMobileMart'.",
+    "Footer: Append 'Powered by DMobileMart-Muskan' and render Policy links (Refund, Privacy, Terms).",
+    "Category UI Fix: Debug why categories aren't opening. Redesign them to match Flipkart (horizontal mobile scroll, circular images).",
+    "Product Admin: Add 'IMEI Number' and 'Barcode' fields in product creation/edit.",
+    "Customer Bill: Ensure the IMEI/Barcode reflects on the customer's invoice/bill after a successful order.",
+    "Payment Flow - E-Commerce: For UPI/Direct Transfer, fetch Admin-set Account Number and IFSC. Display manual payment instructions. Provide file upload for the screenshot. Do not proceed order without this screenshot if manual payment is selected.",
+    "Payment Flow - Admin: In Order details, add Payment Control Panel. Show uploaded screenshot. Add 'Confirm/Capture' and 'Reject' buttons. On capture, update order status and wallet (if applicable). Ensure 'Confirm Order' button actually updates DB.",
+    "Coupons: In checkout, fetch and render available coupons as a visible list/pills near the coupon code input. Clicking a coupon pill should auto-fill the input and trigger the apply function.",
+    "Testing: Add `data-testid` to all new elements (e.g., `data-testid='imei-input'`, `data-testid='coupon-pill'`)."
+  ],
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
+    "You tend to converge toward generic, 'on distribution' outputs. Avoid this: make creative, distinctive frontends that surprise and delight.",
+    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients.",
+    "Don't make generic centered layouts, simplistic gradients, and uniform styling.",
+    "Create depth through layered design elements with z-index hierarchy.",
+    "Use glass-morphism effects with backdrop filters (12-24px blur).",
+    "You MUST NOT apply universal transition. Eg: transition: all. This results in breaking transforms. Always add transitions for specific interactive elements like button, input excluding transforms.",
+    "You MUST NOT center align the app container, ie do not add .App { text-align: center; } in the css file. This disrupts the human natural reading flow of text.",
+    "Always use modern button styles like pill-shaped, or sharp button with interaction animations & color relevant to the app style.",
+    "NEVER: use AI assistant Emoji characters like robot, brain, lightbulb, crystal_ball, dart etc for icons.",
+    "Every interaction needs micro-animations - hover states, transitions, parallax effects, and entrance animations. Static = dead.",
+    "Use 2-3x more spacing than feels comfortable. Cramped designs look cheap.",
+    "Subtle grain textures, noise overlays, custom cursors, selection states, and loading animations: separates good from extraordinary.",
+    "Main agent relies on these image URLs. Missing categories (especially sponsor logos) = main agent will use placeholder text which is FORBIDDEN.",
+    "Prioritize using pre-existing components from src/components/ui when applicable.",
+    "Create new components that match the style and conventions of existing components when needed.",
+    "Examine existing components to understand the project's component patterns before creating new ones.",
+    "Use `sonner` for toasts.",
+    "Sonner component are located in /app/src/components/ui/sonner.js",
+    "CRITICAL: DO NOT use complete transparent background in header, overlays, any surface that has content under it.",
+    "All interactive and key informational elements MUST include a data-testid attribute to facilitate robust automated testing."
+  ],
+  "GENERAL UI UX DESIGN GUIDELINES": [
+    "Maintain visual hierarchy: larger fonts and high contrast for primary actions.",
+    "Design mobile-first. Test tap targets to be at least 44x44pt.",
+    "Provide clear feedback for user actions (loading spinners, success toasts for coupon application).",
+    "Keep forms minimal; inline validation for the screenshot upload (size/type)."
+  ]
 }

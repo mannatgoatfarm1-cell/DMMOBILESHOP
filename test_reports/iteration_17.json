@@ -1,0 +1,66 @@
+{
+  "summary": "Completed backend+frontend regression for IMEI/barcode product fields, payment settings, manual transfer proof/review flow, coupon UX, category navigation, policies, branding, and admin order payment controls.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Checkout coupon apply button",
+        "issue": "Clicking Apply for typed coupon crashes checkout with runtime error 'code.trim is not a function' (Emergent unhandled rejection overlay).",
+        "selector": "[data-testid=\"apply-coupon-button\"]",
+        "priority": "CRITICAL"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Invalid coupon handling in checkout",
+        "issue": "Instead of showing safe validation feedback, the app crashes due to wrong argument type passed into applyCoupon. This blocks further checkout actions in-session (including manual transfer panel interactions) until reload.",
+        "affected_selectors": [
+          "[data-testid=\"checkout-coupon-input\"]",
+          "[data-testid=\"apply-coupon-button\"]",
+          "[data-testid=\"manual-transfer-details\"]"
+        ]
+      },
+      {
+        "flow": "General auth transitions",
+        "issue": "Console still shows repeated /api/auth/me 401 noise during unauthenticated transitions.",
+        "affected_selectors": []
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration17_manual_transfer_invoice_and_checkout_controls.py",
+    "/app/test_reports/pytest/pytest_results.xml",
+    "/root/.emergent/automation_output/20260924_155359/console_20260924_155359.log",
+    "/root/.emergent/automation_output/20260924_155911/console_20260924_155911.log",
+    "/root/.emergent/automation_output/20260924_160038/console_20260924_160038.log",
+    "/root/.emergent/automation_output/20260924_160236/console_20260924_160236.log",
+    "/root/.emergent/automation_output/20260924_160330/console_20260924_160330.log"
+  ],
+  "action_items": [
+    "Fix checkout Apply handler to pass string input to applyCoupon (not click event object).",
+    "Add defensive coercion in applyCoupon (e.g., String(code || '').trim()) to prevent runtime crashes.",
+    "Re-test invalid coupon path after fix to ensure graceful toast/error and uninterrupted manual-transfer checkout.",
+    "Optionally reduce expected auth 401 console noise for cleaner telemetry."
+  ],
+  "critical_code_review_comments": [
+    "In frontend/src/App.js checkout summary, `onClick={applyCoupon}` passes MouseEvent as first arg into `applyCoupon(code = couponCode)`, then `code.trim()` throws because event is not a string. Use `onClick={() => applyCoupon()}` or sanitize `code` before trim.",
+    "backend/server.py remains a large monolith (>1700 LOC), increasing regression risk on auth/order/payment surfaces."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration17_manual_transfer_invoice_and_checkout_controls.py",
+    "/app/test_reports/iteration_17.json"
+  ],
+  "success_rate": {
+    "backend": "100% (7/7 passing)",
+    "frontend": "88% (critical flows passed except invalid-coupon apply crash)"
+  },
+  "seed_data_creation": "Created disposable backend products/orders/customers in pytest; created disposable admin product in UI and cleaned it via delete.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Verified: DM Mobile header + Powered by DMobileMart-Muskan footer, policy routes, category nav/circle links, light mode readability screenshot, manual transfer checkout review state (no premature success), admin orders drawer payment proof + capture/reject controls, admin payment settings persistence UI, and admin product IMEI/barcode inputs with live category options. Razorpay external live checkout remains intentionally untested.",
+  "rca of the issue": "Repro: Login customer -> open /checkout -> type invalid code in coupon input -> click Apply. Result: runtime crash overlay 'code.trim is not a function'. Root cause: `applyCoupon` expects a string but Apply button passes click event object via `onClick={applyCoupon}`. Because function calls `code.trim()`, checkout crashes. Mitigation: change handler to `onClick={() => applyCoupon()}` and add guard `const normalized = String(code ?? '').trim()` before using trim/toUpperCase."
+}

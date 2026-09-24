@@ -7,7 +7,7 @@ import {
   Search, ShoppingCart, MapPin, ChevronRight, ChevronLeft, ChevronDown, Sparkles, Gavel, Heart, UserRound,
   Menu, X, Plus, ArrowLeft, Minus, Trash2, Check, Star, Store, Zap, Clock, Download, Apple as AppleIcon,
   Smartphone, Laptop, Watch, Tablet, Headphones, Gamepad2, Camera, Home as HomeIcon, Percent, LayoutGrid, Package,
-  Truck, RotateCcw, ShieldCheck, BadgeCheck, LoaderCircle, LogOut, Wallet, Tag, ZoomIn, Sun, Moon,
+  Truck, RotateCcw, ShieldCheck, BadgeCheck, LoaderCircle, LogOut, Wallet, Tag, ZoomIn, Sun, Moon, Clock3, Landmark,
 } from "lucide-react";
 import { api, apiError, cardProduct } from "@/api";
 import { speakHindi } from "@/lib/adminFeedback";
@@ -57,8 +57,8 @@ const rateFor = (id = "") => {
 function Brand({ small = false }) {
   return (
     <div className={`brand ${small ? "brand-sm" : ""}`}>
-      <span className="brand-mark"><ShoppingCart size={small ? 18 : 22} strokeWidth={2.4} /></span>
-      <span className="brand-text"><b>MobileCart</b><small>Buy Smarter. Live Better.</small></span>
+      <span className="brand-mark"><Smartphone size={small ? 18 : 22} strokeWidth={2.4} /></span>
+      <span className="brand-text"><b>DM Mobile</b><small>Powered by DMobileMart</small></span>
     </div>
   );
 }
@@ -105,7 +105,7 @@ function Topbar({ cartCount, wishCount = 0, user, onSearch, onLogout, onMenu }) 
           {user
             ? <Link className="top-link acct" to="/account" data-testid="account-profile-link"><UserRound size={20} /><span className="acct-copy"><small>Hi,</small><b>{user.name.split(" ")[0]}</b></span></Link>
             : <Link className="top-link acct" to="/login" data-testid="account-login-link"><UserRound size={20} /><span className="acct-copy"><small>Login /</small><b>Register</b></span></Link>}
-          <Link className="sell-btn" to="/sell" data-testid="sell-button">Sell on MobileCart</Link>
+          <Link className="sell-btn" to="/sell" data-testid="sell-button">Sell on DM Mobile</Link>
         </div>
       </div>
       <nav className="cat-nav">
@@ -128,7 +128,7 @@ function FooterBar() {
           <div className="footer-feat" key={title}><Icon size={20} /><span><b>{title}</b><small>{sub}</small></span></div>
         ))}
       </div>
-      <div className="footer-app">
+      <div className="footer-app"><nav className="footer-policies" data-testid="footer-policy-links"><Link to="/policies/shipping" data-testid="policy-shipping-link">Shipping</Link><Link to="/policies/returns" data-testid="policy-returns-link">Returns & Refunds</Link><Link to="/policies/privacy" data-testid="policy-privacy-link">Privacy</Link><Link to="/policies/terms" data-testid="policy-terms-link">Terms</Link></nav><small className="powered-by" data-testid="powered-by-label">Powered by DMobileMart-Muskan</small>
         <button className="download-btn" data-testid="download-app-button"><Download size={16} /> Download Our App</button>
         <div className="app-badges"><span>▶ Shop Anytime</span><AppleIcon size={16} /></div>
       </div>
@@ -472,20 +472,23 @@ function Checkout({ cart, user, refreshUser, refreshCart, common }) {
   const [couponCode, setCouponCode] = useState("");
   const [coupon, setCoupon] = useState(null);
   const [couponBusy, setCouponBusy] = useState(false);
+  const [availableCoupons, setAvailableCoupons] = useState([]);
+  const [proofFile, setProofFile] = useState(null);
+  const [reviewOrder, setReviewOrder] = useState(null);
   const paymentSucceeded = useRef(false);
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const total = Math.max(0, subtotal - (coupon?.discount || 0) + 99);
   const address = user?.addresses?.[0];
   const paymentMethods = useMemo(() => [
-    ["upi", "UPI", "Pay using any UPI app"], ["card", "Credit / Debit Card", "Visa, Mastercard, RuPay"], ["net_banking", "Net Banking", "All major banks"], ["wallet", "MobileCart Wallet", "Use your available wallet balance"], ["cod", "COD", "Cash on Delivery"],
+    ["upi", "UPI", "Pay using any UPI app"], ["bank_transfer", "Direct bank transfer", "UPI / account transfer + payment proof"], ["card", "Credit / Debit Card", "Visa, Mastercard, RuPay"], ["net_banking", "Net Banking", "All major banks"], ["wallet", "DMobileMart Wallet", "Use your available wallet balance"], ["cod", "COD", "Cash on Delivery"],
   ].filter(([value]) => paymentConfig?.methods?.[value] !== false), [paymentConfig]);
   useEffect(() => {
-    api.get("/api/payment-config").then(({ data }) => setPaymentConfig(data)).catch(() => setPaymentConfig({ methods: { upi: true, card: true, net_banking: true, wallet: true, cod: true } }));
+    Promise.all([api.get("/api/payment-config"), api.get("/api/content/coupons")]).then(([payment, coupons]) => { setPaymentConfig(payment.data); setAvailableCoupons(coupons.data); }).catch(() => setPaymentConfig({ methods: { upi: true, bank_transfer: true, card: true, net_banking: true, wallet: true, cod: true } }));
   }, []);
   useEffect(() => {
     if (paymentMethods.length && !paymentMethods.some(([value]) => value === method)) setMethod(paymentMethods[0][0]);
   }, [method, paymentMethods]);
-  const applyCoupon = async () => { if (!couponCode.trim()) return; setCouponBusy(true); try { const { data } = await api.post("/api/coupons/validate", { code: couponCode, subtotal }); setCoupon(data); toast.success(`${data.code} applied`); } catch (error) { setCoupon(null); toast.error(apiError(error)); } finally { setCouponBusy(false); } };
+  const applyCoupon = async (code = couponCode) => { const normalized = String(code ?? "").trim().toUpperCase(); if (!normalized) return; setCouponCode(normalized); setCouponBusy(true); try { const { data } = await api.post("/api/coupons/validate", { code: normalized, subtotal }); setCoupon(data); toast.success(`${data.code} applied`); } catch (error) { setCoupon(null); toast.error(apiError(error)); } finally { setCouponBusy(false); } };
   const markFailed = async (orderId, reason) => { try { await api.post("/api/payments/razorpay/fail", { order_id: orderId, reason }); } catch {} };
   const openRazorpay = async (order) => {
     if (razorpayLoadError || !Razorpay) throw new Error("Secure payment checkout could not load. Please try again.");
@@ -500,9 +503,10 @@ function Checkout({ cart, user, refreshUser, refreshCart, common }) {
     });
     checkout.open();
   };
+  const uploadManualProof = async (order) => { if (!proofFile) throw new Error("Please attach your payment screenshot first"); const payload = new FormData(); payload.append("file", proofFile); const { data } = await api.post(`/api/payments/manual-proof?order_id=${order.id}`, payload, { headers: { "Content-Type": "multipart/form-data" } }); setReviewOrder(data); await refreshCart(); toast.success("Payment proof submitted for admin review"); };
   const place = async () => {
-    if (!address) return; setBusy(true);
-    try { const { data } = await api.post("/api/orders", { address_id: address.id, payment_method: method, coupon_code: coupon?.code || null }); if (["cod", "wallet"].includes(method)) { setPaid(data); await refreshCart(); toast.success("Order placed successfully"); setBusy(false); } else { try { await openRazorpay(data); } catch (error) { await markFailed(data.id, "razorpay_order_creation_failed"); toast.error(apiError(error)); setBusy(false); } } }
+    if (!address) return; if (method === "bank_transfer" && !proofFile) { toast.error("Payment screenshot upload is required for direct transfer"); return; } setBusy(true);
+    try { const { data } = await api.post("/api/orders", { address_id: address.id, payment_method: method, coupon_code: coupon?.code || null }); if (["cod", "wallet"].includes(method)) { setPaid(data); await refreshCart(); toast.success("Order placed successfully"); setBusy(false); } else if (method === "bank_transfer") { try { await uploadManualProof(data); setBusy(false); } catch (error) { await markFailed(data.id, "manual_proof_upload_failed"); toast.error(apiError(error)); setBusy(false); } } else { try { await openRazorpay(data); } catch (error) { await markFailed(data.id, "razorpay_order_creation_failed"); toast.error(apiError(error)); setBusy(false); } } }
     catch (error) { toast.error(apiError(error)); setBusy(false); }
   };
   return (
@@ -513,6 +517,9 @@ function Checkout({ cart, user, refreshUser, refreshCart, common }) {
         <div className="checkout-steps"><span className="done">1<br /><small>Address</small></span><i /><span className="active">2<br /><small>Payment</small></span><i /><span>3<br /><small>Place Order</small></span></div>
         {paid ? (
           <div className="success-state" data-testid="order-success"><div className="success-icon"><Check /></div><h1>Order placed!</h1><p>Your order #{paid.order_number} is confirmed. We'll keep you posted.</p><Link to="/account" className="primary-btn" data-testid="success-orders-button">View my orders</Link></div>
+        ) : reviewOrder ? (
+          <div className="success-state payment-review-state" data-testid="manual-payment-review-state"><div className="success-icon"><Clock3 /></div><h1>Payment under review</h1><p>Screenshot received for #{reviewOrder.order_number}. Admin payment check के बाद आपका order confirm होगा.</p><Link to="/my-orders" className="primary-btn" data-testid="review-order-history-button">Track payment review</Link></div>
+        
         ) : !address ? <AddressForm onDone={refreshUser} /> : (
           <div className="checkout-grid">
             <section>
@@ -520,6 +527,7 @@ function Checkout({ cart, user, refreshUser, refreshCart, common }) {
               <div className="checkout-section"><h3>Payment Options</h3>
                 {paymentConfig?.partial_payment_enabled && method !== "cod" && method !== "wallet" && <p className="partial-payment-note" data-testid="partial-payment-note">आज सिर्फ़ {paymentConfig.partial_payment_percent}% advance दें — बाकी delivery से पहले।</p>}
                 {method === "upi" && <div className="upi-checkout-note" data-testid="upi-checkout-note"><Smartphone size={16} /><span><b>UPI QR & app payment</b><small>Paytm, PhonePe, Google Pay या किसी भी installed UPI app को Razorpay secure checkout में चुनें।</small></span></div>}
+                {method === "bank_transfer" && <div className="manual-transfer-card" data-testid="manual-transfer-details"><h4><Landmark size={16} /> Direct transfer details</h4><p>Transfer the exact amount, then upload a screenshot. Order is confirmed only after admin review.</p><div><span>Account name</span><b>{paymentConfig?.manual_transfer?.account_name || "DMobileMart"}</b></div><div><span>Account number</span><b>{paymentConfig?.manual_transfer?.account_number || "Not configured"}</b></div><div><span>IFSC code</span><b>{paymentConfig?.manual_transfer?.ifsc_code || "Not configured"}</b></div>{paymentConfig?.manual_transfer?.upi_id && <div><span>UPI ID</span><b>{paymentConfig.manual_transfer.upi_id}</b></div>}<label className="payment-proof-upload"><input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setProofFile(event.target.files?.[0] || null)} data-testid="payment-proof-upload-input" /><span>{proofFile ? proofFile.name : "Upload payment screenshot (JPG, PNG or WebP · max 5MB)"}</span></label></div>}
                 {paymentMethods.map(([value, label, detail]) => (
                   <label className="payment-option" key={value}><input type="radio" name="payment" checked={method === value} onChange={() => setMethod(value)} data-testid={`payment-${value}`} /><span>{label}<small>{detail}</small></span><ChevronRight size={15} /></label>
                 ))}
@@ -529,7 +537,8 @@ function Checkout({ cart, user, refreshUser, refreshCart, common }) {
             <aside className="summary">
               <h3>Payment Summary</h3>
               <div><span>Items total</span><b>{money(subtotal)}</b></div>
-              <div className="coupon-control"><input value={couponCode} onChange={(event) => setCouponCode(event.target.value.toUpperCase())} placeholder="Coupon code" data-testid="checkout-coupon-input" /><button type="button" onClick={applyCoupon} disabled={couponBusy || !cart.length} data-testid="apply-coupon-button">{couponBusy ? "Checking…" : "Apply"}</button></div>
+              <div className="coupon-control"><input value={couponCode} onChange={(event) => setCouponCode(event.target.value.toUpperCase())} placeholder="Coupon code" data-testid="checkout-coupon-input" /><button type="button" onClick={() => applyCoupon()} disabled={couponBusy || !cart.length} data-testid="apply-coupon-button">{couponBusy ? "Checking…" : "Apply"}</button></div>
+              {availableCoupons.length > 0 && <div className="coupon-pills" data-testid="available-coupon-pills">{availableCoupons.map((item) => <button type="button" key={item.id} onClick={() => applyCoupon(item.data?.code || item.title)} data-testid={`coupon-pill-${item.id}`}><b>{item.data?.code || item.title}</b><small>{item.description || "Tap to apply"}</small></button>)}</div>}
               {coupon && <div className="coupon-result" data-testid="coupon-result"><span>{coupon.code} discount</span><b className="green-text">−{money(coupon.discount)}</b></div>}
               <div><span>Platform fee</span><b>₹99</b></div>
               <div><span>Delivery</span><b className="green-text">FREE</b></div>
@@ -675,7 +684,14 @@ function Account({ user, setUser, common, theme, onThemeChange, refreshUser, onA
   );
 }
 
-function CategoryPage({ products, onAdd, onWish, common, refreshProducts, categories }) {
+function PolicyPage({ common }) {
+  const { policy } = useParams();
+  const pages = { shipping: ["Shipping policy", "Orders are processed after confirmed payment. Delivery updates and courier tracking appear in My Orders."], returns: ["Returns & refunds", "Request eligible returns from My Orders. Refunds are processed after device quality verification."], privacy: ["Privacy policy", "DMobileMart uses account, delivery and payment information only to process your orders and support requests."], terms: ["Terms of service", "Inventory and pricing can change. Orders are confirmed only after verified online payment or admin-approved direct transfer."] };
+  const [title, description] = pages[policy] || pages.terms;
+  return <><Topbar {...common} /><main className="simple-page policy-page" data-testid={`policy-page-${policy || "terms"}`}><span className="eyebrow">DMOBILEMART</span><h1>{title}</h1><p>{description}</p><section><h2>Customer support</h2><p>For help with payment, delivery, cancellation or privacy requests, contact support with your order number.</p></section></main><FooterBar /></>;
+}
+
+function CategoryPage({ products, onAdd, onWish, common, categories }) {
   const location = useLocation();
   const [view, setView] = useState("grid");
   return (
@@ -770,7 +786,8 @@ function App() {
         <Route path="/my-orders/:id" element={user ? <><Topbar {...common} /><CustomerOrderDetail /><FooterBar /><BottomNav active="Account" /></> : <Navigate to="/login?next=/my-orders" replace />} />
         <Route path="/auctions" element={<Auctions auctions={auctions} user={user} refreshAuctions={refreshAuctions} common={common} />} />
         <Route path="/sell" element={<SellPage common={common} />} />
-        <Route path="/account" element={<Account user={user} setUser={setUser} common={common} theme={theme} onThemeChange={setTheme} />} />
+        <Route path="/account" element={user ? <Account user={user} setUser={setUser} common={common} theme={theme} onThemeChange={setTheme} refreshUser={refreshUser} onAdd={add} refreshWish={refreshWish} /> : <Navigate to="/login?next=/account" replace />} />
+        <Route path="/policies/:policy" element={<PolicyPage common={common} />} />
         <Route path="/category" element={<CategoryPage products={products} onAdd={add} onWish={wish} common={common} categories={categories} />} />
         <Route path="*" element={<StoreHome products={products} auctions={auctions} announcements={announcements} onAdd={add} onWish={wish} common={common} />} />
       </Routes>

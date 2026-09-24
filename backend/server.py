@@ -163,6 +163,8 @@ class ProductInput(BaseModel):
     featured: bool = False
     qc_grade: Literal["new", "excellent", "good", "fair"] = "new"
     qc_status: dict[str, Literal["pass", "fail", "unknown"]] = Field(default_factory=dict)
+    imei_number: str = Field(default="", max_length=40)
+    barcode: str = Field(default="", max_length=80)
 
     @field_validator("images")
     @classmethod
@@ -208,7 +210,7 @@ class CartResponse(BaseModel):
 
 class OrderCreate(BaseModel):
     address_id: str
-    payment_method: Literal["upi", "card", "net_banking", "wallet", "cod"] = "upi"
+    payment_method: Literal["upi", "card", "net_banking", "wallet", "cod", "bank_transfer"] = "upi"
     coupon_code: str | None = Field(default=None, max_length=40)
 
 
@@ -317,7 +319,7 @@ class AdminUserCreate(BaseModel):
 
 
 class PaymentUpdate(BaseModel):
-    status: Literal["pending", "captured", "failed", "refunded", "cash_on_delivery"]
+    status: Literal["pending", "review_pending", "captured", "failed", "refunded", "cash_on_delivery"]
     transaction_id: str | None = Field(default=None, max_length=120)
 
 
@@ -332,6 +334,10 @@ class PaymentSettingsInput(BaseModel):
     netbanking_enabled: bool = True
     cod_enabled: bool = True
     wallet_enabled: bool = True
+    bank_transfer_enabled: bool = True
+    bank_account_name: str = Field(default="", max_length=120)
+    bank_account_number: str = Field(default="", max_length=40)
+    bank_ifsc_code: str = Field(default="", max_length=20)
     partial_payment_enabled: bool = False
     partial_payment_percent: int = Field(default=100, ge=10, le=100)
 
@@ -341,6 +347,14 @@ class PaymentSettingsInput(BaseModel):
         value = upi_id.strip().lower()
         if value and not re.fullmatch(r"[a-z0-9._-]{2,128}@[a-z0-9._-]{2,64}", value):
             raise ValueError("UPI ID format is invalid")
+        return value
+
+    @field_validator("bank_ifsc_code")
+    @classmethod
+    def validate_ifsc(cls, ifsc: str) -> str:
+        value = ifsc.strip().upper()
+        if value and not re.fullmatch(r"[A-Z]{4}0[A-Z0-9]{6}", value):
+            raise ValueError("IFSC code format is invalid")
         return value
 
 
@@ -358,6 +372,11 @@ class RazorpayVerifyInput(BaseModel):
 class RazorpayFailureInput(BaseModel):
     order_id: str = Field(min_length=1, max_length=80)
     reason: str = Field(default="payment_cancelled", max_length=120)
+
+
+class ManualPaymentReviewInput(BaseModel):
+    action: Literal["capture", "reject"]
+    note: str = Field(default="", max_length=240)
 
 
 class CouponCheckInput(BaseModel):
@@ -942,6 +961,7 @@ async def create_order(input: OrderCreate, user: Annotated[dict[str, Any], Depen
         "net_banking": payment_settings.get("netbanking_enabled", True),
         "wallet": payment_settings.get("wallet_enabled", True),
         "cod": payment_settings.get("cod_enabled", True),
+        "bank_transfer": payment_settings.get("bank_transfer_enabled", True),
     }
     if not method_enabled.get(input.payment_method, False):
         raise HTTPException(422, "यह payment method अभी उपलब्ध नहीं है")
@@ -964,8 +984,11 @@ async def create_order(input: OrderCreate, user: Annotated[dict[str, Any], Depen
         result = await db.products.update_one({"id": cart_item.product_id, "stock": {"$gte": cart_item.quantity}}, {"$inc": {"stock": -cart_item.quantity}, "$set": {"updated_at": now()}})
         if result.modified_count == 0:
             raise HTTPException(409, f"{cart_item.product.name} is no longer in stock")
-        order_items.append({"product_id": cart_item.product_id, "name": cart_item.product.name, "image": cart_item.product.images[0], "price": cart_item.product.price, "quantity": cart_item.quantity, "variant_sku": cart_item.variant_sku})
-    order = {"id": str(uuid.uuid4()), "order_number": f"MC-{secrets.randbelow(900000) + 100000}", "user_id": user["id"], "items": order_items, "delivery_address": address, "subtotal": cart.subtotal, "discount": discount, "coupon_code": coupon_code, "platform_fee": 99, "total": total, "status": "confirmed" if input.payment_method in {"cod", "wallet"} else "payment_pending", "tracking": {"status": "Order placed", "events": [{"status": "Order placed", "at": created}]}, "payment": {"provider": "mobilecart_wallet" if input.payment_method == "wallet" else "razorpay", "method": input.payment_method, "status": payment_status, "provider_order_id": None, "transaction_id": None}, "created_at": created, "updated_at": created}
+        order_items.append({"product_id": cart_item.product_id, "name": cart_item.product.name, "image": cart_item.product.images[0], "price": cart_item.product.price, "quantity": cart_item.quantity, "variant_sku": cart_item.variant_sku, "imei_number": cart_item.product.imei_number, "barcode": cart_item.product.barcode})
+    manual = input.payment_method == "bank_transfer"
+    order = {"id": str(uuid.uuid4()), "order_number": f"DM-{secrets.randbelow(900000) + 100000}", "user_id": user["id"], "items": order_items, "delivery_address": address, "subtotal": cart.subtotal, "discount": discount, "coupon_code": coupon_code, "platform_fee": 99, "total": total, "status": "payment_pending" if not manual else "payment_proof_required", "tracking": {"status": "Order placed", "events": [{"status": "Order placed", "at": created}]}, "payment": {"provider": "manual_transfer" if manual else ("mobilecart_wallet" if input.payment_method == "wallet" else "razorpay"), "method": input.payment_method, "status": payment_status, "provider_order_id": None, "transaction_id": None}, "created_at": created, "updated_at": created}
+    if input.payment_method in {"cod", "wallet"}:
+        order["status"] = "confirmed"
     await db.orders.insert_one(order.copy())
     await db.carts.update_one({"user_id": user["id"]}, {"$set": {"items": [], "updated_at": now()}})
     return Order(**order)
@@ -1005,7 +1028,7 @@ async def download_order_invoice(order_id: str, user: Annotated[dict[str, Any], 
     pdf.rect(0, height - 110, width, 110, fill=1, stroke=0)
     pdf.setFillColorRGB(1, 1, 1)
     pdf.setFont("Helvetica-Bold", 24)
-    pdf.drawString(48, height - 62, "MobileCart")
+    pdf.drawString(48, height - 62, "DMobileMart")
     pdf.setFont("Helvetica", 10)
     pdf.drawString(48, height - 82, "Tax Invoice / Order Bill")
     pdf.setFillColorRGB(0.1, 0.14, 0.24)
@@ -1033,6 +1056,12 @@ async def download_order_invoice(order_id: str, user: Annotated[dict[str, Any], 
         pdf.drawString(48, y, str(item.get("name", "Product"))[:58])
         pdf.drawRightString(440, y, str(item.get("quantity", 1)))
         pdf.drawRightString(540, y, f"Rs. {int(item.get('price', 0)) * int(item.get('quantity', 1)):,}")
+        identifiers = " · ".join(part for part in [f"IMEI: {item.get('imei_number')}" if item.get("imei_number") else "", f"Barcode: {item.get('barcode')}" if item.get("barcode") else ""] if part)
+        if identifiers:
+            y -= 12
+            pdf.setFont("Helvetica", 8)
+            pdf.drawString(58, y, identifiers[:90])
+            pdf.setFont("Helvetica", 10)
     y -= 28
     pdf.line(330, y, 548, y)
     for label, value in [("Subtotal", order.get("subtotal", 0)), ("Discount", -order.get("discount", 0)), ("Platform fee", order.get("platform_fee", 0)), ("Total paid", order.get("total", 0))]:
@@ -1041,7 +1070,7 @@ async def download_order_invoice(order_id: str, user: Annotated[dict[str, Any], 
         pdf.drawString(360, y, label)
         pdf.drawRightString(540, y, f"Rs. {int(value):,}")
     pdf.setFont("Helvetica", 8)
-    pdf.drawString(48, 42, "Thank you for shopping with MobileCart. This is a computer-generated invoice.")
+    pdf.drawString(48, 42, "Thank you for shopping with DMobileMart. This is a computer-generated invoice.")
     pdf.save()
     output.seek(0)
     return StreamingResponse(output, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="MobileCart-{order["order_number"]}-invoice.pdf"'})
@@ -1520,8 +1549,10 @@ def public_payment_config(settings: dict[str, Any]) -> dict[str, Any]:
             "net_banking": settings.get("netbanking_enabled", True),
             "cod": settings.get("cod_enabled", True),
             "wallet": settings.get("wallet_enabled", True),
+            "bank_transfer": settings.get("bank_transfer_enabled", True),
         },
         "upi_id_configured": bool(settings.get("upi_id")),
+        "manual_transfer": {"account_name": settings.get("bank_account_name", ""), "account_number": settings.get("bank_account_number", ""), "ifsc_code": settings.get("bank_ifsc_code", ""), "upi_id": settings.get("upi_id", "")},
         "partial_payment_enabled": settings.get("partial_payment_enabled", False),
         "partial_payment_percent": settings.get("partial_payment_percent", 100),
     }
@@ -1546,6 +1577,10 @@ async def admin_get_payment_settings(_: Annotated[dict[str, Any], Depends(admin_
         "netbanking_enabled": settings.get("netbanking_enabled", True),
         "cod_enabled": settings.get("cod_enabled", True),
         "wallet_enabled": settings.get("wallet_enabled", True),
+        "bank_transfer_enabled": settings.get("bank_transfer_enabled", True),
+        "bank_account_name": settings.get("bank_account_name", ""),
+        "bank_account_number": settings.get("bank_account_number", ""),
+        "bank_ifsc_code": settings.get("bank_ifsc_code", ""),
         "partial_payment_enabled": settings.get("partial_payment_enabled", False),
         "partial_payment_percent": settings.get("partial_payment_percent", 100),
     }
@@ -1574,6 +1609,10 @@ async def admin_save_payment_settings(input: PaymentSettingsInput, _: Annotated[
         "netbanking_enabled": saved.get("netbanking_enabled", True),
         "cod_enabled": saved.get("cod_enabled", True),
         "wallet_enabled": saved.get("wallet_enabled", True),
+        "bank_transfer_enabled": saved.get("bank_transfer_enabled", True),
+        "bank_account_name": saved.get("bank_account_name", ""),
+        "bank_account_number": saved.get("bank_account_number", ""),
+        "bank_ifsc_code": saved.get("bank_ifsc_code", ""),
         "partial_payment_enabled": saved.get("partial_payment_enabled", False),
         "partial_payment_percent": saved.get("partial_payment_percent", 100),
     }
@@ -1641,6 +1680,68 @@ async def fail_razorpay_payment(input: RazorpayFailureInput, user: Annotated[dic
         for item in order.get("items", []):
             await db.products.update_one({"id": item["product_id"]}, {"$inc": {"stock": int(item["quantity"])}, "$set": {"updated_at": timestamp}})
     updated = await db.orders.find_one({"id": order["id"]}, {"_id": 0})
+    return Order(**updated)
+
+
+@api.post("/payments/manual-proof", response_model=Order)
+async def upload_manual_payment_proof(order_id: str = Query(min_length=1, max_length=80), file: UploadFile = File(...), user: Annotated[dict[str, Any], Depends(require_customer)] = None) -> Order:
+    allowed = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
+    if file.content_type not in allowed:
+        raise HTTPException(415, "Only JPEG, PNG and WebP payment screenshots are allowed")
+    content = await file.read()
+    if not content or len(content) > 5 * 1024 * 1024:
+        raise HTTPException(413, "Payment screenshot must be 5 MB or smaller")
+    order = await db.orders.find_one({"id": order_id, "user_id": user["id"]}, {"_id": 0})
+    if not order or order.get("payment", {}).get("method") != "bank_transfer":
+        raise HTTPException(404, "Manual payment order not found")
+    if order.get("status") != "payment_proof_required":
+        raise HTTPException(409, "Payment proof was already submitted")
+    path = f"dmobilemart/payment-proofs/{user['id']}/{uuid.uuid4().hex}{allowed[file.content_type]}"
+    try:
+        stored = await asyncio.to_thread(put_object, path, content, file.content_type)
+    except requests.RequestException as error:
+        logger.exception("Payment proof upload failed")
+        raise HTTPException(502, "Payment proof storage is temporarily unavailable") from error
+    file_id = str(uuid.uuid4())
+    record = {"id": file_id, "storage_path": stored["path"], "original_filename": file.filename or "payment-proof", "content_type": file.content_type, "size": stored["size"], "owner_id": user["id"], "order_id": order_id, "kind": "payment_proof", "is_deleted": False, "created_at": now()}
+    await db.media_files.insert_one(record.copy())
+    timestamp = now()
+    await db.orders.update_one({"id": order_id, "user_id": user["id"]}, {"$set": {"status": "payment_review", "payment.status": "review_pending", "payment.proof_file_id": file_id, "updated_at": timestamp}, "$push": {"tracking.events": {"status": "Payment proof submitted", "at": timestamp}}})
+    updated = await db.orders.find_one({"id": order_id}, {"_id": 0})
+    return Order(**updated)
+
+
+@api.get("/admin/orders/{order_id}/payment-proof")
+async def admin_payment_proof(order_id: str, _: Annotated[dict[str, Any], Depends(admin_user)]) -> Response:
+    record = await db.media_files.find_one({"order_id": order_id, "kind": "payment_proof", "is_deleted": False}, {"_id": 0})
+    if not record:
+        raise HTTPException(404, "Payment screenshot not found")
+    try:
+        content, content_type = await asyncio.to_thread(get_object, record["storage_path"])
+    except requests.RequestException as error:
+        raise HTTPException(502, "Payment screenshot is temporarily unavailable") from error
+    return Response(content=content, media_type=record.get("content_type", content_type))
+
+
+@api.post("/admin/orders/{order_id}/payment-review", response_model=Order)
+async def review_manual_payment(order_id: str, input: ManualPaymentReviewInput, _: Annotated[dict[str, Any], Depends(admin_user)]) -> Order:
+    order = await db.orders.find_one({"id": order_id}, {"_id": 0})
+    if not order or order.get("payment", {}).get("method") != "bank_transfer":
+        raise HTTPException(404, "Manual payment order not found")
+    if order.get("payment", {}).get("status") != "review_pending":
+        raise HTTPException(409, "This payment is not awaiting review")
+    timestamp = now()
+    if input.action == "capture":
+        update = {"$set": {"status": "confirmed", "payment.status": "captured", "payment.transaction_id": f"MANUAL-{order['order_number']}", "payment.review_note": input.note.strip(), "updated_at": timestamp}, "$push": {"tracking.events": {"status": "Payment captured by admin", "at": timestamp}}}
+    else:
+        update = {"$set": {"status": "payment_failed", "payment.status": "failed", "payment.review_note": input.note.strip(), "updated_at": timestamp}, "$push": {"tracking.events": {"status": "Payment rejected by admin", "at": timestamp, "reason": input.note.strip()}}}
+    result = await db.orders.update_one({"id": order_id, "payment.status": "review_pending"}, update)
+    if not result.modified_count:
+        raise HTTPException(409, "Payment review was already completed")
+    if input.action == "reject":
+        for item in order.get("items", []):
+            await db.products.update_one({"id": item["product_id"]}, {"$inc": {"stock": int(item["quantity"])}, "$set": {"updated_at": timestamp}})
+    updated = await db.orders.find_one({"id": order_id}, {"_id": 0})
     return Order(**updated)
 
 
