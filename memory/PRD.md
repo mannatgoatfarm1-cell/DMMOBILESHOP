@@ -47,6 +47,12 @@ Build a production-ready e-commerce platform "DMMobile Shop" (formerly MobileCar
 - All existing backend data, APIs, auth flows preserved
 - Testing: 100% pass rate (15/15 features verified)
 
+### Customer Homepage Cleanup (DONE — Sept 25, 2026)
+- Removed customer-facing Top Selling / Deal of the Day, Save Money Deal, Bulk Deal, Today Deal, and New Stock Deal sections.
+- Removed AI Deals entry points from customer mobile navigation and account hub, plus AI wording from the sell-device screen.
+- Removed the obsolete duplicate deal-row component; backend, MongoDB data, and Admin panel were not modified.
+- Smoke-tested the live customer homepage: all removed section test IDs returned zero and the page loaded successfully.
+
 ## Pending Tasks (Prioritized)
 
 ### P1 — High Priority

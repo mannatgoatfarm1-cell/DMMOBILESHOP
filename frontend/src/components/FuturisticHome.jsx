@@ -3,8 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Search, ShoppingCart, ChevronRight, Heart, Star, Gavel, Smartphone, Laptop, Watch, Tablet,
-  Headphones, Gamepad2, Camera, LayoutGrid, Percent, Zap, Clock, ShieldCheck, Wallet,
-  RotateCcw, BadgeCheck, Truck, Crown, PiggyBank, PackageOpen, Flame, Sparkles,
+  Headphones, Gamepad2, Camera, LayoutGrid, Percent, Clock, ShieldCheck, Wallet,
+  RotateCcw, BadgeCheck, Truck, PackageOpen, Flame,
   ArrowRight, TrendingUp, RefreshCw, Wrench, Cpu, Phone, Globe, MessageCircle,
 } from "lucide-react";
 
@@ -99,57 +99,6 @@ function TrustStrip() {
         </div>
       ))}
     </motion.div>
-  );
-}
-
-/* ========== Promo Cards Row (Flash Sale, Deal of Day, Top Selling) ========== */
-function PromoCards({ products }) {
-  const deal = products[0];
-  return (
-    <motion.div {...fadeUp} className="f-promo-grid" data-testid="futuristic-promo-grid">
-      <Link to="/category?sort=price_desc" className="f-promo-card f-promo-flash" data-testid="promo-flash-sale">
-        <Zap size={22} style={{ color: "var(--neon-pink)", marginBottom: 6 }} />
-        <h3>Flash Sale</h3>
-        <p style={{ color: "#ffb0c0" }}>Up to 70% OFF — Limited Time Only</p>
-        <span className="f-promo-btn">Shop Now <ChevronRight size={13} /></span>
-      </Link>
-      <div className="f-promo-card f-promo-deal" data-testid="promo-deal-of-day">
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-          <Clock size={18} style={{ color: "var(--neon-cyan)" }} />
-          <span style={{ fontSize: 12, fontWeight: 800, color: "#e2eafc" }}>Deal Of The Day</span>
-          <AnimatedCountdown />
-        </div>
-        {deal && <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <img src={deal.image} alt={deal.name} style={{ width: 60, height: 60, borderRadius: 10, objectFit: "cover", background: "rgba(10,18,35,0.5)" }} />
-          <div>
-            <b style={{ fontSize: 13, color: "#e2eafc", display: "block" }}>{deal.name}</b>
-            <div style={{ display: "flex", gap: 8, alignItems: "baseline", marginTop: 4 }}>
-              <del style={{ fontSize: 11, color: "#6b7f9e" }}>{money(deal.old)}</del>
-              <strong style={{ fontSize: 16, color: "var(--neon-cyan)" }}>{money(deal.price)}</strong>
-              <em style={{ color: "var(--neon-green)", fontSize: 10, fontStyle: "normal", fontWeight: 800 }}>{deal.off}</em>
-            </div>
-          </div>
-        </div>}
-      </div>
-      <Link to="/category" className="f-promo-card f-promo-top" data-testid="promo-top-selling">
-        <Crown size={22} style={{ color: "var(--neon-purple)", marginBottom: 6 }} />
-        <h3>Top Selling</h3>
-        <p style={{ color: "#c4b0ff" }}>Most Loved. Most Bought.</p>
-        <span className="f-promo-btn">Shop Now <ChevronRight size={13} /></span>
-      </Link>
-    </motion.div>
-  );
-}
-
-/* ========== Top Selling Products ========== */
-function TopSellingSection({ products, onAdd, onWish }) {
-  return (
-    <motion.section {...fadeUp} data-testid="top-selling-section">
-      <div className="section-title"><h2><Crown size={20} style={{ color: "var(--gold)", marginRight: 8 }} />Top Selling Mobiles</h2><p style={{ color: "#8fa5c4", fontSize: 11, marginLeft: 8 }}>Most Loved. Best Prices. Don't Miss Out!</p><Link to="/category" data-testid="view-top-selling-link">View All <ChevronRight size={15} /></Link></div>
-      <motion.div className="product-grid grid-6" {...staggerContainer}>
-        {products.slice(0, 6).map((p, i) => <GlassProductCard key={p.id} product={p} onAdd={onAdd} onWish={onWish} badge={BADGES[i % BADGES.length]} index={i} />)}
-      </motion.div>
-    </motion.section>
   );
 }
 
@@ -461,10 +410,6 @@ export function FuturisticHome({ products, auctions, onAdd, onWish, common, anno
                 </div>
               )}
               <div style={{ borderTop: "1px solid rgba(100,160,255,0.06)", paddingTop: 10, marginTop: 8 }}>
-                <div className="hot-head"><b>Bulk Deals</b><Link to="/category" data-testid="bulk-deals-link">Get Quote <ChevronRight size={13} /></Link></div>
-                <small style={{ color: "#8fa5c4", fontSize: 10 }}>Buy More, Save More · B2B & Bulk Orders</small>
-              </div>
-              <div style={{ borderTop: "1px solid rgba(100,160,255,0.06)", paddingTop: 10, marginTop: 8 }}>
                 <div className="hot-head"><b>Wholesale</b><Link to="/category" data-testid="wholesale-link">Start Now <ChevronRight size={13} /></Link></div>
                 <small style={{ color: "#8fa5c4", fontSize: 10 }}>Best Rates for Businesses</small>
               </div>
@@ -474,12 +419,6 @@ export function FuturisticHome({ products, auctions, onAdd, onWish, common, anno
 
         {/* Trust Strip */}
         <TrustStrip />
-
-        {/* Flash Sale / Deal of Day / Top Selling promo row */}
-        <PromoCards products={display} />
-
-        {/* Top Selling Products */}
-        <TopSellingSection products={display} onAdd={onAdd} onWish={onWish} />
 
         {/* Hot Selling Categories */}
         <HotSellingCategories />
@@ -501,11 +440,6 @@ export function FuturisticHome({ products, auctions, onAdd, onWish, common, anno
               </Link>
             );
           })}
-        </motion.section>
-
-        {/* Neon Deal Rows */}
-        <motion.section {...fadeUp}>
-          <NeonDealRows products={display} onAdd={onAdd} onWish={onWish} />
         </motion.section>
 
         {/* Promo Banners */}
@@ -567,32 +501,3 @@ export function FuturisticHome({ products, auctions, onAdd, onWish, common, anno
   );
 }
 
-/* ========== NeonDealRows (from App.js pattern) ========== */
-function NeonDealRows({ products, onAdd, onWish }) {
-  const rows = [
-    ["top", Crown, "Top Selling", "Deal of the Day", "Our best sellers · Limited stock", "mobiles"],
-    ["save", PiggyBank, "Save Money", "Deal", "Best price · More savings", "laptops"],
-    ["bulk", PackageOpen, "Bulk", "Deal", "Buy more · Save more", "accessories"],
-    ["today", Flame, "Today", "Deal", "Limited time · Grab fast", "mobiles"],
-    ["stock", Sparkles, "New Stock", "Deal", "Latest models · Fresh arrivals", ""],
-  ];
-  return (
-    <section className="neon-deal-stack" data-testid="neon-deal-stack">
-      {rows.map(([tone, Icon, title, accent, copy, category], ri) => {
-        const rowP = products.filter(p => !category || p.category_slug === category);
-        const picks = (rowP.length ? rowP : products).slice(ri, ri + 5);
-        return (
-          <article className={`neon-deal-row ${tone}`} key={tone} data-testid={`neon-deal-${tone}`}>
-            <div className="neon-deal-promo"><Icon size={35} /><h2>{title} <em>{accent}</em></h2><p>{copy}</p><Link to={category ? `/category?category=${category}` : "/category"} data-testid={`neon-view-all-${tone}`}>View All <ChevronRight size={15} /></Link></div>
-            <div className="neon-product-strip">{picks.map(p => (
-              <div className="neon-product" key={`${tone}-${p.id}`} data-testid={`neon-product-${tone}-${p.id}`}>
-                <span>{p.off || "DEAL"}</span><img src={p.image} alt={p.name} /><b>{p.name}</b><strong>{money(p.price)}</strong>
-                <button onClick={() => onAdd(p)} data-testid={`neon-grab-${tone}-${p.id}`}><ShoppingCart size={13} /> Grab Deal</button>
-              </div>
-            ))}</div>
-          </article>
-        );
-      })}
-    </section>
-  );
-}
