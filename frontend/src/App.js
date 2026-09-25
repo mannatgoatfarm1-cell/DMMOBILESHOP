@@ -333,7 +333,7 @@ function StoreHome({ products, auctions, onAdd, onWish, common, announcements = 
 }
 
 function BottomNav({ active = "Home" }) {
-  const items = [["Home", "/", HomeIcon], ["Categories", "/category", LayoutGrid], ["Auction", "/auctions", Gavel], ["Account", "/account", UserRound]];
+  const items = [["Home", "/", HomeIcon], ["Categories", "/category", LayoutGrid], ["Auction", "/auctions", Gavel], ["Orders", "/my-orders", Package], ["Cart", "/cart", ShoppingCart], ["Account", "/account", UserRound]];
   return <nav className="bottom-nav">{items.map(([label, to, Icon]) => <Link className={active === label ? "active" : ""} to={to} key={label} data-testid={`bottom-nav-${label.toLowerCase().replace(" ", "-")}`}><Icon size={19} /><span>{label}</span></Link>)}</nav>;
 }
 
@@ -747,11 +747,13 @@ function App() {
         if (refreshQueued && !disposed) { refreshQueued = false; liveRefresh(); }
       }
     };
-    const liveSync = setInterval(liveRefresh, 1000);
+    const liveSync = setInterval(() => { if (document.visibilityState === "visible") liveRefresh(); }, 20000);
+    const visibilitySync = () => { if (document.visibilityState === "visible") liveRefresh(); };
     const storageSync = (event) => { if (event.key === "mobilecart-live-update") liveRefresh(); };
     window.addEventListener("mobilecart:live-update", liveRefresh);
+    document.addEventListener("visibilitychange", visibilitySync);
     window.addEventListener("storage", storageSync);
-    return () => { disposed = true; clearInterval(liveSync); window.removeEventListener("mobilecart:live-update", liveRefresh); window.removeEventListener("storage", storageSync); };
+    return () => { disposed = true; clearInterval(liveSync); window.removeEventListener("mobilecart:live-update", liveRefresh); document.removeEventListener("visibilitychange", visibilitySync); window.removeEventListener("storage", storageSync); };
   }, [refreshProducts, refreshAuctions, refreshAnnouncements, refreshStorefront]);
   useEffect(() => { if (!authLoading) { refreshCart(); refreshWish(); } }, [authLoading, user, refreshCart, refreshWish]);
   const add = async (product, buyNow = false) => { if (product.stock <= 0) { toast.error("This product is out of stock"); return; } if (!user) { toast.error("Please sign in to save your cart"); navigate("/login?next=/cart"); return; } try { await api.post("/api/cart/items", { product_id: product.id, quantity: 1 }); await refreshCart(); toast.success(`${product.name} added to cart`); speakHindi(`${product.name} कार्ट में जोड़ दिया गया`); if (buyNow) navigate("/cart"); } catch (error) { toast.error(apiError(error)); } };

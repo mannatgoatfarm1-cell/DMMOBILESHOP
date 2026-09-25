@@ -105,6 +105,11 @@ Build a production-ready e-commerce platform "DMMobile Shop" (formerly MobileCar
 - Suspended users can browse public catalog data, but receive clear `403 ACCOUNT_SUSPENDED` responses for cart, bids, wallet/payment, and order actions.
 - Verified using a temporary admin suspension: catalog returned 200, while cart and auction bid returned 403; the test customer was reactivated afterward.
 
+### Storefront Performance & Mobile Auction Shortcuts (DONE — Sept 25, 2026)
+- Replaced global 1-second polling of products, auctions, categories, announcements, and storefront config with visibility-aware 20-second sync plus immediate manual refresh events.
+- Reduced auction data/history polling to 4 seconds / 2.5 seconds while retaining the one-second visual countdown.
+- Added mobile bottom-nav Orders and Cart beside Auction; verified all six shortcuts fit within a 390px screen without horizontal overflow.
+
 ## Pending Tasks (Prioritized)
 
 ### P1 — High Priority

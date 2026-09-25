@@ -1124,6 +1124,9 @@ body::before {
   .sale-shelf .flash-card img { height: 126px; }
   .sale-shelf .flash-card b { min-height: 30px; font-size: 11px; }
   .sale-shelf .flash-card button { min-height: 34px; }
+  .bottom-nav { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); justify-content: stretch; padding: 0 2px; }
+  .bottom-nav a { min-width: 0; gap: 2px; font-size: 8px; }
+  .bottom-nav a svg { width: 17px; height: 17px; }
 }
 
 /* Ensure admin panel is NOT affected */
