@@ -43,16 +43,59 @@ const BADGES = ["Bestseller", "New Launch", "Hot Deal", "Assured", "Top Rated", 
 const FEATURED_ORDER = ["iphone", "samsung", "macbook", "boat-airdopes-141", "pixel-7", "nothing-phone-2"];
 
 /* ========== Countdown Timer ========== */
-function AnimatedCountdown() {
+function AnimatedCountdown({ testId = "flash-countdown" }) {
   const [left, setLeft] = useState(12 * 3600 + 45 * 60 + 30);
   useEffect(() => { const t = setInterval(() => setLeft(v => v > 0 ? v - 1 : 12 * 3600), 1000); return () => clearInterval(t); }, []);
   const pad = v => String(v).padStart(2, "0");
   const h = pad(Math.floor(left / 3600)), m = pad(Math.floor((left % 3600) / 60)), s = pad(left % 60);
   return (
-    <div className="countdown" data-testid="flash-countdown">
+    <div className="countdown" data-testid={testId}>
       <motion.span key={`h-${h}`} initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>{h}</motion.span>:
       <motion.span key={`m-${m}`} initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>{m}</motion.span>:
       <motion.span key={`s-${s}`} initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>{s}</motion.span>
+    </div>
+  );
+}
+
+/* ========== Reusable Sale Shelves ========== */
+function SaleShelf({ id, title, eyebrow, icon: Icon, products, onAdd, to, tone = "cyan", showTimer = false }) {
+  return (
+    <motion.section {...fadeUp} className={`flash-wrap sale-shelf sale-shelf-${tone}`} data-testid={`${id}-section`}>
+      <div className="section-title sale-shelf-title">
+        <div className="sale-heading"><span className="sale-heading-icon"><Icon size={18} /></span><div><span className="sale-kicker">{eyebrow}</span><h2>{title}</h2></div></div>
+        {showTimer && <div className="flash-timer" data-testid={`${id}-timer`}><Clock size={14} /> Ends in <AnimatedCountdown testId={`${id}-countdown`} /></div>}
+        <Link to={to} data-testid={`view-${id}-link`}>View All <ChevronRight size={15} /></Link>
+      </div>
+      <motion.div className="product-grid grid-6 flash-grid" {...staggerContainer}>
+        {products.map((product) => (
+          <motion.article className="flash-card" key={`${id}-${product.id}`} variants={staggerItem} data-testid={`${id}-card-${product.id}`} whileHover={{ y: -5 }}>
+            <span className="flash-off">{product.off || "LIVE DEAL"}</span>
+            <Link to={`/product/${product.id}`} data-testid={`${id}-product-${product.id}`}><img src={product.image} alt={product.name} /></Link>
+            <b>{product.name}</b><strong>{money(product.price)}</strong>
+            <button onClick={() => onAdd(product)} data-testid={`${id}-add-${product.id}`}><ShoppingCart size={13} /> Grab Deal</button>
+          </motion.article>
+        ))}
+      </motion.div>
+    </motion.section>
+  );
+}
+
+function MajorSaleSections({ products, onAdd }) {
+  const sales = [
+    { id: "mobile-parts-deals", title: "Mobile Parts Deals", eyebrow: "REPAIR ESSENTIALS", icon: Wrench, category: "accessories", tone: "blue" },
+    { id: "today-deals", title: "Today's Deals", eyebrow: "ENDS TONIGHT", icon: Flame, category: "mobiles", tone: "orange", showTimer: true },
+    { id: "deal-of-the-day", title: "Deal of the Day", eyebrow: "FEATURED PICK", icon: Clock, category: "", tone: "purple", showTimer: true },
+    { id: "new-stock", title: "New Stock", eyebrow: "JUST LANDED", icon: Smartphone, category: "", tone: "green" },
+    { id: "stock-clearance", title: "Stock Clearance Sale", eyebrow: "LAST CHANCE", icon: Percent, category: "", tone: "red" },
+  ];
+  const shelfProducts = (category, offset) => {
+    const preferred = category ? products.filter((product) => product.category_slug === category) : products;
+    const source = [...preferred, ...products.filter((product) => !preferred.some((item) => item.id === product.id))];
+    return [...source.slice(offset), ...source.slice(0, offset)].slice(0, 6);
+  };
+  return (
+    <div className="major-sale-sections" data-testid="major-sale-sections">
+      {sales.map((sale, index) => <SaleShelf key={sale.id} {...sale} products={shelfProducts(sale.category, index)} onAdd={onAdd} to={sale.category ? `/category?category=${sale.category}` : "/category?sort=price_desc"} />)}
     </div>
   );
 }
@@ -459,20 +502,8 @@ export function FuturisticHome({ products, auctions, onAdd, onWish, common, anno
         {/* Trending + Why Choose + Reviews */}
         <TrendingReviewsSection products={display} onAdd={onAdd} onWish={onWish} />
 
-        {/* Flash Deals */}
-        <motion.section {...fadeUp} className="flash-wrap" data-testid="flash-deals-section">
-          <div className="section-title"><h2>Flash Deals</h2><div className="flash-timer"><Clock size={14} /> Ends in <AnimatedCountdown /></div><Link to="/category?sort=price_desc" data-testid="view-flash-deals-link">View All <ChevronRight size={15} /></Link></div>
-          <motion.div className="product-grid grid-6 flash-grid" {...staggerContainer}>
-            {display.slice(0, 6).map(p => (
-              <motion.article className="flash-card" key={p.id} variants={staggerItem} data-testid={`flash-card-${p.id}`} whileHover={{ y: -5 }}>
-                <span className="flash-off">{p.off}</span>
-                <Link to={`/product/${p.id}`}><img src={p.image} alt={p.name} /></Link>
-                <b>{p.name}</b><strong>{money(p.price)}</strong>
-                <button onClick={() => onAdd(p)} data-testid={`flash-add-${p.id}`}>Grab Deal</button>
-              </motion.article>
-            ))}
-          </motion.div>
-        </motion.section>
+        <SaleShelf id="flash-deals" title="Flash Deals" eyebrow="LIMITED TIME" icon={Flame} products={display.slice(0, 6)} onAdd={onAdd} to="/category?sort=price_desc" tone="pink" showTimer />
+        <MajorSaleSections products={display} onAdd={onAdd} />
 
         {/* Auction Teaser */}
         {auctions[0] && (

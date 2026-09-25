@@ -405,6 +405,38 @@ body::before {
    FLASH CARDS — GLASS
    ============================================= */
 .flash-wrap { margin-bottom: 34px; }
+.major-sale-sections { display: grid; gap: 0; }
+.sale-shelf {
+  --sale-accent: var(--neon-cyan);
+  --sale-accent-rgb: 34, 211, 238;
+  position: relative;
+  padding: 18px;
+  margin-bottom: 22px;
+  border: 1px solid rgba(var(--sale-accent-rgb), 0.16);
+  border-radius: 16px;
+  background: linear-gradient(105deg, rgba(var(--sale-accent-rgb), 0.08), rgba(8, 14, 28, 0.28) 42%, rgba(8, 14, 28, 0.06));
+}
+.sale-shelf-title { margin-bottom: 16px; }
+.sale-heading { display: flex; align-items: center; gap: 10px; }
+.sale-heading-icon {
+  width: 34px; height: 34px; display: grid; place-items: center; flex: 0 0 auto;
+  color: var(--sale-accent); background: rgba(var(--sale-accent-rgb), 0.12);
+  border: 1px solid rgba(var(--sale-accent-rgb), 0.26); border-radius: 10px;
+  box-shadow: 0 0 18px rgba(var(--sale-accent-rgb), 0.12);
+}
+.sale-shelf h2 { margin: 0; }
+.sale-kicker { display: block; color: var(--sale-accent); font-size: 9px; font-weight: 800; letter-spacing: 1.2px; margin-bottom: 2px; }
+.sale-shelf .flash-card { border-color: rgba(var(--sale-accent-rgb), 0.16) !important; }
+.sale-shelf .flash-card:hover { border-color: rgba(var(--sale-accent-rgb), 0.42) !important; box-shadow: 0 0 24px rgba(var(--sale-accent-rgb), 0.16), 0 12px 36px rgba(0, 0, 0, 0.3) !important; }
+.sale-shelf .flash-off { background: linear-gradient(90deg, rgba(var(--sale-accent-rgb), 0.92), rgba(14, 20, 36, 0.98)) !important; }
+.sale-shelf .flash-card button { color: var(--sale-accent) !important; border-color: rgba(var(--sale-accent-rgb), 0.28) !important; }
+.sale-shelf .flash-card button:hover { background: rgba(var(--sale-accent-rgb), 0.2) !important; }
+.sale-shelf-blue { --sale-accent: #38bdf8; --sale-accent-rgb: 56, 189, 248; }
+.sale-shelf-orange { --sale-accent: #fb923c; --sale-accent-rgb: 251, 146, 60; }
+.sale-shelf-purple { --sale-accent: #a78bfa; --sale-accent-rgb: 167, 139, 250; }
+.sale-shelf-green { --sale-accent: #34d399; --sale-accent-rgb: 52, 211, 153; }
+.sale-shelf-red { --sale-accent: #fb7185; --sale-accent-rgb: 251, 113, 133; }
+.sale-shelf-pink { --sale-accent: #f472b6; --sale-accent-rgb: 244, 114, 182; }
 .flash-card {
   background: var(--glass-bg) !important;
   backdrop-filter: blur(14px) !important;

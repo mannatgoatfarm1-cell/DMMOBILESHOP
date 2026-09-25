@@ -53,6 +53,11 @@ Build a production-ready e-commerce platform "DMMobile Shop" (formerly MobileCar
 - Removed the obsolete duplicate deal-row component; backend, MongoDB data, and Admin panel were not modified.
 - Smoke-tested the live customer homepage: all removed section test IDs returned zero and the page loaded successfully.
 
+### Major Sale Shelves (DONE — Sept 25, 2026)
+- Reintroduced promotional merchandising as six consistent Future Glass shelves: Flash Deals, Mobile Parts Deals, Today's Deals, Deal of the Day, New Stock, and Stock Clearance Sale.
+- Each shelf uses live product data, unique sale styling, responsive six-card rows, product links, and working add-to-cart controls.
+- Verified the live storefront: all six shelves render once and the Mobile Parts / Today's Deals rows render six cards each.
+
 ## Pending Tasks (Prioritized)
 
 ### P1 — High Priority
