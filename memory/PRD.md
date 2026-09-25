@@ -115,6 +115,11 @@ Build a production-ready e-commerce platform "DMMobile Shop" (formerly MobileCar
 - Customers can copy UPI ID, account number, or IFSC and submit UTR/reference plus payment proof for Admin verification.
 - Verified Direct Transfer, UPI ID, account name/number, and IFSC are all enabled/configured; backend syntax and frontend build pass.
 
+### Google OAuth Block Fix (DONE — Sept 25, 2026)
+- Fixed quoted Google OAuth values in the backend environment; the raw quote characters were corrupting the client credentials and allowed-origin set.
+- Restarted the backend with clean Client ID, Client Secret, and allowed origins; the preview origin is accepted and Google sign-in launches normally.
+- Verified the callback now reaches token exchange (invalid test code returns expected `401 invalid_grant`, rather than redirect/origin block).
+
 ## Pending Tasks (Prioritized)
 
 ### P1 — High Priority
