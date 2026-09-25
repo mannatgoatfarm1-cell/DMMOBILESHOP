@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Search, ShoppingCart, ChevronRight, Heart, Star, Gavel, Smartphone, Laptop, Watch, Tablet,
-  Apple, Headphones, Gamepad2, Camera, LayoutGrid, Percent, Clock, Radio, ShieldCheck, Wallet,
+  Headphones, Gamepad2, Camera, LayoutGrid, Percent, Clock, ShieldCheck, Wallet,
   RotateCcw, BadgeCheck, Truck, PackageOpen, Flame,
   ArrowRight, TrendingUp, RefreshCw, Wrench, Cpu, Phone, Globe, MessageCircle,
 } from "lucide-react";
@@ -37,12 +37,6 @@ const HOT_CATEGORIES = [
   { label: "Refurbished Phones", sub: "Certified | Tested | Warranty", icon: RefreshCw, slug: "mobiles" },
   { label: "Compare Phones", sub: "Find the Perfect Match", icon: Smartphone, slug: "" },
   { label: "Sell Your Phone", sub: "Get Best Value", icon: TrendingUp, slug: "" },
-];
-const BRANDS = [
-  { label: "Apple", icon: Apple }, { label: "Samsung", icon: Smartphone }, { label: "OnePlus", icon: Cpu },
-  { label: "Mi", icon: Tablet }, { label: "Vivo", icon: Camera }, { label: "Oppo", icon: Radio },
-  { label: "Realme", icon: Watch }, { label: "Google Pixel", icon: Globe }, { label: "Motorola", icon: Headphones },
-  { label: "Nothing", icon: Gamepad2 }, { label: "Asus", icon: Laptop },
 ];
 const BADGES = ["Bestseller", "New Launch", "Hot Deal", "Assured", "Top Rated", "Value"];
 const FEATURED_ORDER = ["iphone", "samsung", "macbook", "boat-airdopes-141", "pixel-7", "nothing-phone-2"];
@@ -206,22 +200,6 @@ function QuadPromo() {
         <span className="f-promo-btn">Explore Now <ArrowRight size={12} /></span>
       </Link>
     </motion.div>
-  );
-}
-
-/* ========== Top Brands ========== */
-function BrandsSection({ title = "Top Brands" }) {
-  return (
-    <motion.section {...fadeUp} style={{ margin: "28px 0" }} data-testid="top-brands-section">
-      <div className="section-title"><h2><Star size={18} style={{ color: "var(--gold)", marginRight: 8 }} />{title}</h2></div>
-      <div className="f-brands-row">
-        {BRANDS.map(({ label, icon: Icon }) => (
-          <motion.div key={label} whileHover={{ y: -3, scale: 1.02 }}>
-            <Link to="/category" className="f-brand-icon" data-testid={`brand-icon-${label.toLowerCase().replace(/\s/g, "-")}`} aria-label={`Shop ${label}`} title={label}><Icon size={22} /></Link>
-          </motion.div>
-        ))}
-      </div>
-    </motion.section>
   );
 }
 
@@ -473,8 +451,18 @@ export function FuturisticHome({ products, auctions, onAdd, onWish, common, anno
           </section>
         </div>
 
-        {/* Top Brands — directly below the hero banner */}
-        {isVisible("top-brands") && <BrandsSection title={section("top-brands").title || "Top Brands"} />}
+        {/* Category navigation — directly below the hero banner */}
+        {isVisible("category-navigation") && <motion.section {...fadeUp} className="circle-row" data-testid="category-circles">
+          {CATEGORIES.slice(0, 10).map(c => {
+            const Icon = c.icon;
+            return (
+              <Link key={c.label} to={`/category?category=${c.slug}`} className="circle-cat" data-testid={`circle-${c.label.toLowerCase().replace(/\s|&/g, "-")}`}>
+                <motion.span className="circle-icon" whileHover={{ scale: 1.1, y: -4 }}><Icon size={22} /></motion.span>
+                <small>{c.label.split(" ")[0]}</small>
+              </Link>
+            );
+          })}
+        </motion.section>}
 
         {/* Sale Shelves — directly below the hero banner */}
         {isVisible("flash-deals") && <SaleShelf id="flash-deals" title={section("flash-deals").title || "Flash Deals"} eyebrow={section("flash-deals").eyebrow || "LIMITED TIME"} icon={Flame} products={display.slice(0, 6)} onAdd={onAdd} to="/category?sort=price_desc" tone="pink" showTimer />}
@@ -488,19 +476,6 @@ export function FuturisticHome({ products, auctions, onAdd, onWish, common, anno
 
         {/* Quad Promo: Auction, Wholesale, Trade-In, Price Drop */}
         {isVisible("marketplace-services") && <QuadPromo />}
-
-        {/* Category Circles */}
-        {isVisible("category-navigation") && <motion.section {...fadeUp} className="circle-row" data-testid="category-circles">
-          {CATEGORIES.slice(0, 10).map(c => {
-            const Icon = c.icon;
-            return (
-              <Link key={c.label} to={`/category?category=${c.slug}`} className="circle-cat" data-testid={`circle-${c.label.toLowerCase().replace(/\s|&/g, "-")}`}>
-                <motion.span className="circle-icon" whileHover={{ scale: 1.1, y: -4 }}><Icon size={22} /></motion.span>
-                <small>{c.label.split(" ")[0]}</small>
-              </Link>
-            );
-          })}
-        </motion.section>}
 
         {/* Promo Banners */}
         {isVisible("promo-banners") && <motion.section {...fadeUp} className="promo-row" data-testid="promo-banners">

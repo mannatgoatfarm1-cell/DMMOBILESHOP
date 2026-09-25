@@ -332,7 +332,6 @@ class StorefrontConfig(BaseModel):
 
 
 STOREFRONT_SECTION_DEFAULTS = [
-    {"id": "top-brands", "label": "Top Brands", "title": "Top Brands", "eyebrow": "", "active": True},
     {"id": "flash-deals", "label": "Flash Deals", "title": "Flash Deals", "eyebrow": "LIMITED TIME", "active": True},
     {"id": "mobile-parts-deals", "label": "Mobile Parts Deals", "title": "Mobile Parts Deals", "eyebrow": "REPAIR ESSENTIALS", "active": True},
     {"id": "today-deals", "label": "Today's Deals", "title": "Today's Deals", "eyebrow": "ENDS TONIGHT", "active": True},

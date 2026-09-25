@@ -71,6 +71,10 @@ Build a production-ready e-commerce platform "DMMobile Shop" (formerly MobileCar
 - Reused the configured secure media upload flow and verified an admin publish updates the customer hero and section visibility, then restores correctly.
 - Moved the admin chat reply composer above the message thread for faster support replies.
 
+### Homepage Navigation Placement (DONE — Sept 25, 2026)
+- Removed the Top Brands rail and its obsolete CMS control.
+- Moved customer category navigation directly below the hero banner, ahead of Flash Deals and the remaining sale shelves.
+
 ## Pending Tasks (Prioritized)
 
 ### P1 — High Priority
