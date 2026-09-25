@@ -119,6 +119,7 @@ Build a production-ready e-commerce platform "DMMobile Shop" (formerly MobileCar
 - Fixed quoted Google OAuth values in the backend environment; the raw quote characters were corrupting the client credentials and allowed-origin set.
 - Restarted the backend with clean Client ID, Client Secret, and allowed origins; the preview origin is accepted and Google sign-in launches normally.
 - Verified the callback now reaches token exchange (invalid test code returns expected `401 invalid_grant`, rather than redirect/origin block).
+- Restored a single consistent redirect contract across Google, frontend callback, and backend validation: `https://dashboard-design-20.preview.emergentagent.com/auth/google`.
 
 ### Mobile Cart & Orders Navigation Update (DONE — Sept 25, 2026)
 - Refined the six-item mobile bottom navigation with persistent Auction, Orders, and Cart shortcuts.
