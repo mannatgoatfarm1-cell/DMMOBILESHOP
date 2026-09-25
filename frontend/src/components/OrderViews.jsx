@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Download, Eye, FileText, MapPin, Package, RefreshCw, Truck, X } from "lucide-react";
 import { toast } from "sonner";
-import useRazorpay from "react-razorpay";
+import { useRazorpay } from "react-razorpay";
 import { api, apiError } from "@/api";
 import { filterRank } from "@/lib/adminSearch";
 
@@ -18,7 +18,7 @@ function BillButton({ id }) {
 }
 
 function UnpaidOrderActions({ order, onChanged }) {
-  const [Razorpay] = useRazorpay();
+  const Razorpay = useRazorpay();
   const cancel = async () => { try { await api.post(`/api/orders/${order.id}/cancel`); toast.success("Unpaid order cancelled"); onChanged(); } catch (error) { toast.error(apiError(error)); } };
   const retry = async () => { try { const { data } = await api.post(`/api/orders/${order.id}/retry-payment`); if (data.payment?.method === "bank_transfer") { toast.info("Personal UPI retry is ready. Open checkout to generate a new QR."); onChanged(); return; } const { data: payment } = await api.post("/api/payments/razorpay/order", { order_id: data.id }); if (!Razorpay) throw new Error("Payment checkout is loading. Please retry."); const checkout = new Razorpay({ key: payment.key_id, amount: payment.amount, currency: payment.currency, order_id: payment.razorpay_order_id, name: "DMobileMart", description: `Order ${payment.order_number}`, prefill: { name: payment.name, email: payment.email }, handler: async (response) => { try { await api.post("/api/payments/razorpay/verify", { order_id: data.id, razorpay_order_id: response.razorpay_order_id, razorpay_payment_id: response.razorpay_payment_id, razorpay_signature: response.razorpay_signature }); toast.success("Payment verified. Order confirmed!"); onChanged(); } catch (error) { toast.error(apiError(error)); } }, modal: { ondismiss: () => toast.info("Payment window closed. You can retry again from My Orders.") } }); checkout.open(); } catch (error) { toast.error(apiError(error)); } };
   if (order.status === "payment_failed") return <div className="customer-order-actions unpaid-order-actions"><button onClick={retry} data-testid={`retry-payment-${order.id}`}>Retry payment</button><button onClick={cancel} data-testid={`cancel-order-${order.id}`}>Cancel order</button></div>;

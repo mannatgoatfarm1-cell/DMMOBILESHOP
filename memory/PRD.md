@@ -131,6 +131,10 @@ Build a production-ready e-commerce platform "DMMobile Shop" (formerly MobileCar
 - Disabled costly glass backdrop filters only on the mobile storefront and applied browser content-visibility to long offscreen sections.
 - Verified at 390px: vertical scroll moved from 0 to 1100px, while New Stock remained horizontally swipeable across a 1012px rail.
 
+### Mobile Orders Crash Fix (DONE — Sept 25, 2026)
+- Fixed a runtime crash in the Orders screen caused by using the `react-razorpay` hook with an incompatible import/return-value pattern.
+- Verified signed-in mobile flow: bottom Orders shortcut opens `/my-orders`, renders a settled order list, and has no runtime error.
+
 ## Pending Tasks (Prioritized)
 
 ### P1 — High Priority
