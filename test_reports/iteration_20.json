@@ -1,0 +1,51 @@
+{
+  "summary": "Ran auth/chat polling regression across backend APIs and frontend UI. Verified the 401-toast spam fix behavior: unauthenticated/public and post-logout sessions no longer show repeated auth toasts, while non-401 admin chat errors still surface as toasts.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "/api/auth/login (OPTIONS preflight)",
+        "issue": "CORS preflight with Origin=https://dashboard-design-20.preview.emergentagent.com returns 400 'Disallowed CORS origin' even though allow-credentials headers are present; cookie-based same-origin app flow still works in preview."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Unauthenticated bootstrap/logout telemetry",
+        "issue": "Console still logs repeated 401 network errors for /api/auth/me during unauthenticated states; no user-facing toast spam observed.",
+        "affected_selectors": []
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration20_auth_polling_regression.py",
+    "/app/test_reports/pytest/pytest_results.xml",
+    "/root/.emergent/automation_output/20260925_133147/console_20260925_133147.log"
+  ],
+  "action_items": [
+    "Investigate/fix CORS preflight origin matching for /api/auth/login OPTIONS (currently 400 Disallowed CORS origin for preview origin).",
+    "Optionally reduce expected unauthenticated /api/auth/me console error noise (keep UX silent as now).",
+    "After any CORS/auth middleware changes, rerun iteration20 backend and UI auth/chat regression."
+  ],
+  "critical_code_review_comments": [
+    "backend/server.py is a very large monolith (>1800 lines), increasing auth/chat regression risk and review complexity.",
+    "Auth/session cookies are correctly HttpOnly+Secure+SameSite=None and password hash field is not exposed in auth responses.",
+    "Admin chat polling fix in frontend/src/components/LiveChat.jsx correctly suppresses toast only for 401 while preserving non-401 error toasts."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration20_auth_polling_regression.py",
+    "/app/test_reports/iteration_20.json"
+  ],
+  "success_rate": {
+    "backend": "88% (7/8 passing)",
+    "frontend": "100% for requested auth/chat UX checks in this run"
+  },
+  "seed_data_creation": "Created transient test chat messages via customer and admin chat send actions during regression.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Core requested auth flows passed (customer/admin login, /api/auth/me role checks, admin support chat load, logout behavior, lockout unchanged). Remaining known gap is explicit CORS preflight OPTIONS returning 400 for preview origin; same-origin browser session behavior remains functional.",
+  "rca of the issue": "RCA: CORS preflight mismatch persists at /api/auth/login OPTIONS. Repro: send OPTIONS with Origin=https://dashboard-design-20.preview.emergentagent.com and Access-Control-Request-Method POST; response is 400 'Disallowed CORS origin' with allow-credentials headers. Potential mitigation: normalize/verify origin matching source for preview domain in middleware/ingress path and ensure exact runtime value alignment."
+}

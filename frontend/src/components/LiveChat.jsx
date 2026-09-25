@@ -15,7 +15,7 @@ export function CustomerLiveChat({ user, hidden = false }) {
 
 export function AdminChatManager({ query = "" }) {
   const [threads, setThreads] = useState([]); const [selected, setSelected] = useState(null); const [messages, setMessages] = useState([]); const [text, setText] = useState("");
-  const load = useCallback(() => api.get("/api/admin/chats").then(({ data }) => setThreads(data)).catch((error) => toast.error(apiError(error))), []);
+  const load = useCallback(() => api.get("/api/admin/chats").then(({ data }) => setThreads(data)).catch((error) => { if (error?.response?.status !== 401) toast.error(apiError(error)); }), []);
   useEffect(() => { load(); const timer = setInterval(load, 1000); return () => clearInterval(timer); }, [load]);
   const open = async (thread) => { setSelected(thread); const { data } = await api.get(`/api/admin/chats/${thread.id}`); setMessages(data.messages); };
   useEffect(() => { if (!selected) return; const timer = setInterval(() => api.get(`/api/admin/chats/${selected.id}`).then(({ data }) => setMessages(data.messages)).catch(() => {}), 1000); return () => clearInterval(timer); }, [selected]);
