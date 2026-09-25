@@ -110,6 +110,11 @@ Build a production-ready e-commerce platform "DMMobile Shop" (formerly MobileCar
 - Reduced auction data/history polling to 4 seconds / 2.5 seconds while retaining the one-second visual countdown.
 - Added mobile bottom-nav Orders and Cart beside Auction; verified all six shortcuts fit within a 390px screen without horizontal overflow.
 
+### Direct Transfer Account Flow (DONE — Sept 25, 2026)
+- Extended Personal UPI Direct Transfer instructions to return and display Admin-configured account-holder name, account number, and IFSC alongside the UPI QR/app links.
+- Customers can copy UPI ID, account number, or IFSC and submit UTR/reference plus payment proof for Admin verification.
+- Verified Direct Transfer, UPI ID, account name/number, and IFSC are all enabled/configured; backend syntax and frontend build pass.
+
 ## Pending Tasks (Prioritized)
 
 ### P1 — High Priority

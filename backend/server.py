@@ -1896,6 +1896,35 @@ async def fail_razorpay_payment(input: RazorpayFailureInput, user: Annotated[dic
     return Order(**updated)
 
 
+@api.post("/orders/{order_id}/cancel", response_model=Order)
+async def cancel_unpaid_order(order_id: str, user: Annotated[dict[str, Any], Depends(require_customer)]) -> Order:
+    order = await db.orders.find_one({"id": order_id, "user_id": user["id"]}, {"_id": 0})
+    if not order or order.get("status") not in {"payment_pending", "payment_failed", "payment_proof_required"}:
+        raise HTTPException(409, "Only unpaid orders can be cancelled")
+    timestamp = now()
+    if order.get("status") != "payment_failed":
+        for item in order.get("items", []):
+            await db.products.update_one({"id": item["product_id"]}, {"$inc": {"stock": int(item["quantity"])}, "$set": {"updated_at": timestamp}})
+    await db.orders.update_one({"id": order_id, "user_id": user["id"]}, {"$set": {"status": "cancelled", "payment.status": "cancelled", "updated_at": timestamp}, "$push": {"tracking.events": {"status": "Order cancelled", "at": timestamp}}})
+    updated = await db.orders.find_one({"id": order_id}, {"_id": 0})
+    return Order(**updated)
+
+
+@api.post("/orders/{order_id}/retry-payment", response_model=Order)
+async def retry_failed_payment(order_id: str, user: Annotated[dict[str, Any], Depends(require_customer)]) -> Order:
+    order = await db.orders.find_one({"id": order_id, "user_id": user["id"]}, {"_id": 0})
+    if not order or order.get("status") != "payment_failed":
+        raise HTTPException(409, "Only failed payments can be retried")
+    timestamp = now()
+    for item in order.get("items", []):
+        reserved = await db.products.update_one({"id": item["product_id"], "stock": {"$gte": int(item["quantity"])}}, {"$inc": {"stock": -int(item["quantity"])}, "$set": {"updated_at": timestamp}})
+        if reserved.modified_count == 0:
+            raise HTTPException(409, "An item is no longer in stock")
+    await db.orders.update_one({"id": order_id, "user_id": user["id"]}, {"$set": {"status": "payment_pending", "payment.status": "pending", "payment.provider_order_id": None, "payment.failure_reason": None, "updated_at": timestamp}, "$push": {"tracking.events": {"status": "Payment retry started", "at": timestamp}}})
+    updated = await db.orders.find_one({"id": order_id}, {"_id": 0})
+    return Order(**updated)
+
+
 @api.post("/payments/manual-proof", response_model=Order)
 async def upload_manual_payment_proof(order_id: str = Query(min_length=1, max_length=80), payment_reference: str = Form(min_length=6, max_length=80), file: UploadFile = File(...), user: Annotated[dict[str, Any], Depends(require_customer)] = None) -> Order:
     allowed = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
@@ -1940,7 +1969,7 @@ async def manual_upi_instructions(order_id: str, user: Annotated[dict[str, Any],
         raise HTTPException(422, "Personal UPI ID is not configured")
     merchant_name = settings.get("bank_account_name", "").strip() or "DMobileMart"
     params = {"pa": upi_id, "pn": merchant_name, "tr": order["payment"].get("manual_request_ref", f"UPI-{order['order_number']}"), "tn": f"DMobileMart order {order['order_number']}", "am": f"{order['total']:.2f}", "cu": "INR"}
-    return {"order_id": order["id"], "order_number": order["order_number"], "amount": order["total"], "merchant_name": merchant_name, "merchant_upi_id": upi_id, "payment_request_ref": params["tr"], "upi_uri": f"upi://pay?{urlencode(params)}"}
+    return {"order_id": order["id"], "order_number": order["order_number"], "amount": order["total"], "merchant_name": merchant_name, "merchant_upi_id": upi_id, "payment_request_ref": params["tr"], "upi_uri": f"upi://pay?{urlencode(params)}", "bank_account_name": settings.get("bank_account_name", ""), "bank_account_number": settings.get("bank_account_number", ""), "bank_ifsc_code": settings.get("bank_ifsc_code", "")}
 
 
 @api.post("/returns/evidence")
