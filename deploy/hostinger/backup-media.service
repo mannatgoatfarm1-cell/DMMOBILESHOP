@@ -1,0 +1,9 @@
+[Unit]
+Description=DMobileMart local media backup
+
+[Service]
+Type=oneshot
+User=dmobilemart
+Group=dmobilemart
+EnvironmentFile=/etc/dmobilemart/dmobilemart.env
+ExecStart=/opt/dmobilemart/current/scripts/backup-media.sh
