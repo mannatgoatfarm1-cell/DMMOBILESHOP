@@ -145,10 +145,11 @@ Build a production-ready e-commerce platform "DMMobile Shop" (formerly MobileCar
 - No Atlas data, runtime credentials, DNS, or production services were changed in this phase.
 
 #### Phase 2 — Independent Service Cutover (P0)
-1. Replace Emergent upload/object-storage proxy with VPS local media or owner-controlled S3-compatible storage.
-2. Add production seed/mutation guard so Atlas startup never inserts/reseeds/mutates existing production data.
-3. Remove preview URLs, Emergent browser/build tooling, and Emergent-hosted static media from runtime paths.
-4. Configure owner Google OAuth, Razorpay/webhooks, Atlas allowlist, transactional reset email, media backups, and Hostinger staging.
+1. **DONE:** Replaced Emergent upload/object-storage calls with filesystem-backed `MEDIA_ROOT` storage and added persistent `/api/media` reads.
+2. **DONE:** Added `APP_ENV=production` guard that skips seed/normalization writes; existing Atlas data is not touched by production startup.
+3. **DONE:** Removed Emergent browser runtime/tooling dependencies and mirrored runtime hero media to local public assets.
+4. **DONE:** Added `/api/health`, local media backup/restore scripts, production secret template, Nginx/systemd/HTTPS runbook, and local-backup status reporting.
+5. **REMAINING OWNER/VPS GATE:** Configure Hostinger staging domain, owner Atlas URI/IP allowlist, owner Google OAuth client, Razorpay/webhook values, email delivery, backup target, and run staging validation.
 
 #### Phase 3 — Production Launch & Operations (P1)
 1. Launch via Nginx, HTTPS, Gunicorn/systemd, monitoring, log rotation, backup jobs, and rollback validation.

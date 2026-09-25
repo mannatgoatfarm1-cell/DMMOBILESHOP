@@ -50,8 +50,8 @@ const CIRCLE_CATEGORIES = [
   { label: "Deals", slug: "", icon: Percent },
   { label: "More", slug: "", icon: LayoutGrid },
 ];
-const HERO_PHONE = "https://static.prod-images.emergentagent.com/jobs/4d8ba7d6-4cc2-48fd-a329-88470c3b0d75/images/29f5c8a586dbdda9921a2bd753139bccf4cd74c5f0004bb94e7b3148cb72b303.jpeg";
-const PREOWNED = "https://static.prod-images.emergentagent.com/jobs/4d8ba7d6-4cc2-48fd-a329-88470c3b0d75/images/f47e5c206f6b238efb5c3026aeb05d74e6898d9d040b4d0cb4249239ca99bbb8.jpeg";
+const HERO_PHONE = "/media/hero-phone.jpeg";
+const PREOWNED = "/media/preowned.jpeg";
 
 const BADGES = ["Bestseller", "New Launch", "Hot Deal", "Assured", "Top Rated", "Value"];
 const FEATURED_ORDER = ["iphone", "samsung", "macbook", "boat-airdopes-141", "pixel-7", "nothing-phone-2"];

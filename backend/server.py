@@ -18,7 +18,6 @@ from urllib.parse import urlencode
 import bcrypt
 import jwt
 import razorpay
-import requests
 from authlib.integrations.starlette_client import OAuth
 from fastapi import APIRouter, Depends, FastAPI, File, Form, HTTPException, Query, Request, Response, UploadFile
 from fastapi.exceptions import RequestValidationError
@@ -39,17 +38,16 @@ JWT_SECRET = os.environ["JWT_SECRET"]
 FRONTEND_URL = os.environ["FRONTEND_URL"]
 ADMIN_EMAIL = os.environ["ADMIN_EMAIL"].lower()
 ADMIN_PASSWORD = os.environ["ADMIN_PASSWORD"]
-STORAGE_BASE = os.environ["INTEGRATION_PROXY_URL"].rstrip("/")
-EMERGENT_STORAGE_KEY = os.environ["EMERGENT_LLM_KEY"]
+APP_ENV = os.environ["APP_ENV"]
+MEDIA_ROOT = Path(os.environ["MEDIA_ROOT"]).resolve()
+BACKUP_STATUS_FILE = Path(os.environ["BACKUP_STATUS_FILE"])
 GOOGLE_CLIENT_ID = os.environ["GOOGLE_CLIENT_ID"]
 GOOGLE_CLIENT_SECRET = os.environ["GOOGLE_CLIENT_SECRET"]
 GOOGLE_ALLOWED_ORIGINS = {origin.strip().rstrip("/") for origin in os.environ["GOOGLE_ALLOWED_ORIGINS"].split(",") if origin.strip()}
-STORAGE_URL = f"{STORAGE_BASE}/objstore/api/v1/storage"
 JWT_ALGORITHM = "HS256"
-UPLOAD_DIR = ROOT_DIR / "uploads"
+UPLOAD_DIR = MEDIA_ROOT
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 logger = logging.getLogger(__name__)
-storage_key: str | None = None
 
 client = AsyncIOMotorClient(MONGO_URL, serverSelectionTimeoutMS=5000)
 db = client[DB_NAME]
@@ -566,28 +564,20 @@ def verify_password(password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(password.encode("utf-8"), hashed_password.encode("utf-8"))
 
 
-def init_storage(force: bool = False) -> str:
-    global storage_key
-    if storage_key and not force:
-        return storage_key
-    response = requests.post(f"{STORAGE_URL}/init", json={"emergent_key": EMERGENT_STORAGE_KEY}, timeout=30)
-    response.raise_for_status()
-    storage_key = response.json()["storage_key"]
-    return storage_key
-
-
 def put_object(path: str, data: bytes, content_type: str) -> dict[str, Any]:
-    key = init_storage()
-    response = requests.put(f"{STORAGE_URL}/objects/{path}", headers={"X-Storage-Key": key, "Content-Type": content_type}, data=data, timeout=120)
-    response.raise_for_status()
-    return response.json()
+    target = (MEDIA_ROOT / path).resolve()
+    if MEDIA_ROOT not in target.parents:
+        raise ValueError("Invalid media path")
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(data)
+    return {"path": path, "size": len(data), "content_type": content_type}
 
 
 def get_object(path: str) -> tuple[bytes, str]:
-    key = init_storage()
-    response = requests.get(f"{STORAGE_URL}/objects/{path}", headers={"X-Storage-Key": key}, timeout=60)
-    response.raise_for_status()
-    return response.content, response.headers.get("Content-Type", "application/octet-stream")
+    target = (MEDIA_ROOT / path).resolve()
+    if MEDIA_ROOT not in target.parents or not target.is_file():
+        raise FileNotFoundError("Media file not found")
+    return target.read_bytes(), "application/octet-stream"
 
 
 def token_for(user: dict[str, Any], token_type: str, duration: timedelta) -> str:
@@ -665,9 +655,9 @@ async def seed_data() -> None:
     else:
         await db.users.update_one({"username": "deepak143"}, {"$set": {"password_hash": hash_password("deepak143"), "role": "admin", "admin_level": "super", "active": True}})
     catalog = [
-        ("iphone", "iPhone 15 Pro Max", "256GB · Natural Titanium", "mobiles", 109900, 134900, "AI PICK", "https://static.prod-images.emergentagent.com/jobs/4d8ba7d6-4cc2-48fd-a329-88470c3b0d75/images/29f5c8a586dbdda9921a2bd753139bccf4cd74c5f0004bb94e7b3148cb72b303.jpeg"),
+        ("iphone", "iPhone 15 Pro Max", "256GB · Natural Titanium", "mobiles", 109900, 134900, "AI PICK", "/media/hero-phone.jpeg"),
         ("samsung", "Samsung S23 Ultra", "256GB · Phantom Black", "mobiles", 64999, 89999, "BESTSELLER", "https://images.unsplash.com/photo-1678911820864-e2c567c655d7?auto=format&fit=crop&w=800&q=85"),
-        ("macbook", "MacBook Air M2", "13-inch · 8GB RAM", "laptops", 89900, 114900, "TOP RATED", "https://static.prod-images.emergentagent.com/jobs/4d8ba7d6-4cc2-48fd-a329-88470c3b0d75/images/75c5dc30a6aeec454c376afa972e9fe1b132b2ab74a220483c2294f0d13ce72a.jpeg"),
+        ("macbook", "MacBook Air M2", "13-inch · 8GB RAM", "laptops", 89900, 114900, "TOP RATED", "/media/preowned.jpeg"),
         ("nothing-phone-2", "Nothing Phone (2)", "256GB · White", "mobiles", 32999, 39999, "NEW", "https://images.unsplash.com/photo-1598327105666-5b89351aff97?auto=format&fit=crop&w=800&q=85"),
         ("boat-airdopes-141", "boAt Airdopes 141", "TWS Wireless · Black", "audio", 1299, 2999, "DEAL", "https://images.unsplash.com/photo-1606220945770-b5b6c2c55bf1?auto=format&fit=crop&w=800&q=85"),
         ("pixel-7", "Google Pixel 7", "128GB · Snow", "mobiles", 28999, 49999, "VALUE", "https://images.unsplash.com/photo-1598327105666-5b89351aff97?auto=format&fit=crop&w=800&q=85"),
@@ -736,12 +726,10 @@ async def initialise() -> None:
     await db.support_tickets.create_index([("user_id", 1), ("created_at", -1)])
     for resource in MANAGED_RESOURCES:
         await db[f"admin_{resource.replace('-', '_')}"] .create_index([("status", 1), ("updated_at", -1)])
-    await seed_data()
-    try:
-        await asyncio.to_thread(init_storage)
-        logger.info("Object storage initialized")
-    except requests.RequestException as error:
-        logger.error("Object storage initialization failed: %s", error)
+    if APP_ENV != "production":
+        await seed_data()
+    else:
+        logger.info("Production startup: seed and normalization writes are disabled")
 
 
 @app.on_event("shutdown")
@@ -1430,7 +1418,7 @@ async def upload_image(file: UploadFile = File(...), admin: Annotated[dict[str, 
     path = f"mobilecart/uploads/{admin['id']}/{uuid.uuid4().hex}{allowed[file.content_type]}"
     try:
         stored = await asyncio.to_thread(put_object, path, content, file.content_type)
-    except requests.RequestException as error:
+    except (OSError, ValueError) as error:
         logger.exception("Media upload failed")
         raise HTTPException(502, "Image storage is temporarily unavailable") from error
     record = {"id": file_id, "storage_path": stored["path"], "original_filename": file.filename or "product-image", "content_type": file.content_type, "size": stored["size"], "is_deleted": False, "created_at": now()}
@@ -1447,10 +1435,22 @@ async def download_media(file_id: str) -> Response:
         raise HTTPException(403, "This private evidence is available to the assigned reviewer only")
     try:
         content, content_type = await asyncio.to_thread(get_object, record["storage_path"])
-    except requests.RequestException as error:
+    except (OSError, ValueError) as error:
         logger.exception("Media download failed")
         raise HTTPException(502, "Image is temporarily unavailable") from error
     return Response(content=content, media_type=record.get("content_type", content_type))
+
+
+@api.get("/health")
+async def health_check() -> dict[str, Any]:
+    try:
+        await db.command("ping")
+    except Exception as error:
+        raise HTTPException(503, "Database health check failed") from error
+    backup_state = "missing"
+    if BACKUP_STATUS_FILE.is_file():
+        backup_state = BACKUP_STATUS_FILE.read_text().strip() or "unknown"
+    return {"status": "ok", "environment": APP_ENV, "database": "ok", "media_root": str(MEDIA_ROOT), "media_writable": os.access(MEDIA_ROOT, os.W_OK), "backup_status": backup_state}
 
 
 @api.get("/admin/media/{file_id}/content")
@@ -1944,7 +1944,7 @@ async def upload_manual_payment_proof(order_id: str = Query(min_length=1, max_le
     path = f"dmobilemart/payment-proofs/{user['id']}/{uuid.uuid4().hex}{allowed[file.content_type]}"
     try:
         stored = await asyncio.to_thread(put_object, path, content, file.content_type)
-    except requests.RequestException as error:
+    except (OSError, ValueError) as error:
         logger.exception("Payment proof upload failed")
         raise HTTPException(502, "Payment proof storage is temporarily unavailable") from error
     file_id = str(uuid.uuid4())
@@ -2075,7 +2075,7 @@ async def admin_payment_proof(order_id: str, _: Annotated[dict[str, Any], Depend
         raise HTTPException(404, "Payment screenshot not found")
     try:
         content, content_type = await asyncio.to_thread(get_object, record["storage_path"])
-    except requests.RequestException as error:
+    except (OSError, ValueError) as error:
         raise HTTPException(502, "Payment screenshot is temporarily unavailable") from error
     return Response(content=content, media_type=record.get("content_type", content_type))
 
@@ -2107,7 +2107,7 @@ app.add_middleware(SessionMiddleware, secret_key=JWT_SECRET, same_site="lax", ht
 app.add_middleware(
     CORSMiddleware,
     allow_origins=sorted({FRONTEND_URL.rstrip("/"), *GOOGLE_ALLOWED_ORIGINS}),
-    allow_origin_regex=r"^https://[a-z0-9-]+\.preview\.emergentagent\.com$",
+    allow_origin_regex=None if APP_ENV == "production" else r"^https://[a-z0-9-]+\.preview\.emergentagent\.com$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["Content-Type", "Authorization"],
