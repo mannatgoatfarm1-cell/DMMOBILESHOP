@@ -744,6 +744,8 @@ body::before {
 }
 .bottom-nav a { color: #6b7f9e; }
 .bottom-nav a.active { color: var(--neon-blue) !important; }
+.mobile-nav-icon { position: relative; display: grid; place-items: center; }
+.mobile-nav-icon b { position: absolute; top: -7px; right: -10px; min-width: 15px; height: 15px; display: grid; place-items: center; padding: 0 3px; border: 1px solid #071120; border-radius: 999px; background: var(--neon-pink); color: #fff; font-size: 8px; line-height: 1; }
 
 /* =============================================
    SELL PAGE — GLASS

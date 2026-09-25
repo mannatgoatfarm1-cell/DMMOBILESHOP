@@ -332,9 +332,9 @@ function StoreHome({ products, auctions, onAdd, onWish, common, announcements = 
   );
 }
 
-function BottomNav({ active = "Home" }) {
+function BottomNav({ active = "Home", cartCount = 0 }) {
   const items = [["Home", "/", HomeIcon], ["Categories", "/category", LayoutGrid], ["Auction", "/auctions", Gavel], ["Orders", "/my-orders", Package], ["Cart", "/cart", ShoppingCart], ["Account", "/account", UserRound]];
-  return <nav className="bottom-nav">{items.map(([label, to, Icon]) => <Link className={active === label ? "active" : ""} to={to} key={label} data-testid={`bottom-nav-${label.toLowerCase().replace(" ", "-")}`}><Icon size={19} /><span>{label}</span></Link>)}</nav>;
+  return <nav className="bottom-nav" data-testid="mobile-bottom-nav">{items.map(([label, to, Icon]) => <Link className={active === label ? "active" : ""} to={to} key={label} data-testid={`bottom-nav-${label.toLowerCase().replace(" ", "-")}`}><span className="mobile-nav-icon"><Icon size={19} />{label === "Cart" && cartCount > 0 && <b data-testid="mobile-nav-cart-count">{cartCount > 9 ? "9+" : cartCount}</b>}</span><span>{label}</span></Link>)}</nav>;
 }
 
 function QCReport({ product }) {

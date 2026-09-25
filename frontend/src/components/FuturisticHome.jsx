@@ -518,7 +518,7 @@ export function FuturisticHome({ products, auctions, onAdd, onWish, common, anno
       </main>
 
       <FuturisticFooter />
-      <BottomNav />
+      <BottomNav cartCount={common.cartCount} />
     </>
   );
 }
