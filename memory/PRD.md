@@ -58,6 +58,7 @@ Build a production-ready e-commerce platform "DMMobile Shop" (formerly MobileCar
 - Each shelf uses live product data, unique sale styling, responsive six-card rows, product links, and working add-to-cart controls.
 - Verified the live storefront: all six shelves render once and the Mobile Parts / Today's Deals rows render six cards each.
 - Reordered all six shelves directly below the customer hero banner in this sequence: Flash Deals, Mobile Parts Deals, Today's Deals, Deal of the Day, New Stock, Stock Clearance Sale.
+- Moved Top Brands directly below the hero banner and converted its visible brand-label pills into an icon-only rail.
 
 ## Pending Tasks (Prioritized)
 

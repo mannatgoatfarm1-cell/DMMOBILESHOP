@@ -878,6 +878,13 @@ body::before {
   border-color: var(--neon-blue); color: #fff;
   box-shadow: var(--glow-blue); transform: translateY(-2px);
 }
+.f-brand-icon {
+  width: 52px; height: 52px; display: grid; place-items: center;
+  border-radius: 14px; background: rgba(15, 25, 45, 0.6);
+  border: 1px solid rgba(100, 160, 255, 0.12); color: #a9c7f5;
+  backdrop-filter: blur(10px); transition: transform 0.25s, color 0.25s, border-color 0.25s, box-shadow 0.25s;
+}
+.f-brand-icon:hover { color: #fff; border-color: var(--neon-cyan); box-shadow: var(--glow-blue); transform: translateY(-2px); }
 
 /* Reviews section */
 .f-reviews-grid { display: grid; gap: 12px; }

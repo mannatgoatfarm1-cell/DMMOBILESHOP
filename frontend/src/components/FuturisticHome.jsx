@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Search, ShoppingCart, ChevronRight, Heart, Star, Gavel, Smartphone, Laptop, Watch, Tablet,
-  Headphones, Gamepad2, Camera, LayoutGrid, Percent, Clock, ShieldCheck, Wallet,
+  Apple, Headphones, Gamepad2, Camera, LayoutGrid, Percent, Clock, Radio, ShieldCheck, Wallet,
   RotateCcw, BadgeCheck, Truck, PackageOpen, Flame,
   ArrowRight, TrendingUp, RefreshCw, Wrench, Cpu, Phone, Globe, MessageCircle,
 } from "lucide-react";
@@ -38,7 +38,12 @@ const HOT_CATEGORIES = [
   { label: "Compare Phones", sub: "Find the Perfect Match", icon: Smartphone, slug: "" },
   { label: "Sell Your Phone", sub: "Get Best Value", icon: TrendingUp, slug: "" },
 ];
-const BRANDS = ["Apple", "SAMSUNG", "OnePlus", "MI", "vivo", "oppo", "realme", "Google Pixel", "MOTOROLA", "NOTHING", "ASUS"];
+const BRANDS = [
+  { label: "Apple", icon: Apple }, { label: "Samsung", icon: Smartphone }, { label: "OnePlus", icon: Cpu },
+  { label: "Mi", icon: Tablet }, { label: "Vivo", icon: Camera }, { label: "Oppo", icon: Radio },
+  { label: "Realme", icon: Watch }, { label: "Google Pixel", icon: Globe }, { label: "Motorola", icon: Headphones },
+  { label: "Nothing", icon: Gamepad2 }, { label: "Asus", icon: Laptop },
+];
 const BADGES = ["Bestseller", "New Launch", "Hot Deal", "Assured", "Top Rated", "Value"];
 const FEATURED_ORDER = ["iphone", "samsung", "macbook", "boat-airdopes-141", "pixel-7", "nothing-phone-2"];
 
@@ -204,11 +209,11 @@ function QuadPromo() {
 function BrandsSection() {
   return (
     <motion.section {...fadeUp} style={{ margin: "28px 0" }} data-testid="top-brands-section">
-      <div className="section-title"><h2><Star size={18} style={{ color: "var(--gold)", marginRight: 8 }} />Top Brands</h2><small style={{ color: "#8fa5c4", fontSize: 10 }}>Shop from your favourite brand</small></div>
+      <div className="section-title"><h2><Star size={18} style={{ color: "var(--gold)", marginRight: 8 }} />Top Brands</h2></div>
       <div className="f-brands-row">
-        {BRANDS.map(b => (
-          <motion.div key={b} whileHover={{ y: -3, scale: 1.02 }}>
-            <Link to="/category" className="f-brand-pill" data-testid={`brand-${b.toLowerCase().replace(/\s/g, "-")}`}>{b}</Link>
+        {BRANDS.map(({ label, icon: Icon }) => (
+          <motion.div key={label} whileHover={{ y: -3, scale: 1.02 }}>
+            <Link to="/category" className="f-brand-icon" data-testid={`brand-icon-${label.toLowerCase().replace(/\s/g, "-")}`} aria-label={`Shop ${label}`} title={label}><Icon size={22} /></Link>
           </motion.div>
         ))}
       </div>
@@ -460,6 +465,9 @@ export function FuturisticHome({ products, auctions, onAdd, onWish, common, anno
           </section>
         </div>
 
+        {/* Top Brands — directly below the hero banner */}
+        <BrandsSection />
+
         {/* Sale Shelves — directly below the hero banner */}
         <SaleShelf id="flash-deals" title="Flash Deals" eyebrow="LIMITED TIME" icon={Flame} products={display.slice(0, 6)} onAdd={onAdd} to="/category?sort=price_desc" tone="pink" showTimer />
         <MajorSaleSections products={display} onAdd={onAdd} />
@@ -472,9 +480,6 @@ export function FuturisticHome({ products, auctions, onAdd, onWish, common, anno
 
         {/* Quad Promo: Auction, Wholesale, Trade-In, Price Drop */}
         <QuadPromo />
-
-        {/* Top Brands */}
-        <BrandsSection />
 
         {/* Category Circles */}
         <motion.section {...fadeUp} className="circle-row" data-testid="category-circles">
