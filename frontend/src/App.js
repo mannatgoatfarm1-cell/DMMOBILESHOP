@@ -7,7 +7,7 @@ import {
   Search, ShoppingCart, MapPin, ChevronRight, ChevronLeft, ChevronDown, Sparkles, Gavel, Heart, UserRound,
   Menu, X, Plus, ArrowLeft, Minus, Trash2, Check, Star, Store, Zap, Clock, Download, Apple as AppleIcon,
   Smartphone, Laptop, Watch, Tablet, Headphones, Gamepad2, Camera, Home as HomeIcon, Percent, LayoutGrid, Package,
-  Truck, RotateCcw, ShieldCheck, BadgeCheck, LoaderCircle, LogOut, Wallet, Tag, ZoomIn, Sun, Moon, Clock3, Landmark, Crown, PiggyBank, PackageOpen, Flame,
+  Truck, RotateCcw, ShieldCheck, BadgeCheck, LoaderCircle, LogOut, Wallet, Tag, ZoomIn, Sun, Clock3, Landmark, Crown, PiggyBank, PackageOpen, Flame,
 } from "lucide-react";
 import { api, apiError, cardProduct } from "@/api";
 import { speakHindi } from "@/lib/adminFeedback";
@@ -16,8 +16,12 @@ import AdminWorkspace from "@/components/AdminWorkspace";
 import AccountExtras from "@/components/AccountExtras";
 import { CustomerOrderDetail, CustomerOrders } from "@/components/OrderViews";
 import { CustomerLiveChat } from "@/components/LiveChat";
+import { AuctionExperience } from "@/components/AuctionExperience";
+import { ManualUpiPayment } from "@/components/ManualUpiPayment";
 import "@/App.css";
 import "@/category-hub.css";
+import "@/futuristic-2080.css";
+import { FuturisticHome } from "@/components/FuturisticHome";
 
 const money = (value = 0) => `₹${Number(value).toLocaleString("en-IN")}`;
 
@@ -93,6 +97,7 @@ function Topbar({ cartCount, wishCount = 0, user, onSearch, onLogout, onMenu }) 
   const submit = (event) => { if (event.key === "Enter" && query.trim()) { onSearch(query.trim()); navigate(`/category?search=${encodeURIComponent(query.trim())}`); } };
   return (
     <header className="topbar">
+      <div className="marketplace-trust-strip" data-testid="marketplace-trust-strip"><span><ShieldCheck size={12} /> 100% Genuine Products</span><span><Wallet size={12} /> Secure Payments</span><span><Truck size={12} /> Fast Shipping</span><span><RotateCcw size={12} /> Easy Returns</span><Link to="/my-orders" data-testid="trust-strip-track-order">Track Order</Link></div>
       <div className="topbar-row">
         <button className="icon-btn mobile-only" onClick={onMenu} data-testid="mobile-menu-button"><Menu size={20} /></button>
         <Link to="/" data-testid="brand-home-link"><Brand /></Link>
@@ -194,8 +199,10 @@ function StoreHome({ products, auctions, onAdd, onWish, common, announcements = 
     <>
       <Topbar {...common} />
       {announcements.length > 0 && <section className="announcement-strip" data-testid="website-announcement-strip"><div className="announcement-label" data-testid="website-announcement-label"><Smartphone size={14} /><span>LIVE UPDATE</span></div><div className="announcement-viewport"><div className="announcement-track"><div className="announcement-group">{announcements.slice(0, 6).map((announcement) => <Link to="/category" key={announcement.id} data-testid={`announcement-${announcement.id}`}><Smartphone size={13} /><b>{announcement.title}</b>{announcement.description && <small>{announcement.description}</small>}</Link>)}</div><div className="announcement-group announcement-copy" aria-hidden="true">{announcements.slice(0, 6).map((announcement) => <span key={`copy-${announcement.id}`}><Smartphone size={13} /><b>{announcement.title}</b>{announcement.description && <small>{announcement.description}</small>}</span>)}</div></div></div></section>}
-      <main className="store-page">
-        <section className="hero-grid">
+      <main className="store-page marketplace-home">
+        <div className="marketplace-stage">
+          <aside className="marketplace-category-rail" data-testid="marketplace-category-rail"><b>Top Categories</b>{NAV_CATEGORIES.slice(0, 7).map((category) => { const Icon = category.icon; return <Link key={category.slug} to={`/category?category=${category.slug}`} data-testid={`marketplace-rail-${category.slug}`}><Icon size={15} /><span>{category.label}</span></Link>; })}<Link to="/auctions" className="rail-auction" data-testid="marketplace-rail-auctions"><Gavel size={15} /><span>Live Auction</span></Link><Link to="/category?sort=price_desc" className="rail-deals" data-testid="marketplace-rail-deals"><Percent size={15} /><span>Deals & Offers</span></Link></aside>
+          <section className="hero-grid">
           <div className="hero-banner" data-testid="hero-banner">
             <div className="hero-copy">
               <span className="eyebrow">PREMIUM TECH. SMARTER PRICES.</span>
@@ -227,7 +234,8 @@ function StoreHome({ products, auctions, onAdd, onWish, common, announcements = 
               </div>
             ))}
           </aside>
-        </section>
+          </section>
+        </div>
 
         <section className="circle-row">
           {CIRCLE_CATEGORIES.map((category) => {
@@ -482,14 +490,14 @@ function Checkout({ cart, user, refreshUser, refreshCart, common }) {
   const [couponBusy, setCouponBusy] = useState(false);
   const [availableCoupons, setAvailableCoupons] = useState([]);
   const [walletBalance, setWalletBalance] = useState(null);
-  const [proofFile, setProofFile] = useState(null);
   const [reviewOrder, setReviewOrder] = useState(null);
+  const [manualPayment, setManualPayment] = useState(null);
   const paymentSucceeded = useRef(false);
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const total = Math.max(0, subtotal - (coupon?.discount || 0) + 99);
   const address = user?.addresses?.[0];
   const paymentMethods = useMemo(() => [
-    ["upi", "UPI", "Pay using any UPI app"], ["bank_transfer", "Direct bank transfer", "UPI / account transfer + payment proof"], ["card", "Credit / Debit Card", "Visa, Mastercard, RuPay"], ["net_banking", "Net Banking", "All major banks"], ["wallet", "DMobileMart Wallet", "Use your available wallet balance"], ["cod", "COD", "Cash on Delivery"],
+    ["upi", "UPI", "Pay using any UPI app via Razorpay"], ["bank_transfer", "Personal UPI QR", "Pay in GPay, PhonePe or Paytm + submit proof"], ["card", "Credit / Debit Card", "Visa, Mastercard, RuPay"], ["net_banking", "Net Banking", "All major banks"], ["wallet", "DMobileMart Wallet", "Use your available wallet balance"], ["cod", "COD", "Cash on Delivery"],
   ].filter(([value]) => paymentConfig?.methods?.[value] !== false), [paymentConfig]);
   useEffect(() => {
     Promise.all([api.get("/api/payment-config"), api.get("/api/content/coupons"), api.get("/api/wallet")]).then(([payment, coupons, wallet]) => { setPaymentConfig(payment.data); setAvailableCoupons(coupons.data); setWalletBalance(wallet.data.balance); }).catch(() => setPaymentConfig({ methods: { upi: true, bank_transfer: true, card: true, net_banking: true, wallet: true, cod: true } }));
@@ -512,10 +520,10 @@ function Checkout({ cart, user, refreshUser, refreshCart, common }) {
     });
     checkout.open();
   };
-  const uploadManualProof = async (order) => { if (!proofFile) throw new Error("Please attach your payment screenshot first"); const payload = new FormData(); payload.append("file", proofFile); const { data } = await api.post(`/api/payments/manual-proof?order_id=${order.id}`, payload, { headers: { "Content-Type": "multipart/form-data" } }); setReviewOrder(data); await refreshCart(); toast.success("Payment proof submitted for admin review"); };
+  const submitManualProof = async ({ reference, proof }) => { if (!manualPayment) return; setBusy(true); try { const payload = new FormData(); payload.append("file", proof); payload.append("payment_reference", reference); const { data } = await api.post(`/api/payments/manual-proof?order_id=${manualPayment.order_id}`, payload, { headers: { "Content-Type": "multipart/form-data" } }); setManualPayment(null); setReviewOrder(data); await refreshCart(); toast.success("UPI proof submitted for admin review"); } catch (error) { toast.error(apiError(error)); } finally { setBusy(false); } };
   const place = async () => {
-    if (!address) return; if (method === "bank_transfer" && !proofFile) { toast.error("Payment screenshot upload is required for direct transfer"); return; } setBusy(true);
-    try { const { data } = await api.post("/api/orders", { address_id: address.id, payment_method: method, coupon_code: coupon?.code || null }); if (["cod", "wallet"].includes(method)) { setPaid(data); await refreshCart(); toast.success("Order placed successfully"); setBusy(false); } else if (method === "bank_transfer") { try { await uploadManualProof(data); setBusy(false); } catch (error) { await markFailed(data.id, "manual_proof_upload_failed"); toast.error(apiError(error)); setBusy(false); } } else { try { await openRazorpay(data); } catch (error) { await markFailed(data.id, "razorpay_order_creation_failed"); toast.error(apiError(error)); setBusy(false); } } }
+    if (!address) return; setBusy(true);
+    try { const { data } = await api.post("/api/orders", { address_id: address.id, payment_method: method, coupon_code: coupon?.code || null }); if (["cod", "wallet"].includes(method)) { setPaid(data); await refreshCart(); toast.success("Order placed successfully"); setBusy(false); } else if (method === "bank_transfer") { try { const { data: manual } = await api.get(`/api/payments/manual-upi/${data.id}`); setManualPayment(manual); await refreshCart(); toast.success("Personal UPI QR ready"); setBusy(false); } catch (error) { toast.error(apiError(error)); setBusy(false); } } else { try { await openRazorpay(data); } catch (error) { await markFailed(data.id, "razorpay_order_creation_failed"); toast.error(apiError(error)); setBusy(false); } } }
     catch (error) { toast.error(apiError(error)); setBusy(false); }
   };
   return (
@@ -528,7 +536,8 @@ function Checkout({ cart, user, refreshUser, refreshCart, common }) {
           <div className="success-state" data-testid="order-success"><div className="success-icon"><Check /></div><h1>Order placed!</h1><p>Your order #{paid.order_number} is confirmed. We'll keep you posted.</p><Link to="/account" className="primary-btn" data-testid="success-orders-button">View my orders</Link></div>
         ) : reviewOrder ? (
           <div className="success-state payment-review-state" data-testid="manual-payment-review-state"><div className="success-icon"><Clock3 /></div><h1>Payment under review</h1><p>Screenshot received for #{reviewOrder.order_number}. Admin payment check के बाद आपका order confirm होगा.</p><Link to="/my-orders" className="primary-btn" data-testid="review-order-history-button">Track payment review</Link></div>
-        
+        ) : manualPayment ? (
+          <ManualUpiPayment payment={manualPayment} busy={busy} onSubmit={submitManualProof} onBack={() => setManualPayment(null)} />
         ) : !address ? <AddressForm onDone={refreshUser} /> : (
           <div className="checkout-grid">
             <section>
@@ -536,7 +545,7 @@ function Checkout({ cart, user, refreshUser, refreshCart, common }) {
               <div className="checkout-section"><h3>Payment Options</h3>
                 {paymentConfig?.partial_payment_enabled && method !== "cod" && method !== "wallet" && <p className="partial-payment-note" data-testid="partial-payment-note">आज सिर्फ़ {paymentConfig.partial_payment_percent}% advance दें — बाकी delivery से पहले।</p>}
                 {method === "upi" && <div className="upi-checkout-note" data-testid="upi-checkout-note"><Smartphone size={16} /><span><b>UPI QR & app payment</b><small>Paytm, PhonePe, Google Pay या किसी भी installed UPI app को Razorpay secure checkout में चुनें।</small></span></div>}
-                {method === "bank_transfer" && <div className="manual-transfer-card" data-testid="manual-transfer-details"><h4><Landmark size={16} /> Direct transfer details</h4><p>Transfer the exact amount, then upload a screenshot. Order is confirmed only after admin review.</p><div><span>Account name</span><b>{paymentConfig?.manual_transfer?.account_name || "DMobileMart"}</b></div><div><span>Account number</span><b>{paymentConfig?.manual_transfer?.account_number || "Not configured"}</b></div><div><span>IFSC code</span><b>{paymentConfig?.manual_transfer?.ifsc_code || "Not configured"}</b></div>{paymentConfig?.manual_transfer?.upi_id && <div><span>UPI ID</span><b>{paymentConfig.manual_transfer.upi_id}</b></div>}<label className="payment-proof-upload"><input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setProofFile(event.target.files?.[0] || null)} data-testid="payment-proof-upload-input" /><span>{proofFile ? proofFile.name : "Upload payment screenshot (JPG, PNG or WebP · max 5MB)"}</span></label></div>}
+                {method === "bank_transfer" && <div className="manual-transfer-card" data-testid="manual-transfer-details"><h4><Smartphone size={16} /> Personal UPI QR payment</h4><p>Generate secure QR, pay in your UPI app, then submit screenshot और UTR/reference number. Admin verify करने के बाद order confirm होगा.</p>{paymentConfig?.manual_transfer?.upi_id ? <div><span>Personal UPI ID</span><b data-testid="checkout-personal-upi-id">{paymentConfig.manual_transfer.upi_id}</b></div> : <div><span>UPI setup</span><b data-testid="checkout-personal-upi-missing">Currently unavailable</b></div>}</div>}
                 {paymentMethods.map(([value, label, detail]) => (
                   <label className="payment-option" key={value}><input type="radio" name="payment" checked={method === value} onChange={() => setMethod(value)} data-testid={`payment-${value}`} /><span>{label}<small>{value === "wallet" && walletBalance !== null ? `Available balance: ${money(walletBalance)} · ${detail}` : detail}</small>{value === "wallet" && <Link to="/account#wallet" className="wallet-topup-link" data-testid="wallet-add-money-link">Add money</Link>}</span><ChevronRight size={15} /></label>
                 ))}
@@ -553,7 +562,7 @@ function Checkout({ cart, user, refreshUser, refreshCart, common }) {
               <div><span>Delivery</span><b className="green-text">FREE</b></div>
               <hr />
               <div className="total"><span>Payable Now</span><strong>{money(total)}</strong></div>
-              <button onClick={place} disabled={busy || razorpayLoading || !cart.length || !paymentMethods.length} className="primary-btn full" data-testid="place-order-button">{busy || razorpayLoading ? "Preparing secure payment…" : method === "cod" ? "Place COD Order" : `Pay ${money(total)} Now`}</button>
+              <button onClick={place} disabled={busy || (method !== "bank_transfer" && razorpayLoading) || !cart.length || !paymentMethods.length} className="primary-btn full" data-testid="place-order-button">{busy || (method !== "bank_transfer" && razorpayLoading) ? "Preparing secure payment…" : method === "bank_transfer" ? "Generate personal UPI QR" : method === "cod" ? "Place COD Order" : `Pay ${money(total)} Now`}</button>
               <small className="secure"><ShieldCheck size={12} /> 100% secure payment</small>
             </aside>
           </div>
@@ -565,38 +574,7 @@ function Checkout({ cart, user, refreshUser, refreshCart, common }) {
 }
 
 function Auctions({ auctions, user, refreshAuctions, common }) {
-  const [bidBusy, setBidBusy] = useState(false);
-  const auction = auctions[0];
-  const placeBid = async () => {
-    if (!user) { toast.error("Please sign in to place a bid"); return; }
-    setBidBusy(true);
-    try { await api.post(`/api/auctions/${auction.id}/bids`, { amount: auction.current_bid + auction.bid_increment }); await refreshAuctions(); toast.success(`Bid placed at ${money(auction.current_bid + auction.bid_increment)}`); }
-    catch (error) { toast.error(apiError(error)); } finally { setBidBusy(false); }
-  };
-  return (
-    <>
-      <Topbar {...common} />
-      <main className="simple-page">
-        <div className="page-heading"><div><span className="eyebrow">MOBILECART LIVE</span><h1>Auctions</h1><p>Bid smart. Win better deals.</p></div><div className="tabs"><button className="active" data-testid="auction-live-tab">Live Now</button><button data-testid="auction-upcoming-tab">Upcoming</button><button data-testid="auction-watchlist-tab">Watchlist</button></div></div>
-        {!auction ? <Loading label="Loading live auctions…" /> : (
-          <div className="auction-detail">
-            <div className="auction-visual"><span className="live-pill">LIVE · {auction.bid_count} BIDS</span><img src={auction.product?.image} alt={auction.product?.name} /></div>
-            <div className="auction-copy">
-              <h2>{auction.product?.name}</h2><p>{auction.product?.sub}</p>
-              <div className="bid-stats"><span>Starting Price <b>{money(auction.starting_price)}</b></span><span>Highest Bid <b>{money(auction.current_bid)}</b></span><span>Bid Increment <b>{money(auction.bid_increment)}</b></span></div>
-              <div className="bid-progress"><span style={{ width: "68%" }} /></div>
-              <small className="green-text">● Live until {new Date(auction.ends_at).toLocaleDateString("en-IN")}</small>
-              <button className="primary-btn full" disabled={bidBusy} onClick={placeBid} data-testid="place-bid-button">{bidBusy ? "Submitting…" : `Place Bid ${money(auction.current_bid + auction.bid_increment)}`}</button>
-              <div className="auction-footer"><button data-testid="auto-bid-button">Auto Bid</button><button data-testid="watch-auction-button">＋ Watch</button></div>
-            </div>
-          </div>
-        )}
-        {auctions.slice(1).some((entry) => entry.product) && <><SectionTitle title="More Live Auctions" action="View all" /><div className="product-grid grid-4">{auctions.slice(1).filter((entry) => entry.product).map((entry) => <ProductCard product={entry.product} onAdd={() => {}} onWish={() => {}} key={entry.id} />)}</div></>}
-      </main>
-      <FooterBar />
-      <BottomNav active="Auction" />
-    </>
-  );
+  return <AuctionExperience auctions={auctions} user={user} refreshAuctions={refreshAuctions} common={common} Topbar={Topbar} FooterBar={FooterBar} BottomNav={BottomNav} Loading={Loading} />;
 }
 
 function SellPage({ common }) {
@@ -661,9 +639,8 @@ function Login({ setUser }) {
   );
 }
 
-function ThemeControl({ theme, onThemeChange }) {
-  const light = theme === "light";
-  return <section className="theme-control" data-testid="profile-theme-control"><div className="theme-control-copy"><span className="theme-icon">{light ? <Sun size={17} /> : <Moon size={17} />}</span><div><b>{light ? "Light mode" : "Dark mode"}</b><small>Swipe to change website appearance</small></div></div><label className="theme-switch"><input type="checkbox" checked={light} onChange={(event) => onThemeChange(event.target.checked ? "light" : "dark")} aria-label="Toggle light mode" data-testid="profile-theme-toggle" /><span /></label></section>;
+function ThemeControl() {
+  return <section className="theme-control" data-testid="profile-theme-control"><div className="theme-control-copy"><span className="theme-icon"><Sun size={17} /></span><div><b data-testid="light-mode-only-label">Light mode</b><small>Marketplace light appearance is enabled</small></div></div></section>;
 }
 
 function Account({ user, setUser, common, theme, onThemeChange, refreshUser, onAdd, refreshWish }) {
@@ -681,7 +658,7 @@ function Account({ user, setUser, common, theme, onThemeChange, refreshUser, onA
       <Topbar {...common} />
       <main className="simple-page account-page">
         <div className="account-command-grid">
-          <aside className="account-menu-panel" data-testid="account-menu-panel"><div className="account-identity"><span className="account-avatar" data-testid="account-avatar">{user.name.slice(0, 1).toUpperCase()}</span><div><span className="eyebrow">MY DMOBILEMART</span><h1 data-testid="account-user-name">{user.name}</h1><p data-testid="account-user-email">{user.email}</p></div></div><div className="gold-mini-card" data-testid="account-gold-card"><span>★</span><div><b>DMobileMart Gold</b><small>Premium benefits & early access</small></div><Link to="/category?sort=price_desc" data-testid="account-gold-explore-link">Explore <ChevronRight size={14} /></Link></div><ThemeControl theme={theme} onThemeChange={onThemeChange} /><nav className="account-action-grid">{menuItems.map(([Icon, title, detail, to]) => <Link to={to} key={title} data-testid={`account-menu-${title.toLowerCase().replaceAll(" ", "-")}`}><span><Icon size={18} /></span><div><b>{title}</b><small>{detail}</small></div><ChevronRight size={15} /></Link>)}</nav><button className="account-logout" onClick={async () => { await api.post("/api/auth/logout"); setUser(null); }} data-testid="account-signout-button"><LogOut size={16} /> Sign out</button></aside>
+          <aside className="account-menu-panel" data-testid="account-menu-panel"><div className="account-identity"><span className="account-avatar" data-testid="account-avatar">{user.name.slice(0, 1).toUpperCase()}</span><div><span className="eyebrow">MY DMOBILEMART</span><h1 data-testid="account-user-name">{user.name}</h1><p data-testid="account-user-email">{user.email}</p></div></div><div className="gold-mini-card" data-testid="account-gold-card"><span>★</span><div><b>DMobileMart Gold</b><small>Premium benefits & early access</small></div><Link to="/category?sort=price_desc" data-testid="account-gold-explore-link">Explore <ChevronRight size={14} /></Link></div><ThemeControl /><nav className="account-action-grid">{menuItems.map(([Icon, title, detail, to]) => <Link to={to} key={title} data-testid={`account-menu-${title.toLowerCase().replaceAll(" ", "-")}`}><span><Icon size={18} /></span><div><b>{title}</b><small>{detail}</small></div><ChevronRight size={15} /></Link>)}</nav><button className="account-logout" onClick={async () => { await api.post("/api/auth/logout"); setUser(null); }} data-testid="account-signout-button"><LogOut size={16} /> Sign out</button></aside>
           <section className="account-main-panel"><section className="gold-showcase" data-testid="account-gold-showcase"><div><span className="eyebrow">MOBILECART GOLD</span><h2>Smarter shopping, unlocked.</h2><p>Enjoy early deal access, delivery benefits and priority support.</p></div><span className="gold-crown">♛</span></section><section className="wallet-account" id="wallet" data-testid="customer-wallet-card"><div><span className="eyebrow">MOBILECART WALLET</span><strong data-testid="customer-wallet-balance">{money(wallet?.balance || 0)}</strong><small>Available balance</small></div><Wallet size={32} /></section><section className="wallet-history" data-testid="customer-wallet-history"><div className="panel-head"><h3>Recent Transactions</h3><span>{wallet?.transactions?.length || 0} entries</span></div>{wallet?.transactions?.length ? wallet.transactions.slice(0, 4).map((transaction) => <div className="ledger-row" key={transaction.id} data-testid={`customer-wallet-transaction-${transaction.id}`}><span className={transaction.kind === "credit" ? "credit" : "debit"}>{transaction.kind === "credit" ? "+" : "−"}{money(transaction.amount)}</span><p>{transaction.note}<small>{new Date(transaction.created_at).toLocaleString("en-IN")}</small></p><b>{money(transaction.balance_after)}</b></div>) : <p className="account-muted" data-testid="customer-wallet-empty-state">Wallet transactions will appear here.</p>}</section></section>
         </div>
         <section className="checkout-section" id="addresses"><h3>Saved addresses</h3>{user.addresses?.length ? user.addresses.map((address) => <div className="address-card" key={address.id} data-testid={`saved-address-${address.id}`}><b>{address.label}</b><p>{address.recipient_name}</p><span>{address.line1}, {address.city} - {address.postal_code}</span></div>) : <p data-testid="account-no-addresses">No saved addresses yet. Add one during checkout.</p>}</section>
@@ -732,7 +709,7 @@ function App() {
   const [wishCount, setWishCount] = useState(0);
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [theme, setTheme] = useState(() => localStorage.getItem("mobilecart-theme") || "dark");
+  const [theme] = useState("dark");
   const liveRefreshInFlight = useRef(false);
   const catalogParamsRef = useRef("");
   const catalogParams = useMemo(() => {
@@ -750,7 +727,8 @@ function App() {
   const refreshCart = useCallback(async () => { if (!user) { setCart([]); return; } try { const { data } = await api.get("/api/cart"); setCart(data.items.map((item) => ({ ...cardProduct(item.product), quantity: item.quantity, variant_sku: item.variant_sku }))); } catch (error) { if (error.response?.status === 401) setUser(null); else toast.error(apiError(error)); } }, [user]);
   const refreshWish = useCallback(async () => { if (!user) { setWishCount(0); return; } try { const { data } = await api.get("/api/wishlist"); setWishCount(data.length); } catch { setWishCount(0); } }, [user]);
   const refreshUser = useCallback(async () => { try { const { data } = await api.get("/api/auth/me"); setUser(data); return data; } catch { return null; } }, []);
-  useEffect(() => { document.body.dataset.theme = theme; localStorage.setItem("mobilecart-theme", theme); }, [theme]);
+  useEffect(() => { document.body.dataset.theme = "dark"; localStorage.setItem("mobilecart-theme", "dark"); }, []);
+  useEffect(() => { const clearExpiredSession = () => { setUser(null); setCart([]); setWishCount(0); }; window.addEventListener("mobilecart:session-expired", clearExpiredSession); return () => window.removeEventListener("mobilecart:session-expired", clearExpiredSession); }, []);
   useEffect(() => { api.get("/api/auth/me").then(({ data }) => setUser(data)).catch(() => setUser(null)).finally(() => setAuthLoading(false)); api.get(`/api/categories?_live=${Date.now()}`).then(({ data }) => setCategories(data)).catch(() => setCategories([])); refreshAuctions(); refreshAnnouncements(); }, [refreshAuctions, refreshAnnouncements]);
   useEffect(() => { refreshProducts(catalogParams); }, [catalogParams, refreshProducts]);
   useEffect(() => {
@@ -797,12 +775,12 @@ function App() {
         <Route path="/my-orders/:id" element={user ? <><Topbar {...common} /><CustomerOrderDetail /><FooterBar /><BottomNav active="Account" /></> : <Navigate to="/login?next=/my-orders" replace />} />
         <Route path="/auctions" element={<Auctions auctions={auctions} user={user} refreshAuctions={refreshAuctions} common={common} />} />
         <Route path="/sell" element={<SellPage common={common} />} />
-        <Route path="/account" element={user ? <Account user={user} setUser={setUser} common={common} theme={theme} onThemeChange={setTheme} refreshUser={refreshUser} onAdd={add} refreshWish={refreshWish} /> : <Navigate to="/login?next=/account" replace />} />
+        <Route path="/account" element={user ? <Account user={user} setUser={setUser} common={common} theme={theme} onThemeChange={() => {}} refreshUser={refreshUser} onAdd={add} refreshWish={refreshWish} /> : <Navigate to="/login?next=/account" replace />} />
         <Route path="/policies/:policy" element={<PolicyPage common={common} />} />
         <Route path="/category" element={<CategoryPage products={products} onAdd={add} onWish={wish} common={common} categories={categories} />} />
-        <Route path="*" element={<StoreHome products={products} auctions={auctions} announcements={announcements} onAdd={add} onWish={wish} common={common} />} />
+        <Route path="*" element={<FuturisticHome products={products} auctions={auctions} announcements={announcements} onAdd={add} onWish={wish} common={common} Topbar={Topbar} FooterBar={FooterBar} BottomNav={BottomNav} Loading={Loading} />} />
       </Routes>
-      <CustomerLiveChat user={user} hidden={location.pathname === "/login" || location.pathname === "/register"} />
+      <CustomerLiveChat user={user} hidden={location.pathname === "/login" || location.pathname === "/register"} collapsed={location.pathname === "/auctions"} />
     </>
   );
 }

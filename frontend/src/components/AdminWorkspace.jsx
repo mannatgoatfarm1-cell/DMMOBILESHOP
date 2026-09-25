@@ -28,7 +28,7 @@ const prettyStatus = (status = "") => status.replaceAll("_", " ").replace(/\b\w/
 
 function Dashboard() {
   const [data, setData] = useState(null);
-  useEffect(() => { const fetchDash = () => api.get(`/api/admin/dashboard?_live=${Date.now()}`).then(({ data: response }) => setData(response)).catch((error) => toast.error(apiError(error))); fetchDash(); const timer = setInterval(fetchDash, 5000); return () => clearInterval(timer); }, []);
+  useEffect(() => { const fetchDash = () => api.get(`/api/admin/dashboard?_live=${Date.now()}`).then(({ data: response }) => setData(response)).catch((error) => toast.error(apiError(error))); fetchDash(); const timer = setInterval(fetchDash, 1000); return () => clearInterval(timer); }, []);
   if (!data) return <div className="empty-state" data-testid="admin-dashboard-loading"><Package size={30} /><h3>Loading live dashboard…</h3></div>;
   const { metrics, recent_orders: orders, order_statuses: statuses, activities, top_categories: categories = [], revenue_series: series = [] } = data;
   const totalStatus = Object.values(statuses).reduce((sum, value) => sum + value, 0) || 1;

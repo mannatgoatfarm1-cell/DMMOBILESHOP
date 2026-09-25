@@ -3,14 +3,14 @@ import { MessageCircle, Send, X } from "lucide-react";
 import { api, apiError } from "@/api";
 import { toast } from "sonner";
 
-export function CustomerLiveChat({ user, hidden = false }) {
+export function CustomerLiveChat({ user, hidden = false, collapsed = false }) {
   const [open, setOpen] = useState(false); const [messages, setMessages] = useState([]); const [text, setText] = useState("");
   const load = useCallback(() => api.get("/api/chat/thread").then(({ data }) => setMessages(data.messages)).catch(() => {}), []);
-  useEffect(() => { if (user && user.role !== "admin") setOpen(true); }, [user]);
+  useEffect(() => { if (user && user.role !== "admin") setOpen(!collapsed); }, [user, collapsed]);
   useEffect(() => { if (!user || user.role === "admin" || !open) return; load(); const timer = setInterval(load, 1000); return () => clearInterval(timer); }, [user, open, load]);
   const send = async (event) => { event.preventDefault(); if (!text.trim()) return; try { await api.post("/api/chat/messages", { message: text }); setText(""); load(); } catch (error) { toast.error(apiError(error)); } };
   if (hidden || !user || user.role === "admin") return null;
-  return <aside className={`customer-chat ${open ? "open" : ""}`} data-testid="customer-live-chat"><button className="chat-fab" onClick={() => setOpen((value) => !value)} data-testid="customer-chat-toggle">{open ? <X size={19} /> : <MessageCircle size={19} />}<span>Live support</span></button>{open && <div className="chat-panel"><header><b>DM Mobile Support</b><small>Usually replies within minutes</small></header><div className="chat-messages" data-testid="customer-chat-messages">{messages.length ? messages.map((item) => <p className={item.sender_role} key={item.id}><span>{item.message}</span><small>{item.sender_role === "admin" ? "Support" : "You"}</small></p>) : <p className="chat-empty">Hello! Ask us about your order, return or payment.</p>}</div><form onSubmit={send}><input value={text} onChange={(event) => setText(event.target.value)} placeholder="Type your message" data-testid="customer-chat-input" /><button data-testid="customer-chat-send"><Send size={15} /></button></form></div>}</aside>;
+  return <aside className={`customer-chat ${open ? "open" : ""}`} data-testid="customer-live-chat"><button className="chat-fab" onClick={() => setOpen((value) => !value)} aria-expanded={open} data-testid="customer-chat-toggle">{open ? <X size={19} /> : <MessageCircle size={19} />}<span>Live support</span></button>{open && <div className="chat-panel"><header><b>DM Mobile Support</b><small>Usually replies within minutes</small></header><div className="chat-messages" data-testid="customer-chat-messages">{messages.length ? messages.map((item) => <p className={item.sender_role} key={item.id}><span>{item.message}</span><small>{item.sender_role === "admin" ? "Support" : "You"}</small></p>) : <p className="chat-empty">Hello! Ask us about your order, return or payment.</p>}</div><form onSubmit={send}><input value={text} onChange={(event) => setText(event.target.value)} placeholder="Type your message" data-testid="customer-chat-input" /><button data-testid="customer-chat-send"><Send size={15} /></button></form></div>}</aside>;
 }
 
 export function AdminChatManager({ query = "" }) {

@@ -1,107 +1,118 @@
 {
-  "theme": "dark",
+  "theme_strategy": "Light Mode Only (Dense E-commerce Marketplace)",
+  "emotional_archetype": "Swiss & High-Contrast / Authority, Clarity, Trust",
+  "instructions_to_main_agent": [
+    "CRITICAL: The user requested 'ligit mode only all and admin panel ka bhi same light kro'. You MUST override the existing dark theme (#070b15) in index.css and App.css.",
+    "Change the html and body background to a clean, crisp light color (e.g., #F8FAFC or #FFFFFF).",
+    "Change the default text color to a highly readable dark slate (#0F172A).",
+    "Ensure both the Customer storefront AND the Admin Dashboard use this new light-mode aesthetic.",
+    "Preserve all functionalities (checkout, auctions, QC report, Razorpay, etc.), only alter the visual presentation, spacing, layout, and colors.",
+    "Do NOT use transparent backgrounds for headers, dropdowns, or overlays. Always use solid white or glassmorphism (bg-white/80 backdrop-blur-md).",
+    "Replace dark mode classes (like text-gray-400, bg-gray-900) with their light mode equivalents (text-slate-600, bg-white, border-slate-200)."
+  ],
   "typography": {
-    "headings": {
-      "fontFamily": "Outfit, sans-serif",
-      "strategy": "Bold, tech-focused, tight letter spacing (tracking-tight or tracking-tighter). Avoid Inter."
-    },
-    "body": {
-      "fontFamily": "'Plus Jakarta Sans', sans-serif",
-      "strategy": "Clean, highly legible geometric sans for product details."
-    },
-    "scale_hierarchy": {
-      "h1": "text-4xl sm:text-5xl lg:text-6xl tracking-tighter font-extrabold",
-      "h2": "text-2xl sm:text-3xl lg:text-4xl tracking-tight font-bold",
-      "body": "text-base text-slate-300",
-      "labels": "text-xs uppercase tracking-[0.2em] text-cyan-400"
+    "strategy": "Clean, highly readable, and dense.",
+    "heading_font": "Plus Jakarta Sans, sans-serif (or Inter/Outfit)",
+    "body_font": "Plus Jakarta Sans, sans-serif",
+    "scales": {
+      "h1": "text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-slate-900",
+      "h2": "text-2xl sm:text-3xl font-bold tracking-tight text-slate-900",
+      "h3": "text-lg sm:text-xl font-semibold text-slate-800",
+      "body": "text-sm sm:text-base text-slate-600",
+      "small_labels": "text-xs font-bold uppercase tracking-wider text-slate-500"
     }
   },
   "colors": {
-    "archetype": "Electric & Neon",
-    "background": "#070b15",
-    "surface": "#0c1222",
-    "primary": "#00e5ff",
-    "secondary": "#8b5cf6",
-    "accent": "#f43f5e",
-    "text_primary": "#ffffff",
-    "text_muted": "#94a3b8",
-    "border": "rgba(255,255,255,0.08)",
-    "rules": "Avoid pure black. Use deep indigo/blue-black (#070b15). Neon cyan and purple should be used strictly for highlights, active states, and the running animations."
-  },
-  "visual_enhancers": {
-    "tracing_beam_animation": "MANDATORY: Implement the 'running highlight animation' on the active Category tile in the sidebar, and on Product Cards during hover. Create this using a spinning conic-gradient wrapper with an inner dark card to mask the center, exposing only a 1px or 2px animated border.",
-    "glassmorphism": "Use backdrop-blur-xl with bg-[#070b15]/70 for sticky headers and sidebar to maintain depth. CRITICAL: DO NOT use complete transparent background in header or surfaces with content under it.",
-    "hover_scaling": "MANDATORY: Product cards must scale up slightly (hover:scale-[1.02]) on hover to fulfill the 'eska size thora bda kro' requirement.",
-    "glow_effects": "Use subtle colored box-shadows (e.g., shadow-[0_0_15px_rgba(0,229,255,0.3)]) when a card is active or hovered."
+    "background": {
+      "page": "#F8FAFC (slate-50) for contrast with white cards",
+      "surface": "#FFFFFF (white) for cards, headers, modals"
+    },
+    "text": {
+      "primary": "#0F172A (slate-900)",
+      "secondary": "#475569 (slate-600)",
+      "muted": "#94A3B8 (slate-400)"
+    },
+    "brand_accents": {
+      "primary": "#2563EB (blue-600) for main CTAs, links, active states",
+      "primary_hover": "#1D4ED8 (blue-700)",
+      "sale_badge": "#EF4444 (red-500) for discounts, flash sales",
+      "success": "#10B981 (emerald-500) for trust badges, QC passed"
+    },
+    "borders": "#E2E8F0 (slate-200)"
   },
   "layouts": {
-    "page_structure": "Sidebar + Main Content area. Mobile: Sidebar becomes horizontal scrollable chips or bottom sheet. Desktop: Sidebar spans 3 cols (w-64), main content spans remaining space.",
-    "bento_grid": "Use high density grids (grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6) for products.",
-    "spacing": "Generous padding inside hero banners (p-8 to p-12). Compact data-dense padding for product specs."
+    "marketplace_structure": [
+      "Trust Strip (Top): Very thin (h-8), bg-slate-900 text-white, showing 'Free Shipping | Quality Guarantee | Secure Checkout'.",
+      "Main Header: Sticky top-0, z-50, bg-white border-b border-slate-200. Must contain Logo, large Search Bar (rounded-full bg-slate-100), and Utility icons (Account, Cart, Wishlist).",
+      "Category Nav: Below header, bg-white border-b border-slate-200, horizontal scrollable list of categories (Mobiles, Laptops, Accessories, Auctions).",
+      "Hero Section: Asymmetric grid (e.g., grid-cols-1 lg:grid-cols-3 gap-4 p-4 lg:p-6). Main banner spans 2 columns, side stack has 2 smaller promo banners.",
+      "Product Rails: Section title with 'View All' link. Horizontal scroll on mobile, grid on desktop (grid-cols-2 md:grid-cols-4 lg:grid-cols-5).",
+      "Admin Panel: Sidebar navigation (bg-white border-r border-slate-200). Main content area (bg-slate-50). Dense data tables with white backgrounds and sharp borders."
+    ]
+  },
+  "component_rules": {
+    "product_cards": {
+      "surface": "bg-white border border-slate-200 rounded-xl overflow-hidden",
+      "image_container": "bg-slate-50 p-4 flex justify-center items-center aspect-square",
+      "content": "p-4 flex flex-col gap-1",
+      "interaction": "transition-all duration-200 hover:-translate-y-1 hover:shadow-lg hover:border-blue-300"
+    },
+    "buttons": {
+      "primary": "bg-blue-600 text-white hover:bg-blue-700 rounded-lg font-semibold px-4 py-2 transition-colors",
+      "outline": "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 rounded-lg px-4 py-2"
+    },
+    "badges": {
+      "auction": "bg-purple-100 text-purple-700 text-xs font-bold px-2 py-1 rounded",
+      "discount": "bg-red-100 text-red-700 text-xs font-bold px-2 py-1 rounded",
+      "qc_passed": "bg-emerald-100 text-emerald-700 text-xs font-bold px-2 py-1 rounded"
+    }
   },
   "motion": {
-    "running_border": "CSS keyframe spinning a conic gradient layer behind a solid dark background inset.",
-    "entrance": "Staggered fade-up for product grids.",
-    "micro_interactions": "Smooth transitions for scale, shadow, and border color (transition-all duration-300 ease-out)."
+    "hover": "Subtle transform (-translate-y-1) for product cards and tiles.",
+    "buttons": "Active state scale-95 for tactile feedback.",
+    "page_transitions": "Fade in on mount."
   },
-  "components": {
-    "sidebar_navigation": "Vertical list of categories. The *active* category must feature the neon running border animation.",
-    "hero_banner": "Large dark neon banner at the top of the category view. Overlay image with bg-gradient-to-r from-[#070b15] via-[#070b15]/80 to-transparent. Bold H1.",
-    "product_card": "Dark surface. On hover: running neon border appears, scales up, and product image slightly zooms.",
-    "category_tiles": "Large 2x4 grid as requested in the screenshot reference, acting as navigation hubs."
+  "accessibility": {
+    "contrast": "Ensure all text meets minimum 4.5:1 against backgrounds.",
+    "focus": "focus:ring-2 focus:ring-blue-500 focus:outline-none focus:ring-offset-2",
+    "testing": "All interactive elements MUST include data-testid (e.g., data-testid='add-to-cart-btn')."
   },
-  "image_urls": {
-    "mobile_phones": [
+  "visual_enhancers": {
+    "borders": "Use strict 1px borders everywhere to create a clean, dense, structured look (border-slate-200).",
+    "shadows": "Minimal default shadows. Use shadows only for hover states or floating elements like modals/dropdowns (shadow-xl).",
+    "icons": "Use lucide-react with a stroke-width of 1.5 for a clean, modern look."
+  },
+  "media": {
+    "image_urls": [
       {
-        "url": "https://images.pexels.com/photos/7151033/pexels-photo-7151033.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
-        "description": "Glowing smartphone screen, use for Mobile category or hero"
+        "url": "https://images.unsplash.com/photo-1640936343842-268f9d87e764?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzh8MHwxfHNlYXJjaHwzfHxzbWFydHBob25lcyUyMGxhdGVzdCUyMG1vYmlsZXxlbnwwfHx8fDE3OTAzNDc3Nzl8MA&ixlib=rb-4.1.0&q=85",
+        "category": "Hero Banner / Product Demo",
+        "description": "Two cell phones side by side on a white surface, great for hero or main promo."
       },
       {
-        "url": "https://images.unsplash.com/photo-1541956767510-95dd97f7eb02?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzNTl8MHwxfHNlYXJjaHwzfHxtb2JpbGUlMjBwaG9uZSUyMGdsb3dpbmclMjBuZW9uJTIwZGFya3xlbnwwfHx8fDE3OTAyNjk4NTZ8MA&ixlib=rb-4.1.0&q=85",
-        "description": "Person holding glowing phone in dark, use for product highlight"
-      }
-    ],
-    "smartwatches": [
-      {
-        "url": "https://images.unsplash.com/photo-1579586337278-3befd40fd17a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1OTV8MHwxfHNlYXJjaHwxfHxzbWFydHdhdGNoJTIwdGVjaCUyMGdhZGdldHxlbnwwfHx8fDE3OTAyNjk4NTZ8MA&ixlib=rb-4.1.0&q=85",
-        "description": "Smartwatch dark textured band, use for wearables category"
+        "url": "https://images.unsplash.com/photo-1719945421298-f03d3d80c3e1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzh8MHwxfHNlYXJjaHwyfHxzbWFydHBob25lcyUyMGxhdGVzdCUyMG1vYmlsZXxlbnwwfHx8fDE3OTAzNDc3Nzl8MA&ixlib=rb-4.1.0&q=85",
+        "category": "Product Listing",
+        "description": "Group of modern cell phones in different colors."
       },
       {
-        "url": "https://images.unsplash.com/photo-1546868871-7041f2a55e12?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1OTV8MHwxfHNlYXJjaHwyfHxzbWFydHdhdGNoJTIwdGVjaCUyMGdhZGdldHxlbnwwfHx8fDE3OTAyNjk4NTZ8MA&ixlib=rb-4.1.0&q=85",
-        "description": "Space gray smartwatch, use for product"
-      }
-    ],
-    "audio_gaming": [
-      {
-        "url": "https://images.unsplash.com/photo-1599669454699-248893623440?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzZ8MHwxfHNlYXJjaHwyfHxnYW1pbmclMjBoZWFkcGhvbmVzJTIwZGFya3xlbnwwfHx8fDE3OTAyNjk4NTZ8MA&ixlib=rb-4.1.0&q=85",
-        "description": "Black wireless headphones on dark surface"
+        "url": "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzV8MHwxfHNlYXJjaHwyfHxsYXB0b3AlMjBlbGVjdHJvbmljcyUyMGNvbXB1dGVyfGVufDB8fHx8MTc5MDM0Nzc3OXww&ixlib=rb-4.1.0&q=85",
+        "category": "Laptops Category / Banner",
+        "description": "MacBook Pro on a wooden table, clean look."
       },
       {
-        "url": "https://images.unsplash.com/photo-1610041321327-b794c052db27?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzZ8MHwxfHNlYXJjaHwzfHxnYW1pbmclMjBoZWFkcGhvbmVzJTIwZGFya3xlbnwwfHx8fDE3OTAyNjk4NTZ8MA&ixlib=rb-4.1.0&q=85",
-        "description": "Gaming headphones, use for Audio/Gaming category tile"
+        "url": "https://images.unsplash.com/photo-1541807084-5c52b6b3adef?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzV8MHwxfHNlYXJjaHwzfHxsYXB0b3AlMjBlbGVjdHJvbmljcyUyMGNvbXB1dGVyfGVufDB8fHx8MTc5MDM0Nzc3OXww&ixlib=rb-4.1.0&q=85",
+        "category": "Electronics category",
+        "description": "Open macbook air on desk."
       }
     ]
   },
-  "accessibility": {
-    "focus_states": "Visible neon cyan focus rings for keyboard navigation.",
-    "contrast": "Ensure text over neon elements remains readable. Use dark text on cyan backgrounds if needed.",
-    "motion_preference": "Respect prefers-reduced-motion for the spinning border."
-  },
-  "instructions_to_main_agent": [
-    "CRITICAL: Implement the 'running highlight animation' requested by the user. Use a custom CSS class in index.css (e.g., using @keyframes with a conic-gradient and mask, or border-image) to create an animated neon border. Apply this to the active category in the sidebar and to product cards on hover.",
-    "CRITICAL: Enlarge the product size slightly on interaction. Add 'transform hover:scale-[1.02] transition-transform duration-300' to the product cards.",
-    "CRITICAL: Build the UI to mirror the provided screenshot layout: Sidebar on the left for categories, Hero banner on top of the main area, and large tiles for subcategories/products.",
-    "Ensure 'jab catgory pe click kre' functionality: clicking a sidebar category must dynamically update the main content area (hero, products) and show the sidebar item as 'active' (with the neon highlight).",
-    "Use lucide-react for icons.",
-    "Use the images provided in the guidelines for categories and dummy products. DO NOT use placeholder services.",
-    "Implement the dark/neon aesthetic heavily: deep backgrounds (#070b15) with cyan (#00e5ff) and purple (#8b5cf6) glows.",
-    "Do not use .tsx extensions, provide the JS guidelines and components in .js/.jsx format as per the existing codebase."
-  ],
-  "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
-    "Never use generic centered layouts or flat grays for this theme.",
-    "Create depth through layered design elements with z-index hierarchy (e.g., glowing effects behind cards).",
-    "Do NOT apply 'transition: all'. Apply specific transitions to avoid breaking transform animations.",
-    "Do NOT center align the app container. Text should flow naturally (left-aligned).",
-    "All interactive elements MUST include a `data-testid` attribute to facilitate robust automated testing."
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "You tend to converge toward generic, 'on distribution' outputs. Avoid this by ensuring the light mode looks highly polished, structured, and premium.",
+    "Dark colors are BANNED for backgrounds, except for the very top trust strip.",
+    "Create depth through layered design elements with z-index hierarchy and crisp borders.",
+    "Use glass-morphism effects with backdrop filters (bg-white/80 backdrop-blur-md) for sticky headers.",
+    "NEVER use generic placeholder text for missing data; always style the empty states elegantly.",
+    "Every interaction needs micro-animations - hover states, transitions, scale effects.",
+    "Always use modern button styles, slightly rounded (rounded-lg or rounded-xl) with hover color changes."
   ]
 }

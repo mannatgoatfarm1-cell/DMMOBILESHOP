@@ -1,5 +1,6 @@
 import base64
 import uuid
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 
@@ -116,6 +117,7 @@ def _upload_proof(base_url, customer_session, order_id):
     proof_res = customer_session.post(
         f"{base_url}/api/payments/manual-proof?order_id={order_id}",
         files=files,
+        data={"payment_reference": "UPI-TEST-123456"},
         timeout=30,
     )
     assert proof_res.status_code == 200, proof_res.text
@@ -201,9 +203,20 @@ def test_manual_transfer_order_snapshot_proof_and_invoice(
     assert line["barcode"] == disposable_product["barcode"]
     assert order["status"] == "payment_proof_required"
 
+    instructions = customer.get(f"{base_url}/api/payments/manual-upi/{order['id']}", timeout=30)
+    assert instructions.status_code == 200, instructions.text
+    manual_upi = instructions.json()
+    parsed_uri = parse_qs(urlparse(manual_upi["upi_uri"]).query)
+    assert manual_upi["order_id"] == order["id"]
+    assert manual_upi["amount"] == order["total"]
+    assert parsed_uri["am"] == [f"{order['total']:.2f}"]
+    assert parsed_uri["cu"] == ["INR"]
+    assert "pa" in parsed_uri and parsed_uri["pa"][0]
+
     proof_order = _upload_proof(base_url, customer, order["id"])
     assert proof_order["status"] == "payment_review"
     assert proof_order["payment"]["status"] == "review_pending"
+    assert proof_order["payment"]["payment_reference"] == "UPI-TEST-123456"
 
     proof_customer = customer.get(f"{base_url}/api/admin/orders/{order['id']}/payment-proof", timeout=30)
     assert proof_customer.status_code in (401, 403)

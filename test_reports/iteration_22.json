@@ -1,0 +1,47 @@
+{
+  "summary": "Completed backend + frontend auction experience regression for /auctions. Verified live list integrity, expired-live reconciliation to closed, filters, watchlist toggle persistence, and end-to-end bid panel flow with disposable product/auction setup and safe cleanup. No payment/Razorpay checkout flow was executed (MOCKED scope respected).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Auctions mobile (390x844)",
+        "issues": [
+          "Live support chat widget overlays auction hero/content area, reducing readability and causing visual clutter on small screens"
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration22_auction_experience_regression.py",
+    "/app/test_reports/pytest/pytest_results.xml",
+    "/root/.emergent/automation_output/20260925_142840/console_20260925_142840.log",
+    "/root/.emergent/automation_output/20260925_142550/console_20260925_142550.log"
+  ],
+  "action_items": [
+    "Improve mobile layout behavior for support chat widget so it does not overlap auction content at 390px.",
+    "Optional: keep chat collapsed by default on auction mobile view or adjust z-index/anchor spacing rules."
+  ],
+  "critical_code_review_comments": [
+    "backend/server.py remains a large monolith (~1900 lines), increasing regression risk for auction + auth + payment changes.",
+    "frontend/src/App.js is >700 lines and should be split into feature modules/routes for maintainability.",
+    "Auction polling every second for both list and bid history is functional but may create avoidable API load; consider adaptive/backoff polling."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration22_auction_experience_regression.py",
+    "/app/test_reports/iteration_22.json"
+  ],
+  "success_rate": {
+    "backend": "100% (4/4 passing)",
+    "frontend": "92% (all requested functional checks passed; 1 mobile design issue)"
+  },
+  "seed_data_creation": "Created disposable product aa4f1915-102f-4acf-b37d-9dc9ecd55257 and auction cd9da228-b17a-4937-aeae-7a7b71d10ad9 for UI bid flow; then closed auction and soft-unpublished product successfully.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Iteration22 validated auction hub desktop/mobile rendering, filtering controls, watchlist toggle, API live reconciliation, and customer bid placement/history update. Cleanup was completed after run. Focus next on mobile chat overlap UX and quick regression of auction flow once adjusted.",
+  "rca of the issue": "RCA (mobile overlap): Support chat component floats above the auction viewport with high z-index on 390px and remains expanded, covering hero/auction content. Repro: open /auctions at 390x844 and observe live support panel overlap. Mitigation: responsive positioning + collapsed default state + constrained panel height/offset on auction route."
+}

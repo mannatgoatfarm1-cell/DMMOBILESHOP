@@ -13,13 +13,14 @@ import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any, Literal
+from urllib.parse import urlencode
 
 import bcrypt
 import jwt
 import razorpay
 import requests
 from authlib.integrations.starlette_client import OAuth
-from fastapi import APIRouter, Depends, FastAPI, File, HTTPException, Query, Request, Response, UploadFile
+from fastapi import APIRouter, Depends, FastAPI, File, Form, HTTPException, Query, Request, Response, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.responses import StreamingResponse
@@ -767,8 +768,8 @@ async def refresh(request: Request, response: Response) -> UserPublic:
     except (jwt.InvalidTokenError, ValueError):
         raise HTTPException(401, "Invalid or expired refresh session")
     user = await db.users.find_one({"id": payload["sub"]}, {"_id": 0})
-    if not user:
-        raise HTTPException(401, "User not found")
+    if not user or not user.get("active", True) or user.get("role") != payload.get("role"):
+        raise HTTPException(401, "Session is no longer valid")
     set_session(response, user)
     return public_user(user)
 
@@ -1022,7 +1023,10 @@ async def create_order(input: OrderCreate, user: Annotated[dict[str, Any], Depen
             raise HTTPException(409, f"{cart_item.product.name} is no longer in stock")
         order_items.append({"product_id": cart_item.product_id, "name": cart_item.product.name, "image": cart_item.product.images[0], "price": cart_item.product.price, "quantity": cart_item.quantity, "variant_sku": cart_item.variant_sku, "imei_number": cart_item.product.imei_number, "barcode": cart_item.product.barcode, "warranty_days": cart_item.product.warranty_days})
     manual = input.payment_method == "bank_transfer"
-    order = {"id": str(uuid.uuid4()), "order_number": f"DM-{secrets.randbelow(900000) + 100000}", "user_id": user["id"], "items": order_items, "delivery_address": address, "subtotal": cart.subtotal, "discount": discount, "coupon_code": coupon_code, "platform_fee": 99, "total": total, "status": "payment_pending" if not manual else "payment_proof_required", "tracking": {"status": "Order placed", "events": [{"status": "Order placed", "at": created}]}, "payment": {"provider": "manual_transfer" if manual else ("mobilecart_wallet" if input.payment_method == "wallet" else "razorpay"), "method": input.payment_method, "status": payment_status, "provider_order_id": None, "transaction_id": None}, "created_at": created, "updated_at": created}
+    if manual and not payment_settings.get("upi_id"):
+        raise HTTPException(422, "Admin को पहले Personal UPI ID configure करनी होगी")
+    order_number = f"DM-{secrets.randbelow(900000) + 100000}"
+    order = {"id": str(uuid.uuid4()), "order_number": order_number, "user_id": user["id"], "items": order_items, "delivery_address": address, "subtotal": cart.subtotal, "discount": discount, "coupon_code": coupon_code, "platform_fee": 99, "total": total, "status": "payment_pending" if not manual else "payment_proof_required", "tracking": {"status": "Order placed", "events": [{"status": "Order placed", "at": created}]}, "payment": {"provider": "manual_upi" if manual else ("mobilecart_wallet" if input.payment_method == "wallet" else "razorpay"), "method": input.payment_method, "status": payment_status, "provider_order_id": None, "transaction_id": None, "manual_request_ref": f"UPI-{order_number}", "payment_reference": None} if manual else {"provider": "mobilecart_wallet" if input.payment_method == "wallet" else "razorpay", "method": input.payment_method, "status": payment_status, "provider_order_id": None, "transaction_id": None}, "created_at": created, "updated_at": created}
     if input.payment_method in {"cod", "wallet"}:
         order["status"] = "confirmed"
     await db.orders.insert_one(order.copy())
@@ -1126,14 +1130,24 @@ async def auction_payload(row: dict[str, Any]) -> Auction:
     return Auction(**payload)
 
 
+async def reconcile_expired_auctions() -> None:
+    timestamp = now()
+    expired = await db.auctions.find({"status": "live", "ends_at": {"$lte": timestamp}}, {"_id": 0, "id": 1}).to_list(100)
+    for auction in expired:
+        winner = await db.bids.find_one({"auction_id": auction["id"]}, {"_id": 0, "user_id": 1}, sort=[("amount", -1), ("created_at", 1)])
+        await db.auctions.update_one({"id": auction["id"], "status": "live", "ends_at": {"$lte": timestamp}}, {"$set": {"status": "closed", "winner_user_id": winner["user_id"] if winner else None}})
+
+
 @api.get("/auctions", response_model=list[Auction])
 async def list_auctions(status: str = "live") -> list[Auction]:
+    await reconcile_expired_auctions()
     rows = await db.auctions.find({"status": status}, {"_id": 0}).sort("ends_at", 1).to_list(100)
     return [await auction_payload(row) for row in rows]
 
 
 @api.get("/auctions/{auction_id}", response_model=Auction)
 async def get_auction(auction_id: str) -> Auction:
+    await reconcile_expired_auctions()
     auction = await db.auctions.find_one({"id": auction_id}, {"_id": 0})
     if not auction:
         raise HTTPException(404, "Auction not found")
@@ -1736,7 +1750,7 @@ async def fail_razorpay_payment(input: RazorpayFailureInput, user: Annotated[dic
 
 
 @api.post("/payments/manual-proof", response_model=Order)
-async def upload_manual_payment_proof(order_id: str = Query(min_length=1, max_length=80), file: UploadFile = File(...), user: Annotated[dict[str, Any], Depends(require_customer)] = None) -> Order:
+async def upload_manual_payment_proof(order_id: str = Query(min_length=1, max_length=80), payment_reference: str = Form(min_length=6, max_length=80), file: UploadFile = File(...), user: Annotated[dict[str, Any], Depends(require_customer)] = None) -> Order:
     allowed = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
     if file.content_type not in allowed:
         raise HTTPException(415, "Only JPEG, PNG and WebP payment screenshots are allowed")
@@ -1748,6 +1762,9 @@ async def upload_manual_payment_proof(order_id: str = Query(min_length=1, max_le
         raise HTTPException(404, "Manual payment order not found")
     if order.get("status") != "payment_proof_required":
         raise HTTPException(409, "Payment proof was already submitted")
+    reference = payment_reference.strip().upper()
+    if not re.fullmatch(r"[A-Z0-9._:/-]+", reference):
+        raise HTTPException(422, "UPI reference number format is invalid")
     path = f"dmobilemart/payment-proofs/{user['id']}/{uuid.uuid4().hex}{allowed[file.content_type]}"
     try:
         stored = await asyncio.to_thread(put_object, path, content, file.content_type)
@@ -1758,9 +1775,25 @@ async def upload_manual_payment_proof(order_id: str = Query(min_length=1, max_le
     record = {"id": file_id, "storage_path": stored["path"], "original_filename": file.filename or "payment-proof", "content_type": file.content_type, "size": stored["size"], "owner_id": user["id"], "order_id": order_id, "kind": "payment_proof", "is_deleted": False, "created_at": now()}
     await db.media_files.insert_one(record.copy())
     timestamp = now()
-    await db.orders.update_one({"id": order_id, "user_id": user["id"]}, {"$set": {"status": "payment_review", "payment.status": "review_pending", "payment.proof_file_id": file_id, "updated_at": timestamp}, "$push": {"tracking.events": {"status": "Payment proof submitted", "at": timestamp}}})
+    await db.orders.update_one({"id": order_id, "user_id": user["id"]}, {"$set": {"status": "payment_review", "payment.status": "review_pending", "payment.proof_file_id": file_id, "payment.payment_reference": reference, "payment.transaction_id": reference, "updated_at": timestamp}, "$push": {"tracking.events": {"status": "UPI reference and payment proof submitted", "at": timestamp}}})
     updated = await db.orders.find_one({"id": order_id}, {"_id": 0})
     return Order(**updated)
+
+
+@api.get("/payments/manual-upi/{order_id}")
+async def manual_upi_instructions(order_id: str, user: Annotated[dict[str, Any], Depends(require_customer)]) -> dict[str, Any]:
+    order = await db.orders.find_one({"id": order_id, "user_id": user["id"], "payment.method": "bank_transfer"}, {"_id": 0})
+    if not order:
+        raise HTTPException(404, "Personal UPI payment order not found")
+    if order.get("status") != "payment_proof_required":
+        raise HTTPException(409, "This UPI payment is already submitted for review")
+    settings = await get_payment_settings()
+    upi_id = settings.get("upi_id", "").strip()
+    if not upi_id:
+        raise HTTPException(422, "Personal UPI ID is not configured")
+    merchant_name = settings.get("bank_account_name", "").strip() or "DMobileMart"
+    params = {"pa": upi_id, "pn": merchant_name, "tr": order["payment"].get("manual_request_ref", f"UPI-{order['order_number']}"), "tn": f"DMobileMart order {order['order_number']}", "am": f"{order['total']:.2f}", "cu": "INR"}
+    return {"order_id": order["id"], "order_number": order["order_number"], "amount": order["total"], "merchant_name": merchant_name, "merchant_upi_id": upi_id, "payment_request_ref": params["tr"], "upi_uri": f"upi://pay?{urlencode(params)}"}
 
 
 @api.post("/returns/evidence")

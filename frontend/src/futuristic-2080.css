@@ -1,0 +1,1059 @@
+/* =============================================
+   DMMobile Shop 2080 — Future Glass Marketplace
+   ============================================= */
+
+/* Enhanced CSS Variables */
+:root {
+  --bg: #060912;
+  --surface: #0c1322;
+  --surface2: #111a2e;
+  --card: #0a1225;
+  --line: #1a2845;
+  --text: #eef2fb;
+  --muted: #8b9abb;
+  --glass-bg: rgba(12, 20, 40, 0.55);
+  --glass-border: rgba(100, 160, 255, 0.1);
+  --glass-blur: 18px;
+  --glass-bg-light: rgba(255, 255, 255, 0.04);
+  --glass-border-light: rgba(255, 255, 255, 0.08);
+  --neon-blue: #00d4ff;
+  --neon-purple: #8b5cf6;
+  --neon-pink: #ec4899;
+  --neon-cyan: #22d3ee;
+  --neon-green: #34d399;
+  --glow-blue: 0 0 25px rgba(0, 212, 255, 0.25);
+  --glow-purple: 0 0 25px rgba(139, 92, 246, 0.25);
+  --glow-pink: 0 0 25px rgba(236, 72, 153, 0.2);
+  --grad: linear-gradient(135deg, #0ea5e9, #8b5cf6);
+  --grad2: linear-gradient(135deg, #06b6d4, #3b82f6);
+  --purple: #8b5cf6;
+  --purple2: #a78bfa;
+  --blue: #3b82f6;
+  --cyan: #22d3ee;
+  --green: #34d399;
+  --gold: #fbbf24;
+  --red: #f43f5e;
+}
+
+/* Animated cosmic background */
+body {
+  background: #060912 !important;
+  color: var(--text);
+  min-height: 100vh;
+}
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 40%, rgba(59, 47, 184, 0.12) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 20%, rgba(6, 182, 212, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse 70% 40% at 60% 85%, rgba(139, 92, 246, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse 40% 30% at 10% 80%, rgba(236, 72, 153, 0.05) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+/* =============================================
+   GLASS CARD UTILITIES
+   ============================================= */
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: 18px;
+  transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s;
+}
+.glass-card:hover {
+  border-color: rgba(0, 212, 255, 0.25);
+  box-shadow: var(--glow-blue);
+}
+.glass-card-sm {
+  background: var(--glass-bg-light);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border-light);
+  border-radius: 14px;
+}
+.neon-text-blue { color: var(--neon-blue); text-shadow: 0 0 20px rgba(0,212,255,0.4); }
+.neon-text-purple { color: var(--neon-purple); text-shadow: 0 0 20px rgba(139,92,246,0.4); }
+.neon-text-pink { color: var(--neon-pink); }
+
+/* =============================================
+   TOPBAR / HEADER — GLASS
+   ============================================= */
+.topbar {
+  background: rgba(7, 12, 24, 0.85) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border-bottom: 1px solid rgba(100, 160, 255, 0.08) !important;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4) !important;
+}
+.marketplace-trust-strip {
+  background: linear-gradient(90deg, #0c1a35, #0a1730, #0c1a35) !important;
+  border-bottom: 1px solid rgba(0, 212, 255, 0.15);
+  color: #94a8c8;
+}
+.marketplace-trust-strip span { color: #b0c4de; }
+.marketplace-trust-strip a { color: var(--neon-cyan) !important; }
+.search {
+  background: rgba(15, 26, 47, 0.8) !important;
+  border: 1px solid rgba(100, 160, 255, 0.12) !important;
+  border-radius: 14px !important;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+.search:focus-within {
+  border-color: var(--neon-blue) !important;
+  box-shadow: 0 0 20px rgba(0, 212, 255, 0.15) !important;
+}
+.sell-btn {
+  background: var(--grad) !important;
+  box-shadow: 0 0 20px rgba(14, 165, 233, 0.3) !important;
+}
+.cat-nav {
+  background: rgba(7, 12, 24, 0.6) !important;
+  border-top: 1px solid rgba(100, 160, 255, 0.06) !important;
+}
+.cat-nav a { color: #8fa5c4 !important; }
+.cat-nav a:hover { color: var(--neon-blue) !important; background: rgba(0, 212, 255, 0.08) !important; }
+.all-cats { background: var(--grad) !important; }
+
+/* =============================================
+   ANNOUNCEMENT STRIP
+   ============================================= */
+.announcement-strip {
+  background: linear-gradient(90deg, rgba(13, 28, 55, 0.9), rgba(20, 15, 50, 0.9)) !important;
+  border-bottom: 1px solid rgba(0, 212, 255, 0.2) !important;
+}
+.announcement-label { color: var(--neon-cyan) !important; }
+
+/* =============================================
+   MARKETPLACE TRUST STRIP & STAGE LAYOUT
+   ============================================= */
+.marketplace-trust-strip {
+  display: flex; align-items: center; justify-content: center; gap: 28px;
+  min-height: 32px; padding: 6px 20px; font-size: 9px; font-weight: 700;
+}
+.marketplace-trust-strip span, .marketplace-trust-strip a {
+  display: flex; align-items: center; gap: 5px; white-space: nowrap;
+}
+.marketplace-trust-strip a { margin-left: auto; }
+.marketplace-stage {
+  display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 14px; margin-top: 16px;
+}
+.marketplace-category-rail {
+  display: grid; align-content: start; gap: 2px; padding: 12px;
+}
+.marketplace-category-rail > b {
+  padding: 5px 7px 9px; font-size: 12px;
+}
+.marketplace-category-rail a {
+  display: flex; align-items: center; gap: 8px; padding: 8px 7px;
+  border-radius: 5px; font-size: 10px; transition: background 0.2s, color 0.2s, transform 0.2s;
+}
+.marketplace-category-rail {
+  background: var(--glass-bg) !important;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
+}
+.marketplace-category-rail > b { color: #c8d6eb; }
+.marketplace-category-rail a { color: #8fa5c4; }
+.marketplace-category-rail a:hover { background: rgba(0, 212, 255, 0.08); color: var(--neon-blue); }
+.marketplace-category-rail .rail-auction {
+  background: linear-gradient(110deg, rgba(139, 92, 246, 0.15), rgba(59, 130, 246, 0.1)) !important;
+  color: var(--neon-purple) !important;
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 8px;
+}
+.marketplace-category-rail .rail-deals {
+  background: rgba(244, 63, 94, 0.1) !important;
+  color: var(--red) !important;
+  border: 1px solid rgba(244, 63, 94, 0.15);
+  border-radius: 8px;
+}
+
+/* =============================================
+   HERO BANNER — GLASS
+   ============================================= */
+.hero-grid { grid-template-columns: 1fr 340px !important; gap: 14px; }
+.hero-banner {
+  border: 1px solid rgba(100, 160, 255, 0.15) !important;
+  background: radial-gradient(circle at 72% 45%, #1a1668 0%, #0b1024 50%, #060912 100%) !important;
+  overflow: hidden;
+  position: relative;
+}
+.hero-banner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.05) 0%, transparent 40%, rgba(139, 92, 246, 0.05) 100%);
+  pointer-events: none;
+}
+.hero-copy .eyebrow { color: var(--neon-cyan) !important; letter-spacing: 2px; }
+.hero-copy .grad {
+  background: linear-gradient(90deg, #22d3ee, #a78bfa) !important;
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+.hero-badge {
+  background: rgba(10, 18, 37, 0.7) !important;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 212, 255, 0.2) !important;
+}
+.hero-badge em { color: var(--neon-cyan) !important; }
+.hero-trust span { color: #9ab3d0 !important; }
+.hero-trust svg { color: var(--neon-green) !important; }
+.hero-arrow {
+  background: rgba(10, 18, 37, 0.7) !important;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(100, 160, 255, 0.15) !important;
+}
+.hero-arrow:hover { background: var(--neon-blue) !important; border-color: var(--neon-blue) !important; }
+.hero-dots i.on { background: var(--neon-blue) !important; box-shadow: 0 0 10px rgba(0, 212, 255, 0.5); }
+
+/* Hot Deals sidebar */
+.hot-deals {
+  background: var(--glass-bg) !important;
+  backdrop-filter: blur(18px) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 16px !important;
+}
+.hot-head b { color: #e2eafc; }
+.hot-head a { color: var(--neon-blue) !important; }
+.hot-item { border-color: rgba(100, 160, 255, 0.06) !important; }
+.hot-item > button {
+  background: rgba(0, 212, 255, 0.1) !important;
+  border: 1px solid rgba(0, 212, 255, 0.2) !important;
+  color: var(--neon-blue) !important;
+}
+.hot-item > button:hover {
+  background: var(--grad) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+  box-shadow: var(--glow-blue);
+}
+
+/* =============================================
+   CATEGORY CIRCLES — GLASS
+   ============================================= */
+.circle-row { margin: 28px 0; }
+.circle-icon {
+  background: rgba(15, 25, 45, 0.7) !important;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 212, 255, 0.12) !important;
+  color: var(--neon-blue) !important;
+  box-shadow: inset 0 0 15px rgba(0, 212, 255, 0.08) !important;
+}
+.circle-cat:hover .circle-icon {
+  background: var(--grad) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+  box-shadow: var(--glow-blue) !important;
+  transform: translateY(-6px) scale(1.05) !important;
+}
+.circle-cat small { color: #9ab3d0; }
+
+/* =============================================
+   PRODUCT CARDS — GLASS
+   ============================================= */
+.product-card {
+  background: var(--glass-bg) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94), border-color 0.3s, box-shadow 0.3s !important;
+}
+.product-card:hover {
+  transform: translateY(-8px) !important;
+  border-color: rgba(0, 212, 255, 0.3) !important;
+  box-shadow: 0 0 30px rgba(0, 212, 255, 0.12), 0 16px 48px rgba(0, 0, 0, 0.35) !important;
+}
+.product-media {
+  background: rgba(10, 18, 35, 0.6) !important;
+  border-radius: 12px !important;
+  overflow: hidden;
+}
+.product-card:hover .product-media img { transform: scale(1.08); }
+.card-badge {
+  background: linear-gradient(90deg, var(--neon-blue), var(--neon-purple)) !important;
+  box-shadow: 0 0 15px rgba(0, 212, 255, 0.3) !important;
+}
+.wish {
+  background: rgba(10, 18, 37, 0.7) !important;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+.wish:hover { color: var(--neon-pink) !important; border-color: var(--neon-pink) !important; box-shadow: var(--glow-pink); }
+.stars { background: rgba(52, 211, 153, 0.12) !important; color: var(--neon-green) !important; }
+.price-row strong { color: #fff !important; }
+.price-row em { color: var(--neon-green) !important; }
+.add-cart-btn {
+  background: rgba(0, 212, 255, 0.08) !important;
+  border: 1px solid rgba(0, 212, 255, 0.2) !important;
+  color: var(--neon-blue) !important;
+  border-radius: 12px !important;
+}
+.add-cart-btn:hover:not(:disabled) {
+  background: var(--grad) !important;
+  border-color: transparent !important;
+  color: #fff !important;
+  box-shadow: var(--glow-blue) !important;
+}
+
+/* =============================================
+   NEON DEAL ROWS — ENHANCED
+   ============================================= */
+.neon-deal-stack { gap: 16px !important; margin: 30px 0 !important; }
+.neon-deal-row {
+  border-radius: 16px !important;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+}
+.neon-product {
+  background: rgba(15, 20, 35, 0.7) !important;
+  backdrop-filter: blur(8px);
+  border: 1px solid color-mix(in srgb, var(--deal) 30%, rgba(255,255,255,0.05)) !important;
+  border-radius: 12px !important;
+}
+.neon-product:hover {
+  box-shadow: 0 0 25px color-mix(in srgb, var(--deal) 40%, transparent) !important;
+}
+.neon-deal-promo a { border-radius: 20px !important; }
+
+/* =============================================
+   SECTION TITLES
+   ============================================= */
+.section-title h2 { color: #e8f0fd; }
+.section-title > a { color: var(--neon-blue) !important; }
+.flash-timer { color: #c2cde5; }
+.flash-timer svg { color: var(--neon-pink) !important; }
+.countdown span {
+  background: rgba(20, 10, 50, 0.8) !important;
+  border: 1px solid rgba(139, 92, 246, 0.25) !important;
+  color: #fff;
+  box-shadow: 0 0 10px rgba(139, 92, 246, 0.15);
+}
+
+/* =============================================
+   PROMO BANNERS — GLASS
+   ============================================= */
+.promo-row { gap: 16px !important; margin-bottom: 32px; }
+.promo {
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border-radius: 18px !important;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+.promo:hover { transform: translateY(-4px); }
+.promo-a {
+  background: linear-gradient(120deg, rgba(58, 27, 143, 0.7), rgba(22, 26, 82, 0.7)) !important;
+  border-color: rgba(139, 92, 246, 0.2) !important;
+}
+.promo-b {
+  background: linear-gradient(120deg, rgba(23, 58, 125, 0.7), rgba(16, 26, 62, 0.7)) !important;
+  border-color: rgba(59, 130, 246, 0.2) !important;
+}
+.promo-c {
+  background: linear-gradient(120deg, rgba(27, 111, 99, 0.7), rgba(14, 36, 54, 0.7)) !important;
+  border-color: rgba(52, 211, 153, 0.2) !important;
+}
+.promo-btn {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  backdrop-filter: blur(6px);
+  border-radius: 10px !important;
+}
+.promo-btn:hover { background: rgba(255, 255, 255, 0.2) !important; box-shadow: var(--glow-blue); }
+
+/* =============================================
+   TRENDING SECTION — GLASS
+   ============================================= */
+.trending-wrap { margin-bottom: 36px; }
+.pill-tabs button {
+  background: rgba(15, 26, 47, 0.6) !important;
+  border: 1px solid rgba(100, 160, 255, 0.1) !important;
+  color: #8fa5c4 !important;
+  backdrop-filter: blur(8px);
+}
+.pill-tabs button.on, .pill-tabs button:hover {
+  background: var(--grad) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+  box-shadow: var(--glow-blue);
+}
+
+/* Why Choose — Glass */
+.why-choose {
+  background: var(--glass-bg) !important;
+  backdrop-filter: blur(18px) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 16px !important;
+}
+.why-choose > b { color: #d4e0f4; }
+.why-row span {
+  background: rgba(0, 212, 255, 0.08) !important;
+  color: var(--neon-blue) !important;
+  border-radius: 10px;
+}
+
+/* =============================================
+   FLASH CARDS — GLASS
+   ============================================= */
+.flash-wrap { margin-bottom: 34px; }
+.flash-card {
+  background: var(--glass-bg) !important;
+  backdrop-filter: blur(14px) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 14px !important;
+}
+.flash-card:hover {
+  border-color: rgba(0, 212, 255, 0.25) !important;
+  box-shadow: var(--glow-blue), 0 12px 36px rgba(0, 0, 0, 0.3) !important;
+  transform: translateY(-6px) !important;
+}
+.flash-off {
+  background: linear-gradient(90deg, var(--neon-pink), #f97316) !important;
+  box-shadow: 0 0 15px rgba(236, 72, 153, 0.3);
+}
+.flash-card img { background: rgba(10, 18, 35, 0.5) !important; border-radius: 10px !important; }
+.flash-card button {
+  background: rgba(0, 212, 255, 0.08) !important;
+  border: 1px solid rgba(0, 212, 255, 0.2) !important;
+  color: var(--neon-blue) !important;
+}
+.flash-card button:hover {
+  background: var(--grad) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+}
+
+/* =============================================
+   LOWER GRID — GLASS
+   ============================================= */
+.brands-panel, .recent-panel {
+  background: var(--glass-bg) !important;
+  backdrop-filter: blur(18px) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 16px !important;
+}
+.brand-chip {
+  background: rgba(15, 26, 47, 0.6) !important;
+  border: 1px solid rgba(100, 160, 255, 0.1) !important;
+  color: #c0d0eb !important;
+  backdrop-filter: blur(8px);
+}
+.brand-chip:hover {
+  border-color: var(--neon-blue) !important;
+  color: #fff !important;
+  box-shadow: var(--glow-blue);
+}
+.recent-item {
+  background: rgba(10, 18, 35, 0.5) !important;
+  border: 1px solid rgba(100, 160, 255, 0.08) !important;
+  border-radius: 12px !important;
+}
+.recent-item:hover { border-color: var(--neon-blue) !important; box-shadow: var(--glow-blue); }
+
+/* =============================================
+   AUCTION TEASER — GLASS
+   ============================================= */
+.auction-teaser {
+  background: linear-gradient(110deg, rgba(42, 20, 112, 0.6), rgba(15, 23, 48, 0.6)) !important;
+  backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(139, 92, 246, 0.2) !important;
+  border-radius: 18px !important;
+}
+.live-pill {
+  background: rgba(244, 63, 94, 0.2) !important;
+  color: var(--neon-pink) !important;
+  box-shadow: 0 0 15px rgba(244, 63, 94, 0.2);
+  animation: livePulse 2s ease-in-out infinite;
+}
+@keyframes livePulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(244, 63, 94, 0.2); }
+  50% { box-shadow: 0 0 25px rgba(244, 63, 94, 0.4); }
+}
+
+/* =============================================
+   DETAIL PAGE — GLASS
+   ============================================= */
+.detail-image {
+  background: radial-gradient(circle, rgba(42, 47, 120, 0.4), rgba(14, 21, 38, 0.6) 65%) !important;
+  border: 1px solid var(--glass-border) !important;
+  backdrop-filter: blur(10px) !important;
+  border-radius: 20px !important;
+}
+.detail-copy .eyebrow { color: var(--neon-cyan) !important; }
+.price-line strong { color: #fff; }
+.price-line em { color: var(--neon-green) !important; }
+.chips button {
+  background: rgba(15, 25, 45, 0.6) !important;
+  border: 1px solid rgba(100, 160, 255, 0.1) !important;
+  backdrop-filter: blur(8px);
+}
+.chips button:first-child {
+  border-color: rgba(139, 92, 246, 0.3) !important;
+  background: rgba(139, 92, 246, 0.12) !important;
+}
+.delivery, .seller { border-color: rgba(100, 160, 255, 0.08) !important; }
+.qc-report {
+  background: linear-gradient(120deg, rgba(13, 28, 49, 0.7), rgba(14, 23, 40, 0.7)) !important;
+  backdrop-filter: blur(14px) !important;
+  border: 1px solid rgba(100, 160, 255, 0.1) !important;
+}
+
+/* =============================================
+   CART — GLASS
+   ============================================= */
+.cart-items, .summary, .checkout-section {
+  background: var(--glass-bg) !important;
+  backdrop-filter: blur(18px) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 16px !important;
+}
+.cart-item { border-color: rgba(100, 160, 255, 0.06) !important; }
+.cart-item img { border-radius: 12px !important; background: rgba(10, 18, 35, 0.5) !important; }
+.quantity { border-color: rgba(100, 160, 255, 0.12) !important; border-radius: 10px !important; }
+
+/* =============================================
+   CHECKOUT — GLASS
+   ============================================= */
+.checkout-steps > span {
+  background: rgba(27, 39, 64, 0.6) !important;
+  backdrop-filter: blur(8px);
+}
+.checkout-steps > span.done, .checkout-steps > span.active {
+  background: var(--grad) !important;
+  box-shadow: var(--glow-blue);
+}
+.checkout-steps i { background: rgba(100, 160, 255, 0.12) !important; }
+.address-card {
+  border: 1px solid rgba(139, 92, 246, 0.25) !important;
+  background: rgba(24, 20, 54, 0.6) !important;
+  backdrop-filter: blur(10px) !important;
+}
+.payment-option { border-color: rgba(100, 160, 255, 0.06) !important; }
+.payment-option input { accent-color: var(--neon-blue); }
+.coupon-control input {
+  background: rgba(16, 27, 48, 0.8) !important;
+  border-color: rgba(100, 160, 255, 0.12) !important;
+}
+.coupon-control button {
+  background: rgba(139, 92, 246, 0.3) !important;
+  border-radius: 8px;
+}
+.coupon-pills button {
+  background: rgba(23, 20, 58, 0.6) !important;
+  border-color: rgba(139, 92, 246, 0.2) !important;
+  backdrop-filter: blur(8px);
+}
+.success-icon {
+  background: rgba(18, 60, 57, 0.6) !important;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(52, 211, 153, 0.3) !important;
+  box-shadow: 0 0 30px rgba(52, 211, 153, 0.15);
+}
+
+/* =============================================
+   AUTH PAGE — GLASS
+   ============================================= */
+.auth-page {
+  background: radial-gradient(circle at 78% 18%, rgba(45, 41, 117, 0.3) 0%, transparent 30%), var(--bg) !important;
+}
+.auth-card {
+  background: var(--glass-bg) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5) !important;
+}
+.auth-card input {
+  background: rgba(16, 27, 48, 0.7) !important;
+  border: 1px solid rgba(100, 160, 255, 0.12) !important;
+  border-radius: 12px !important;
+}
+.auth-card input:focus {
+  border-color: var(--neon-blue) !important;
+  box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.15) !important;
+}
+.auth-error {
+  background: rgba(244, 63, 94, 0.1) !important;
+  border-color: rgba(244, 63, 94, 0.3) !important;
+}
+
+/* =============================================
+   ACCOUNT PAGE — GLASS
+   ============================================= */
+.account-menu-panel {
+  background: var(--glass-bg) !important;
+  backdrop-filter: blur(18px) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 18px !important;
+}
+.account-main-panel > section {
+  background: var(--glass-bg) !important;
+  backdrop-filter: blur(14px) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 16px !important;
+}
+.gold-showcase {
+  background: linear-gradient(110deg, rgba(42, 20, 112, 0.4), rgba(15, 23, 48, 0.4)) !important;
+  border-color: rgba(139, 92, 246, 0.15) !important;
+}
+.gold-mini-card {
+  background: linear-gradient(110deg, rgba(139, 92, 246, 0.12), rgba(59, 130, 246, 0.08)) !important;
+  border: 1px solid rgba(139, 92, 246, 0.15) !important;
+  backdrop-filter: blur(8px);
+}
+.account-action-grid a {
+  border-bottom: 1px solid rgba(100, 160, 255, 0.06);
+  transition: background 0.2s;
+}
+.account-action-grid a:hover { background: rgba(0, 212, 255, 0.05); }
+.account-logout {
+  color: var(--red) !important;
+  border: 1px solid rgba(244, 63, 94, 0.2) !important;
+  background: rgba(244, 63, 94, 0.05) !important;
+  border-radius: 10px;
+}
+
+/* =============================================
+   CATEGORY PAGE — GLASS
+   ============================================= */
+.category-hub-hero {
+  background: linear-gradient(110deg, rgba(15, 25, 50, 0.7), rgba(10, 18, 35, 0.7)) !important;
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--glass-border);
+  border-radius: 18px;
+}
+.category-rail {
+  background: var(--glass-bg) !important;
+  backdrop-filter: blur(18px) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 14px !important;
+}
+.category-rail a.active {
+  background: rgba(0, 212, 255, 0.1);
+  color: var(--neon-blue);
+}
+.category-tile {
+  background: var(--glass-bg) !important;
+  backdrop-filter: blur(14px) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 14px !important;
+}
+.category-tile:hover {
+  border-color: rgba(0, 212, 255, 0.2) !important;
+  box-shadow: var(--glow-blue);
+}
+.catalog-view-toggle {
+  background: rgba(16, 27, 48, 0.6) !important;
+  border-color: rgba(100, 160, 255, 0.1) !important;
+}
+.catalog-view-toggle button.active {
+  background: var(--grad) !important;
+  box-shadow: 0 3px 12px rgba(14, 165, 233, 0.3) !important;
+}
+
+/* =============================================
+   PRIMARY & GHOST BUTTONS — NEON
+   ============================================= */
+.primary-btn {
+  background: var(--grad) !important;
+  box-shadow: 0 0 20px rgba(14, 165, 233, 0.25) !important;
+  border: none !important;
+}
+.primary-btn:hover {
+  box-shadow: 0 0 30px rgba(14, 165, 233, 0.4), 0 10px 30px rgba(14, 165, 233, 0.2) !important;
+  transform: translateY(-2px);
+}
+.ghost-btn {
+  background: rgba(15, 25, 45, 0.6) !important;
+  border: 1px solid rgba(100, 160, 255, 0.15) !important;
+  backdrop-filter: blur(8px);
+}
+.ghost-btn:hover {
+  border-color: var(--neon-blue) !important;
+  box-shadow: var(--glow-blue) !important;
+}
+
+/* =============================================
+   FOOTER — GLASS
+   ============================================= */
+.footer-bar {
+  background: rgba(8, 12, 24, 0.9) !important;
+  backdrop-filter: blur(20px) !important;
+  border-top: 1px solid rgba(100, 160, 255, 0.08) !important;
+}
+.footer-feat svg { color: var(--neon-blue) !important; }
+.footer-policies a, .powered-by { color: #8fa5c4; }
+.footer-policies a:hover { color: var(--neon-blue); }
+.download-btn {
+  background: var(--grad) !important;
+  box-shadow: 0 0 20px rgba(14, 165, 233, 0.25) !important;
+}
+
+/* =============================================
+   BOTTOM NAV — GLASS
+   ============================================= */
+.bottom-nav {
+  background: rgba(10, 17, 32, 0.92) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border-top: 1px solid rgba(100, 160, 255, 0.08) !important;
+}
+.bottom-nav a { color: #6b7f9e; }
+.bottom-nav a.active { color: var(--neon-blue) !important; }
+
+/* =============================================
+   SELL PAGE — GLASS
+   ============================================= */
+.sell-card {
+  background: var(--glass-bg) !important;
+  backdrop-filter: blur(18px) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 18px !important;
+}
+.sell-card span {
+  background: rgba(0, 212, 255, 0.08) !important;
+  color: var(--neon-blue) !important;
+}
+.sell-cta {
+  background: linear-gradient(110deg, rgba(42, 20, 112, 0.5), rgba(15, 23, 48, 0.5)) !important;
+  backdrop-filter: blur(14px) !important;
+  border: 1px solid rgba(139, 92, 246, 0.2) !important;
+}
+
+/* =============================================
+   POLICY PAGES — GLASS
+   ============================================= */
+.policy-page section {
+  background: rgba(13, 25, 48, 0.6) !important;
+  backdrop-filter: blur(12px);
+  border-left: 3px solid var(--neon-purple) !important;
+  border-radius: 0 8px 8px 0;
+}
+
+/* =============================================
+   ORDERS — GLASS
+   ============================================= */
+.customer-order-card {
+  background: var(--glass-bg) !important;
+  backdrop-filter: blur(14px) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 12px !important;
+}
+.order-detail-card {
+  background: var(--glass-bg) !important;
+  backdrop-filter: blur(14px) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 12px !important;
+}
+
+/* =============================================
+   FUTURISTIC HOME SECTIONS
+   ============================================= */
+.futuristic-home { position: relative; }
+
+/* Glass promo cards */
+.f-promo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 28px 0; }
+.f-promo-card {
+  position: relative;
+  padding: 22px;
+  border-radius: 18px;
+  overflow: hidden;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(100, 160, 255, 0.1);
+  transition: transform 0.3s, box-shadow 0.3s;
+  cursor: pointer;
+  min-height: 170px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.f-promo-card:hover { transform: translateY(-4px); }
+.f-promo-card h3 { font: 800 18px Outfit; color: #fff; margin: 0 0 6px; }
+.f-promo-card p { font-size: 11px; margin: 0 0 14px; }
+.f-promo-card .f-promo-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 8px 14px; border-radius: 10px; font-size: 11px; font-weight: 700;
+  background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2);
+  color: #fff; backdrop-filter: blur(6px); width: max-content;
+  transition: background 0.2s;
+}
+.f-promo-card .f-promo-btn:hover { background: rgba(255,255,255,0.25); }
+.f-promo-flash { background: linear-gradient(130deg, rgba(244,63,94,0.3), rgba(249,115,22,0.15)); border-color: rgba(244,63,94,0.2); }
+.f-promo-flash:hover { box-shadow: 0 0 30px rgba(244,63,94,0.15); }
+.f-promo-deal { background: linear-gradient(130deg, rgba(14,165,233,0.2), rgba(6,182,212,0.1)); border-color: rgba(14,165,233,0.2); }
+.f-promo-deal:hover { box-shadow: 0 0 30px rgba(14,165,233,0.15); }
+.f-promo-top { background: linear-gradient(130deg, rgba(139,92,246,0.2), rgba(168,85,247,0.1)); border-color: rgba(139,92,246,0.2); }
+.f-promo-top:hover { box-shadow: 0 0 30px rgba(139,92,246,0.15); }
+
+/* Four-card promo row (Auction, Wholesale, Trade-In, Price Drop) */
+.f-quad-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 28px 0; }
+.f-quad-card {
+  position: relative; padding: 20px; border-radius: 16px;
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--glass-border); overflow: hidden;
+  transition: transform 0.3s, box-shadow 0.3s; min-height: 140px;
+}
+.f-quad-card:hover { transform: translateY(-4px); }
+.f-quad-card h3 { font: 800 16px Outfit; color: #fff; margin: 0 0 4px; }
+.f-quad-card p { font-size: 10px; color: #9ab3d0; margin: 0 0 14px; }
+.f-quad-card .f-promo-btn { font-size: 10px; padding: 6px 12px; }
+.f-quad-auction {
+  background: linear-gradient(130deg, rgba(139,92,246,0.2), rgba(30,20,70,0.5));
+  border-color: rgba(139,92,246,0.2);
+}
+.f-quad-auction:hover { box-shadow: var(--glow-purple); }
+.f-quad-wholesale {
+  background: linear-gradient(130deg, rgba(59,130,246,0.15), rgba(15,25,50,0.5));
+  border-color: rgba(59,130,246,0.15);
+}
+.f-quad-wholesale:hover { box-shadow: var(--glow-blue); }
+.f-quad-trade {
+  background: linear-gradient(130deg, rgba(52,211,153,0.12), rgba(10,30,25,0.5));
+  border-color: rgba(52,211,153,0.15);
+}
+.f-quad-trade:hover { box-shadow: 0 0 25px rgba(52,211,153,0.2); }
+.f-quad-radar {
+  background: linear-gradient(130deg, rgba(251,191,36,0.12), rgba(30,25,10,0.5));
+  border-color: rgba(251,191,36,0.15);
+}
+.f-quad-radar:hover { box-shadow: 0 0 25px rgba(251,191,36,0.2); }
+
+/* Brands section */
+.f-brands-row {
+  display: flex; gap: 10px; flex-wrap: wrap; overflow-x: auto;
+  scrollbar-width: none; padding: 4px 0;
+}
+.f-brands-row::-webkit-scrollbar { display: none; }
+.f-brand-pill {
+  flex: 0 0 auto; padding: 14px 24px; border-radius: 50px;
+  background: rgba(15, 25, 45, 0.6); border: 1px solid rgba(100, 160, 255, 0.1);
+  backdrop-filter: blur(10px); color: #c0d0eb; font: 700 14px Outfit;
+  white-space: nowrap; text-decoration: none; transition: all 0.3s;
+  display: flex; align-items: center; gap: 8px;
+}
+.f-brand-pill:hover {
+  border-color: var(--neon-blue); color: #fff;
+  box-shadow: var(--glow-blue); transform: translateY(-2px);
+}
+
+/* Reviews section */
+.f-reviews-grid { display: grid; gap: 12px; }
+.f-review-card {
+  padding: 16px; border-radius: 14px;
+  background: var(--glass-bg); backdrop-filter: blur(14px);
+  border: 1px solid var(--glass-border);
+}
+.f-review-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.f-review-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--grad); display: grid; place-items: center;
+  color: #fff; font-weight: 800; font-size: 13px;
+}
+.f-review-head b { font-size: 13px; color: #e2eafc; }
+.f-review-head small { color: #8fa5c4; font-size: 10px; }
+.f-review-stars { display: flex; gap: 2px; color: var(--gold); }
+.f-review-card > p { font-size: 11px; color: #9ab3d0; line-height: 1.5; margin: 0; }
+
+/* Three-col info section (Trending + Why + Reviews) */
+.f-triple-grid { display: grid; grid-template-columns: 1.2fr 0.6fr 0.6fr; gap: 14px; margin: 28px 0; }
+
+/* Blog section */
+.f-blog-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 16px; }
+.f-blog-card {
+  padding: 16px; border-radius: 14px;
+  background: var(--glass-bg); backdrop-filter: blur(14px);
+  border: 1px solid var(--glass-border); transition: transform 0.3s, box-shadow 0.3s;
+}
+.f-blog-card:hover { transform: translateY(-4px); box-shadow: var(--glow-blue); }
+.f-blog-card .f-blog-img {
+  height: 120px; border-radius: 10px; background: rgba(10,18,35,0.5);
+  margin-bottom: 12px; overflow: hidden; display: grid; place-items: center;
+  color: var(--neon-blue);
+}
+.f-blog-card h4 { font-size: 13px; color: #e2eafc; margin: 0 0 6px; }
+.f-blog-card p { font-size: 10px; color: #8fa5c4; margin: 0; }
+
+/* Community + Newsletter */
+.f-bottom-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin: 28px 0; }
+.f-community-card, .f-whatsapp-card, .f-newsletter-card {
+  padding: 22px; border-radius: 16px;
+  background: var(--glass-bg); backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+}
+.f-community-card h3, .f-whatsapp-card h3, .f-newsletter-card h3 {
+  font: 800 16px Outfit; color: #e2eafc; margin: 0 0 6px;
+}
+.f-community-card p, .f-whatsapp-card p, .f-newsletter-card p {
+  font-size: 11px; color: #8fa5c4; margin: 0 0 14px;
+}
+.f-social-links { display: flex; gap: 10px; }
+.f-social-links a {
+  width: 38px; height: 38px; border-radius: 50%;
+  background: rgba(0,212,255,0.08); border: 1px solid rgba(0,212,255,0.15);
+  display: grid; place-items: center; color: var(--neon-blue);
+  transition: all 0.3s;
+}
+.f-social-links a:hover { background: var(--grad); color: #fff; box-shadow: var(--glow-blue); border-color: transparent; }
+.f-whatsapp-card {
+  background: linear-gradient(130deg, rgba(37,211,102,0.08), rgba(10,25,20,0.5));
+  border-color: rgba(37,211,102,0.15);
+}
+.f-newsletter-form {
+  display: flex; gap: 8px;
+}
+.f-newsletter-form input {
+  flex: 1; padding: 11px 14px; border-radius: 10px;
+  background: rgba(16,27,48,0.7); border: 1px solid rgba(100,160,255,0.12);
+  color: #fff; font-size: 12px; outline: none;
+}
+.f-newsletter-form input:focus { border-color: var(--neon-blue); }
+.f-newsletter-form button {
+  padding: 11px 18px; border-radius: 10px; border: none;
+  background: var(--grad); color: #fff; font-weight: 700; font-size: 12px;
+  cursor: pointer; white-space: nowrap;
+}
+
+/* Hot Selling Categories */
+.f-hot-cats { display: flex; gap: 12px; overflow-x: auto; padding: 4px 0; scrollbar-width: none; }
+.f-hot-cats::-webkit-scrollbar { display: none; }
+.f-hot-cat {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 10px;
+  padding: 14px 20px; border-radius: 14px;
+  background: var(--glass-bg); backdrop-filter: blur(14px);
+  border: 1px solid var(--glass-border); color: #c0d0eb; font-size: 12px;
+  white-space: nowrap; transition: all 0.3s; text-decoration: none;
+}
+.f-hot-cat:hover { border-color: var(--neon-blue); box-shadow: var(--glow-blue); color: #fff; transform: translateY(-2px); }
+.f-hot-cat svg { color: var(--neon-blue); }
+.f-hot-cat span { display: grid; }
+.f-hot-cat b { font: 700 13px Outfit; color: #e2eafc; }
+.f-hot-cat small { font-size: 9px; color: #8fa5c4; margin-top: 2px; }
+
+/* Futuristic footer enhancements */
+.f-footer {
+  margin-top: 30px; padding: 30px 0 20px;
+  border-top: 1px solid rgba(100, 160, 255, 0.08);
+}
+.f-footer-grid {
+  display: grid; grid-template-columns: 1.3fr 1fr 1fr 1fr 1fr; gap: 24px;
+  padding: 0 max(20px, calc((100% - 1480px)/2)); margin-bottom: 24px;
+}
+.f-footer-col h4 { font: 700 13px Outfit; color: #c8d6eb; margin: 0 0 14px; }
+.f-footer-col a { display: block; font-size: 11px; color: #6b7f9e; padding: 3px 0; transition: color 0.2s; }
+.f-footer-col a:hover { color: var(--neon-blue); }
+.f-footer-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.f-footer-brand-icon {
+  width: 40px; height: 40px; border-radius: 12px;
+  background: var(--grad); display: grid; place-items: center; color: #fff;
+}
+.f-footer-brand b { font: 800 16px Outfit; color: #e2eafc; }
+.f-footer-brand small { display: block; font-size: 9px; color: #6b7f9e; margin-top: 2px; }
+.f-footer-desc { font-size: 10px; color: #6b7f9e; line-height: 1.5; margin: 0; }
+.f-footer-bottom {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 16px max(20px, calc((100% - 1480px)/2));
+  border-top: 1px solid rgba(100,160,255,0.06); color: #4b6180; font-size: 10px;
+}
+.f-footer-bottom a { color: #6b7f9e; margin-left: 16px; }
+.f-footer-bottom a:hover { color: var(--neon-blue); }
+
+/* =============================================
+   ANIMATIONS
+   ============================================= */
+@keyframes glassShimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes floatSlow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+@keyframes neonPulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+@keyframes gradientFlow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Shimmer effect on glass cards on hover */
+.product-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.03) 45%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.03) 55%, transparent 60%);
+  background-size: 200% 100%;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  z-index: 1;
+}
+.product-card:hover::before {
+  opacity: 1;
+  animation: glassShimmer 1.2s ease forwards;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* =============================================
+   RESPONSIVE — MOBILE
+   ============================================= */
+@media (max-width: 1100px) {
+  .f-promo-grid { grid-template-columns: 1fr 1fr; }
+  .f-quad-grid { grid-template-columns: 1fr 1fr; }
+  .f-triple-grid { grid-template-columns: 1fr; }
+  .f-footer-grid { grid-template-columns: repeat(3, 1fr); }
+  .hero-grid { grid-template-columns: 1fr !important; }
+  .hot-deals { display: none; }
+  .marketplace-category-rail { display: none !important; }
+  .marketplace-stage { grid-template-columns: 1fr !important; }
+}
+@media (max-width: 640px) {
+  .marketplace-trust-strip { justify-content: flex-start; gap: 14px; overflow: auto; white-space: nowrap; padding: 5px 12px; }
+  .marketplace-trust-strip a { margin-left: 0; }
+}
+
+@media (max-width: 760px) {
+  .f-promo-grid { grid-template-columns: 1fr; }
+  .f-quad-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .f-blog-grid { grid-template-columns: 1fr; }
+  .f-bottom-grid { grid-template-columns: 1fr; }
+  .f-footer-grid { grid-template-columns: 1fr 1fr; gap: 16px; }
+  .f-footer-bottom { flex-direction: column; gap: 8px; text-align: center; }
+  .f-brands-row { gap: 8px; }
+  .f-brand-pill { padding: 10px 18px; font-size: 12px; }
+  .f-triple-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px) {
+  .f-quad-grid { grid-template-columns: 1fr; }
+  .f-footer-grid { grid-template-columns: 1fr; }
+}
+
+/* Ensure admin panel is NOT affected */
+.admin-shell, .admin-sidebar, .admin-main, .admin-panel,
+.admin-product-card, .auction-admin, .auction-panel,
+.auction-stat, .admin-order-drawer, .admin-user-drawer {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
