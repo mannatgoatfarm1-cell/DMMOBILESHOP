@@ -57,6 +57,7 @@ Build a production-ready e-commerce platform "DMMobile Shop" (formerly MobileCar
 - Reintroduced promotional merchandising as six consistent Future Glass shelves: Flash Deals, Mobile Parts Deals, Today's Deals, Deal of the Day, New Stock, and Stock Clearance Sale.
 - Each shelf uses live product data, unique sale styling, responsive six-card rows, product links, and working add-to-cart controls.
 - Verified the live storefront: all six shelves render once and the Mobile Parts / Today's Deals rows render six cards each.
+- Reordered all six shelves directly below the customer hero banner in this sequence: Flash Deals, Mobile Parts Deals, Today's Deals, Deal of the Day, New Stock, Stock Clearance Sale.
 
 ## Pending Tasks (Prioritized)
 

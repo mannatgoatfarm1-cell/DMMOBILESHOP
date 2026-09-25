@@ -460,6 +460,10 @@ export function FuturisticHome({ products, auctions, onAdd, onWish, common, anno
           </section>
         </div>
 
+        {/* Sale Shelves — directly below the hero banner */}
+        <SaleShelf id="flash-deals" title="Flash Deals" eyebrow="LIMITED TIME" icon={Flame} products={display.slice(0, 6)} onAdd={onAdd} to="/category?sort=price_desc" tone="pink" showTimer />
+        <MajorSaleSections products={display} onAdd={onAdd} />
+
         {/* Trust Strip */}
         <TrustStrip />
 
@@ -501,9 +505,6 @@ export function FuturisticHome({ products, auctions, onAdd, onWish, common, anno
 
         {/* Trending + Why Choose + Reviews */}
         <TrendingReviewsSection products={display} onAdd={onAdd} onWish={onWish} />
-
-        <SaleShelf id="flash-deals" title="Flash Deals" eyebrow="LIMITED TIME" icon={Flame} products={display.slice(0, 6)} onAdd={onAdd} to="/category?sort=price_desc" tone="pink" showTimer />
-        <MajorSaleSections products={display} onAdd={onAdd} />
 
         {/* Auction Teaser */}
         {auctions[0] && (
