@@ -148,6 +148,9 @@ class Variant(BaseModel):
     stock: int = Field(ge=0)
 
 
+HOMEPAGE_PRODUCT_SECTIONS = {"flash-deals", "mobile-parts-deals", "today-deals", "deal-of-the-day", "new-stock", "stock-clearance"}
+
+
 class ProductInput(BaseModel):
     name: str = Field(min_length=2, max_length=180)
     slug: str = Field(pattern=r"^[a-z0-9-]{2,180}$")
@@ -167,6 +170,7 @@ class ProductInput(BaseModel):
     imei_number: str = Field(default="", max_length=40)
     barcode: str = Field(default="", max_length=80)
     warranty_days: int = Field(default=0, ge=0, le=1095)
+    homepage_sections: list[str] = Field(default_factory=lambda: ["flash-deals"], min_length=1, max_length=6)
 
     @field_validator("images")
     @classmethod
@@ -174,6 +178,13 @@ class ProductInput(BaseModel):
         if any(not image.startswith(("https://", "http://", "/api/uploads/", "/api/media/")) for image in images):
             raise ValueError("Images must be secure URLs or uploaded image paths")
         return images
+
+    @field_validator("homepage_sections")
+    @classmethod
+    def validate_homepage_sections(cls, sections: list[str]) -> list[str]:
+        if len(set(sections)) != len(sections) or any(section not in HOMEPAGE_PRODUCT_SECTIONS for section in sections):
+            raise ValueError("Choose one or more valid homepage sale sections")
+        return sections
 
 
 class Product(ProductInput):
@@ -622,6 +633,15 @@ async def require_customer(user: Annotated[dict[str, Any], Depends(current_user)
     return user
 
 
+def default_homepage_sections(category_slug: str) -> list[str]:
+    sections = ["flash-deals", "deal-of-the-day", "new-stock", "stock-clearance"]
+    if category_slug == "mobiles":
+        sections.append("today-deals")
+    if category_slug == "accessories":
+        sections.append("mobile-parts-deals")
+    return sections
+
+
 async def seed_data() -> None:
     legacy_admins = await db.users.find({"email": {"$regex": r"@dealkr\.local$"}}, {"_id": 0, "id": 1}).to_list(20)
     for legacy in legacy_admins:
@@ -656,7 +676,10 @@ async def seed_data() -> None:
         title = "Smart Watches" if name == "smartwatch" else name.replace("-", " & ").title()
         await db.categories.update_one({"slug": name}, {"$setOnInsert": {"id": str(uuid.uuid4()), "name": title, "slug": name, "image": None, "active": True}}, upsert=True)
     for slug, name, sub, category, price, original_price, tag, image in catalog:
-        await db.products.update_one({"slug": slug}, {"$setOnInsert": {"id": slug, "name": name, "slug": slug, "sub": sub, "description": f"{name} available with MobileCart Assured quality.", "category_slug": category, "price": price, "original_price": original_price, "stock": 25, "images": [image], "tag": tag, "variants": [], "active": True, "featured": True, "created_at": now(), "updated_at": now()}}, upsert=True)
+        await db.products.update_one({"slug": slug}, {"$setOnInsert": {"id": slug, "name": name, "slug": slug, "sub": sub, "description": f"{name} available with MobileCart Assured quality.", "category_slug": category, "price": price, "original_price": original_price, "stock": 25, "images": [image], "tag": tag, "variants": [], "homepage_sections": default_homepage_sections(category), "active": True, "featured": True, "created_at": now(), "updated_at": now()}}, upsert=True)
+    unplaced_products = await db.products.find({"homepage_sections": {"$exists": False}}, {"_id": 0, "id": 1, "category_slug": 1}).to_list(1000)
+    for product in unplaced_products:
+        await db.products.update_one({"id": product["id"]}, {"$set": {"homepage_sections": default_homepage_sections(product.get("category_slug", "")), "updated_at": now()}})
     phone = await db.products.find_one({"slug": "iphone"}, {"_id": 0})
     if phone:
         await db.auctions.update_one({"product_id": phone["id"], "status": "live"}, {"$setOnInsert": {"id": "auction-iphone-14", "product_id": phone["id"], "starting_price": 50000, "current_bid": 68900, "bid_increment": 500, "bid_count": 12, "status": "live", "starts_at": (datetime.now(timezone.utc) - timedelta(hours=3)).isoformat(), "ends_at": (datetime.now(timezone.utc) + timedelta(days=2)).isoformat(), "winner_user_id": None}}, upsert=True)
@@ -691,6 +714,7 @@ async def initialise() -> None:
     await db.categories.create_index("slug", unique=True)
     await db.products.create_index([("name", "text"), ("description", "text"), ("sub", "text")])
     await db.products.create_index([("active", 1), ("category_slug", 1), ("price", 1)])
+    await db.products.create_index([("active", 1), ("homepage_sections", 1), ("created_at", -1)])
     await db.carts.create_index("user_id", unique=True)
     await db.wishlists.create_index("user_id", unique=True)
     await db.orders.create_index([("user_id", 1), ("created_at", -1)])
@@ -843,7 +867,7 @@ async def forgot_password(input: ForgotPasswordInput) -> dict[str, Any]:
 
 
 @api.post("/auth/reset-password", response_model=UserPublic)
-async def reset_password(input: ResetPasswordInput) -> UserPublic:
+async def reset_password(input: ResetPasswordInput, response: Response) -> UserPublic:
     if input.new_password != input.confirm_password:
         raise HTTPException(422, "Passwords do not match")
     reset = await db.password_reset_tokens.find_one({"token": input.token, "used": False, "expires_at": {"$gt": datetime.now(timezone.utc)}}, {"_id": 0})
@@ -859,6 +883,7 @@ async def reset_password(input: ResetPasswordInput) -> UserPublic:
         identifiers.append(user["username"].lower())
     await db.login_attempts.delete_many({"identifier": {"$in": identifiers}})
     updated = await db.users.find_one({"id": user["id"]}, {"_id": 0})
+    set_session(response, updated)
     return public_user(updated)
 
 
@@ -869,9 +894,7 @@ async def me(user: Annotated[dict[str, Any], Depends(current_user)]) -> UserPubl
 
 @api.patch("/auth/me", response_model=UserPublic)
 async def update_profile(input: ProfileUpdate, user: Annotated[dict[str, Any], Depends(current_user)]) -> UserPublic:
-    await db.users.update_one({"id": user["id"]}, {"$set": {"name": input.name.strip(), "phone": input.phone, "updated_at": now()}})
-    updated = await db.users.find_one({"id": user["id"]}, {"_id": 0})
-    return public_user(updated)
+    raise HTTPException(423, "User identity data is locked and cannot be changed")
 
 
 @api.post("/auth/me/addresses", response_model=Address, status_code=201)
@@ -883,10 +906,7 @@ async def add_address(input: AddressInput, user: Annotated[dict[str, Any], Depen
 
 @api.delete("/auth/me/addresses/{address_id}", status_code=204)
 async def remove_address(address_id: str, user: Annotated[dict[str, Any], Depends(current_user)]) -> Response:
-    result = await db.users.update_one({"id": user["id"]}, {"$pull": {"addresses": {"id": address_id}}})
-    if result.modified_count == 0:
-        raise HTTPException(404, "Address not found")
-    return Response(status_code=204)
+    raise HTTPException(423, "Saved addresses are locked and cannot be removed")
 
 
 @api.get("/categories", response_model=list[Category])
@@ -896,11 +916,15 @@ async def list_categories() -> list[Category]:
 
 
 @api.get("/products", response_model=ProductList)
-async def list_products(response: Response, query: str | None = None, category: str | None = None, min_price: int | None = Query(default=None, ge=0), max_price: int | None = Query(default=None, ge=0), page: int = Query(default=1, ge=1), page_size: int = Query(default=24, ge=1, le=100), sort: Literal["newest", "price_asc", "price_desc"] = "newest") -> ProductList:
+async def list_products(response: Response, query: str | None = None, category: str | None = None, section: str | None = None, min_price: int | None = Query(default=None, ge=0), max_price: int | None = Query(default=None, ge=0), page: int = Query(default=1, ge=1), page_size: int = Query(default=24, ge=1, le=100), sort: Literal["newest", "price_asc", "price_desc"] = "newest") -> ProductList:
     response.headers["Cache-Control"] = "no-store, max-age=0"
     filter_query: dict[str, Any] = {"active": True}
     if category:
         filter_query["category_slug"] = category
+    if section:
+        if section not in HOMEPAGE_PRODUCT_SECTIONS:
+            raise HTTPException(422, "Unknown homepage sale section")
+        filter_query["homepage_sections"] = section
     if query:
         regex = re.escape(query.strip())
         filter_query["$or"] = [{"name": {"$regex": regex, "$options": "i"}}, {"sub": {"$regex": regex, "$options": "i"}}, {"description": {"$regex": regex, "$options": "i"}}]

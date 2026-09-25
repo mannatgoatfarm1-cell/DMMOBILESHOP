@@ -9,7 +9,7 @@ import {
   Smartphone, Laptop, Watch, Tablet, Headphones, Gamepad2, Camera, Home as HomeIcon, Percent, LayoutGrid, Package,
   Truck, RotateCcw, ShieldCheck, BadgeCheck, LoaderCircle, LogOut, Wallet, Tag, ZoomIn, Sun, Clock3, Landmark,
 } from "lucide-react";
-import { api, apiError, cardProduct } from "@/api";
+import { api, apiError, cardProduct, restoreSession } from "@/api";
 import { speakHindi } from "@/lib/adminFeedback";
 import { QC_CHECKS, QC_GRADES, gradeLabel } from "@/lib/qc";
 import AdminWorkspace from "@/components/AdminWorkspace";
@@ -671,9 +671,13 @@ function PolicyPage({ common }) {
   return <><Topbar {...common} /><main className="simple-page policy-page" data-testid={`policy-page-${policy || "terms"}`}><span className="eyebrow">DMOBILEMART</span><h1>{title}</h1><p>{description}</p><section><h2>Customer support</h2><p>For help with payment, delivery, cancellation or privacy requests, contact support with your order number.</p></section></main><FooterBar /></>;
 }
 
+const HOMEPAGE_SECTION_LABELS = { "flash-deals": "Flash Deals", "mobile-parts-deals": "Mobile Parts Deals", "today-deals": "Today's Deals", "deal-of-the-day": "Deal of the Day", "new-stock": "New Stock", "stock-clearance": "Stock Clearance Sale" };
+
 function CategoryPage({ products, onAdd, onWish, common, categories }) {
   const location = useLocation();
   const selected = new URLSearchParams(location.search).get("category") || "";
+  const selectedSection = new URLSearchParams(location.search).get("section") || "";
+  const hasFilter = Boolean(selected || selectedSection);
   const [view, setView] = useState("grid");
   const tiles = categories.map((category, index) => { const matches = products.filter((product) => product.category_slug === category.slug); return { ...category, count: matches.length, image: matches[0]?.image || products[index % Math.max(products.length, 1)]?.image }; });
   return (
@@ -681,7 +685,7 @@ function CategoryPage({ products, onAdd, onWish, common, categories }) {
       <Topbar {...common} />
       <main className="simple-page category-hub" data-testid="category-hub">
         <section className="category-hub-hero"><div><span className="eyebrow">DM MOBILE COLLECTIONS</span><h1>Shop by <em>Categories</em></h1><p>Find your perfect device, accessories and latest technology in one place.</p></div><div className="category-hero-art"><LayoutGrid size={96} /><span>LIVE</span></div></section>
-        <section className="category-hub-layout"><aside className="category-rail" data-testid="category-sidebar"><b>All Categories</b><Link to="/category" className={!selected ? "active" : ""} data-testid="category-all-link">All products <span>{products.length}</span></Link>{tiles.map((category) => <Link to={`/category?category=${category.slug}`} className={selected === category.slug ? "active" : ""} key={category.id} data-testid={`catalog-category-${category.slug}`}>{category.name}<span>{category.count}</span></Link>)}</aside><section className="category-hub-main"><div className="category-hub-heading"><div><span className="eyebrow">EXPLORE THE STORE</span><h2>{selected ? tiles.find((tile) => tile.slug === selected)?.name || "Category" : "All Categories"}</h2></div><div className="catalog-view-toggle" data-testid="catalog-view-toggle"><button onClick={() => setView("grid")} className={view === "grid" ? "active" : ""} data-testid="catalog-grid-view-button"><LayoutGrid size={17} /></button><button onClick={() => setView("list")} className={view === "list" ? "active" : ""} data-testid="catalog-list-view-button"><Menu size={17} /></button></div></div>{!selected && <div className="category-tile-grid" data-testid="category-tile-grid">{tiles.map((category, index) => <Link to={`/category?category=${category.slug}`} className={`category-tile tile-${index % 6}`} key={category.id} data-testid={`category-tile-${category.slug}`}><img src={category.image} alt={category.name} /><div><b>{category.name}</b><small>{category.count} live products</small><span>Explore <ChevronRight size={14} /></span></div></Link>)}</div>}<div className={`product-grid grid-4 category-products ${view === "list" ? "catalog-list-view" : ""}`} data-testid={`catalog-${view}-view`}>{products.map((product, index) => <ProductCard product={product} onAdd={onAdd} onWish={onWish} badge={BADGES[index % BADGES.length]} key={product.id} />)}</div></section></section>
+        <section className="category-hub-layout"><aside className="category-rail" data-testid="category-sidebar"><b>All Categories</b><Link to="/category" className={!hasFilter ? "active" : ""} data-testid="category-all-link">All products <span>{products.length}</span></Link>{tiles.map((category) => <Link to={`/category?category=${category.slug}`} className={selected === category.slug ? "active" : ""} key={category.id} data-testid={`catalog-category-${category.slug}`}>{category.name}<span>{category.count}</span></Link>)}</aside><section className="category-hub-main"><div className="category-hub-heading"><div><span className="eyebrow">{selectedSection ? "HOMEPAGE SALE SECTION" : "EXPLORE THE STORE"}</span><h2 data-testid="catalog-section-heading">{selectedSection ? HOMEPAGE_SECTION_LABELS[selectedSection] || "Sale Collection" : selected ? tiles.find((tile) => tile.slug === selected)?.name || "Category" : "All Categories"}</h2></div><div className="catalog-view-toggle" data-testid="catalog-view-toggle"><button onClick={() => setView("grid")} className={view === "grid" ? "active" : ""} data-testid="catalog-grid-view-button"><LayoutGrid size={17} /></button><button onClick={() => setView("list")} className={view === "list" ? "active" : ""} data-testid="catalog-list-view-button"><Menu size={17} /></button></div></div>{!hasFilter && <div className="category-tile-grid" data-testid="category-tile-grid">{tiles.map((category, index) => <Link to={`/category?category=${category.slug}`} className={`category-tile tile-${index % 6}`} key={category.id} data-testid={`category-tile-${category.slug}`}><img src={category.image} alt={category.name} /><div><b>{category.name}</b><small>{category.count} live products</small><span>Explore <ChevronRight size={14} /></span></div></Link>)}</div>}<div className={`product-grid grid-4 category-products ${view === "list" ? "catalog-list-view" : ""}`} data-testid={`catalog-${view}-view`}>{products.map((product, index) => <ProductCard product={product} onAdd={onAdd} onWish={onWish} badge={BADGES[index % BADGES.length]} key={product.id} />)}</div></section></section>
       </main>
       <FooterBar />
       <BottomNav active="Categories" />
@@ -713,6 +717,7 @@ function App() {
     if (source.get("category")) value.set("category", source.get("category"));
     if (source.get("search")) value.set("query", source.get("search"));
     if (source.get("sort")) value.set("sort", source.get("sort"));
+    if (source.get("section")) value.set("section", source.get("section"));
     return value.toString() ? `?${value}` : "";
   }, [location.pathname, location.search]);
   const refreshProducts = useCallback(async (params) => { const activeParams = params === undefined ? catalogParamsRef.current : params; if (params !== undefined) catalogParamsRef.current = params; try { const connector = activeParams ? "&" : "?"; const { data } = await api.get(`/api/products${activeParams}${connector}_live=${Date.now()}`); setProducts(data.items.map(cardProduct)); } catch (error) { toast.error(apiError(error)); } }, []);
@@ -721,10 +726,10 @@ function App() {
   const refreshStorefront = useCallback(async () => { try { const { data } = await api.get(`/api/storefront?_live=${Date.now()}`); setStorefront(data); } catch { setStorefront(null); } }, []);
   const refreshCart = useCallback(async () => { if (!user) { setCart([]); return; } try { const { data } = await api.get("/api/cart"); setCart(data.items.map((item) => ({ ...cardProduct(item.product), quantity: item.quantity, variant_sku: item.variant_sku }))); } catch (error) { if (error.response?.status === 401) setUser(null); else toast.error(apiError(error)); } }, [user]);
   const refreshWish = useCallback(async () => { if (!user) { setWishCount(0); return; } try { const { data } = await api.get("/api/wishlist"); setWishCount(data.length); } catch { setWishCount(0); } }, [user]);
-  const refreshUser = useCallback(async () => { try { const { data } = await api.get("/api/auth/me"); setUser(data); return data; } catch { return null; } }, []);
+  const refreshUser = useCallback(async () => { try { const data = await restoreSession(); setUser(data); return data; } catch { return null; } }, []);
   useEffect(() => { document.body.dataset.theme = "dark"; localStorage.setItem("mobilecart-theme", "dark"); }, []);
   useEffect(() => { const clearExpiredSession = () => { setUser(null); setCart([]); setWishCount(0); }; window.addEventListener("mobilecart:session-expired", clearExpiredSession); return () => window.removeEventListener("mobilecart:session-expired", clearExpiredSession); }, []);
-  useEffect(() => { api.get("/api/auth/me").then(({ data }) => setUser(data)).catch(() => setUser(null)).finally(() => setAuthLoading(false)); api.get(`/api/categories?_live=${Date.now()}`).then(({ data }) => setCategories(data)).catch(() => setCategories([])); refreshAuctions(); refreshAnnouncements(); refreshStorefront(); }, [refreshAuctions, refreshAnnouncements, refreshStorefront]);
+  useEffect(() => { restoreSession().then((data) => setUser(data)).catch(() => setUser(null)).finally(() => setAuthLoading(false)); api.get(`/api/categories?_live=${Date.now()}`).then(({ data }) => setCategories(data)).catch(() => setCategories([])); refreshAuctions(); refreshAnnouncements(); refreshStorefront(); }, [refreshAuctions, refreshAnnouncements, refreshStorefront]);
   useEffect(() => { refreshProducts(catalogParams); }, [catalogParams, refreshProducts]);
   useEffect(() => {
     let refreshQueued = false;

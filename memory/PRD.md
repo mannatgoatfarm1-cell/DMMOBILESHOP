@@ -84,6 +84,12 @@ Build a production-ready e-commerce platform "DMMobile Shop" (formerly MobileCar
 - Fixed the hero accent line that was rendering as cyan/purple blank blocks on desktop and mobile.
 - Replaced unstable gradient-text clipping with a compact neon accent treatment; verified heading height reduced to 154px with no background block.
 
+### Connected Sale Routing & Auth/Data Lock (DONE — Sept 25, 2026)
+- Each sale shelf View All now opens its own catalog collection: Flash, Mobile Parts, Today, Deal of the Day, New Stock, or Stock Clearance.
+- Products now carry explicit homepage sale placements. Admin → Products shows six selectable placements during add/edit and displays every saved product’s live placement.
+- Added refresh-cookie session bootstrap and `/auth/me` retry recovery to prevent access-token expiry from forcing re-authentication; verified signed-in session restoration after an invalid access token.
+- Locked customer identity updates and address deletion at the API layer (423 Locked) so user data cannot be changed or removed through standard flows.
+
 ## Pending Tasks (Prioritized)
 
 ### P1 — High Priority

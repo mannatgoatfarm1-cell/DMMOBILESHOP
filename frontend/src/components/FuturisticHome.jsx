@@ -88,6 +88,9 @@ function MajorSaleSections({ products, onAdd, sections = [] }) {
     { id: "stock-clearance", title: "Stock Clearance Sale", eyebrow: "LAST CHANCE", icon: Percent, category: "", tone: "red" },
   ];
   const shelfProducts = (category, offset) => {
+    const saleId = sales[offset]?.id;
+    const assigned = products.filter((product) => product.homepage_sections?.includes(saleId));
+    if (assigned.length) return [...assigned.slice(offset), ...assigned.slice(0, offset)].slice(0, 6);
     const preferred = category ? products.filter((product) => product.category_slug === category) : products;
     const source = [...preferred, ...products.filter((product) => !preferred.some((item) => item.id === product.id))];
     return [...source.slice(offset), ...source.slice(0, offset)].slice(0, 6);
@@ -97,7 +100,7 @@ function MajorSaleSections({ products, onAdd, sections = [] }) {
       {sales.map((sale, index) => {
         const setting = sections.find((section) => section.id === sale.id) || {};
         if (setting.active === false) return null;
-        return <SaleShelf key={sale.id} {...sale} title={setting.title || sale.title} eyebrow={setting.eyebrow || sale.eyebrow} products={shelfProducts(sale.category, index)} onAdd={onAdd} to={sale.category ? `/category?category=${sale.category}` : "/category?sort=price_desc"} />;
+        return <SaleShelf key={sale.id} {...sale} title={setting.title || sale.title} eyebrow={setting.eyebrow || sale.eyebrow} products={shelfProducts(sale.category, index)} onAdd={onAdd} to={`/category?section=${sale.id}`} />;
       })}
     </div>
   );
@@ -368,6 +371,7 @@ export function FuturisticHome({ products, auctions, onAdd, onWish, common, anno
   const display = useMemo(() => [...products].sort((a, b) => (FEATURED_ORDER.indexOf(a.id) + 99) % 99 - (FEATURED_ORDER.indexOf(b.id) + 99) % 99), [products]);
   const primary = display[0] || null;
   const heroDeals = display.slice(0, 3);
+  const flashProducts = display.filter((product) => product.homepage_sections?.includes("flash-deals"));
   const sections = homeConfig?.sections || [];
   const section = (id) => sections.find((item) => item.id === id) || {};
   const isVisible = (id) => section(id).active !== false;
@@ -463,7 +467,7 @@ export function FuturisticHome({ products, auctions, onAdd, onWish, common, anno
         </motion.section>}
 
         {/* Sale Shelves — directly below the hero banner */}
-        {isVisible("flash-deals") && <SaleShelf id="flash-deals" title={section("flash-deals").title || "Flash Deals"} eyebrow={section("flash-deals").eyebrow || "LIMITED TIME"} icon={Flame} products={display.slice(0, 6)} onAdd={onAdd} to="/category?sort=price_desc" tone="pink" showTimer />}
+        {isVisible("flash-deals") && <SaleShelf id="flash-deals" title={section("flash-deals").title || "Flash Deals"} eyebrow={section("flash-deals").eyebrow || "LIMITED TIME"} icon={Flame} products={(flashProducts.length ? flashProducts : display).slice(0, 6)} onAdd={onAdd} to="/category?section=flash-deals" tone="pink" showTimer />}
         <MajorSaleSections products={display} onAdd={onAdd} sections={sections} />
 
         {/* Trust Strip */}

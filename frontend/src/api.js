@@ -7,7 +7,7 @@ export const api = axios.create({
 });
 
 let refreshInFlight = null;
-const authFreeEndpoints = ["/api/auth/login", "/api/auth/register", "/api/auth/refresh", "/api/auth/me", "/api/auth/forgot-password", "/api/auth/reset-password"];
+const authFreeEndpoints = ["/api/auth/login", "/api/auth/register", "/api/auth/refresh", "/api/auth/forgot-password", "/api/auth/reset-password"];
 
 api.interceptors.request.use((config) => {
   if (typeof FormData !== "undefined" && config.data instanceof FormData) delete config.headers["Content-Type"];
@@ -22,12 +22,23 @@ api.interceptors.response.use((response) => response, async (error) => {
   try {
     if (!refreshInFlight) refreshInFlight = axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/auth/refresh`, {}, { withCredentials: true }).finally(() => { refreshInFlight = null; });
     await refreshInFlight;
+    window.dispatchEvent(new Event("mobilecart:session-recovered"));
     return api(request);
   } catch (refreshError) {
     window.dispatchEvent(new Event("mobilecart:session-expired"));
     return Promise.reject(error);
   }
 });
+
+export async function restoreSession() {
+  try {
+    const { data } = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/auth/refresh`, {}, { withCredentials: true });
+    return data;
+  } catch (refreshError) {
+    const { data } = await api.get("/api/auth/me");
+    return data;
+  }
+}
 
 export function apiError(error) {
   const detail = error?.response?.data?.detail;
