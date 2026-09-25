@@ -125,6 +125,11 @@ Build a production-ready e-commerce platform "DMMobile Shop" (formerly MobileCar
 - Added a live Cart count badge when items are present, so customers can see cart state without leaving the current screen.
 - Verified Orders and Cart shortcuts fit on a 390px viewport and route signed-out users to login with the correct return URL.
 
+### Mobile Scroll Performance Fix (DONE — Sept 25, 2026)
+- Removed the `pan-x` touch lock that was trapping vertical swipes inside sale rails; rails now support both vertical page scroll and horizontal product browsing.
+- Disabled costly glass backdrop filters only on the mobile storefront and applied browser content-visibility to long offscreen sections.
+- Verified at 390px: vertical scroll moved from 0 to 1100px, while New Stock remained horizontally swipeable across a 1012px rail.
+
 ## Pending Tasks (Prioritized)
 
 ### P1 — High Priority
