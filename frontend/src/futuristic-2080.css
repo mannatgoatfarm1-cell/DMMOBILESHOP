@@ -186,6 +186,14 @@ body::before {
   overflow: hidden;
   position: relative;
 }
+.hero-3d-scene { position: absolute; right: 3%; top: 2%; width: 46%; height: 96%; z-index: 1; pointer-events: none; filter: drop-shadow(0 24px 24px rgba(0, 0, 0, 0.45)); }
+.css-3d-device { position:absolute; left:50%; top:50%; width:132px; height:236px; border:7px solid #0a1020; border-radius:24px; background:#13213a; box-shadow:18px 22px 0 rgba(0,0,0,.3),0 0 35px rgba(34,211,238,.42); transform:translate(-50%,-50%) rotateX(12deg) rotateY(-27deg) rotateZ(8deg); transform-style:preserve-3d; animation:deviceFloat 6s ease-in-out infinite; }
+.device-screen { position:absolute; inset:7px; border-radius:16px; background:linear-gradient(145deg,#03536e,#0e254e 54%,#28155e); overflow:hidden; }.device-screen span{position:absolute;width:180%;height:32%;left:-20%;top:28%;background:rgba(255,255,255,.18);transform:rotate(-34deg);filter:blur(5px)}.device-camera{position:absolute;z-index:2;width:18px;height:18px;border-radius:50%;background:#69eaff;box-shadow:0 0 12px #22d3ee;top:14px}.camera-one{left:15px}.camera-two{left:39px;background:#c1b0ff;box-shadow:0 0 12px #a78bfa}.hero-3d-ring{position:absolute;left:50%;top:50%;border:1px solid rgba(103,232,249,.42);border-radius:50%;transform:translate(-50%,-50%) rotateX(67deg);animation:ringSpin 14s linear infinite}.ring-one{width:280px;height:280px}.ring-two{width:210px;height:210px;border-color:rgba(167,139,250,.45);animation-direction:reverse;animation-duration:10s}@keyframes deviceFloat{0%,100%{margin-top:-9px}50%{margin-top:12px}}@keyframes ringSpin{to{transform:translate(-50%,-50%) rotateX(67deg) rotateZ(360deg)}}
+.hero-copy { position: relative; z-index: 3; }
+.hero-phone { position: relative; z-index: 2; opacity: 0.38; mix-blend-mode: screen; }
+.hero-banner::after { z-index: 2; }
+.flash-card, .glass-product-card, .f-quad-card { transform-style: preserve-3d; perspective: 900px; transition: transform 0.28s ease, box-shadow 0.28s ease, border-color 0.28s ease; }
+.flash-card:hover, .glass-product-card:hover, .f-quad-card:hover { transform: translateY(-7px) rotateX(2deg) rotateY(-2deg); }
 .hero-banner::after {
   content: "";
   position: absolute;

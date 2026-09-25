@@ -1,118 +1,102 @@
 {
-  "theme_strategy": "Light Mode Only (Dense E-commerce Marketplace)",
-  "emotional_archetype": "Swiss & High-Contrast / Authority, Clarity, Trust",
-  "instructions_to_main_agent": [
-    "CRITICAL: The user requested 'ligit mode only all and admin panel ka bhi same light kro'. You MUST override the existing dark theme (#070b15) in index.css and App.css.",
-    "Change the html and body background to a clean, crisp light color (e.g., #F8FAFC or #FFFFFF).",
-    "Change the default text color to a highly readable dark slate (#0F172A).",
-    "Ensure both the Customer storefront AND the Admin Dashboard use this new light-mode aesthetic.",
-    "Preserve all functionalities (checkout, auctions, QC report, Razorpay, etc.), only alter the visual presentation, spacing, layout, and colors.",
-    "Do NOT use transparent backgrounds for headers, dropdowns, or overlays. Always use solid white or glassmorphism (bg-white/80 backdrop-blur-md).",
-    "Replace dark mode classes (like text-gray-400, bg-gray-900) with their light mode equivalents (text-slate-600, bg-white, border-slate-200)."
-  ],
+  "theme_mode": "dark",
   "typography": {
-    "strategy": "Clean, highly readable, and dense.",
-    "heading_font": "Plus Jakarta Sans, sans-serif (or Inter/Outfit)",
-    "body_font": "Plus Jakarta Sans, sans-serif",
-    "scales": {
-      "h1": "text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-slate-900",
-      "h2": "text-2xl sm:text-3xl font-bold tracking-tight text-slate-900",
-      "h3": "text-lg sm:text-xl font-semibold text-slate-800",
-      "body": "text-sm sm:text-base text-slate-600",
-      "small_labels": "text-xs font-bold uppercase tracking-wider text-slate-500"
-    }
+    "headings": "Outfit",
+    "body": "Manrope",
+    "notes": "Use tracking-tight for headings (text-5xl or text-6xl max). Never use Inter or generic sans for headings. Create a professional, heavy-weight feel for the Future Glass marketplace."
   },
   "colors": {
-    "background": {
-      "page": "#F8FAFC (slate-50) for contrast with white cards",
-      "surface": "#FFFFFF (white) for cards, headers, modals"
-    },
-    "text": {
-      "primary": "#0F172A (slate-900)",
-      "secondary": "#475569 (slate-600)",
-      "muted": "#94A3B8 (slate-400)"
-    },
-    "brand_accents": {
-      "primary": "#2563EB (blue-600) for main CTAs, links, active states",
-      "primary_hover": "#1D4ED8 (blue-700)",
-      "sale_badge": "#EF4444 (red-500) for discounts, flash sales",
-      "success": "#10B981 (emerald-500) for trust badges, QC passed"
-    },
-    "borders": "#E2E8F0 (slate-200)"
-  },
-  "layouts": {
-    "marketplace_structure": [
-      "Trust Strip (Top): Very thin (h-8), bg-slate-900 text-white, showing 'Free Shipping | Quality Guarantee | Secure Checkout'.",
-      "Main Header: Sticky top-0, z-50, bg-white border-b border-slate-200. Must contain Logo, large Search Bar (rounded-full bg-slate-100), and Utility icons (Account, Cart, Wishlist).",
-      "Category Nav: Below header, bg-white border-b border-slate-200, horizontal scrollable list of categories (Mobiles, Laptops, Accessories, Auctions).",
-      "Hero Section: Asymmetric grid (e.g., grid-cols-1 lg:grid-cols-3 gap-4 p-4 lg:p-6). Main banner spans 2 columns, side stack has 2 smaller promo banners.",
-      "Product Rails: Section title with 'View All' link. Horizontal scroll on mobile, grid on desktop (grid-cols-2 md:grid-cols-4 lg:grid-cols-5).",
-      "Admin Panel: Sidebar navigation (bg-white border-r border-slate-200). Main content area (bg-slate-50). Dense data tables with white backgrounds and sharp borders."
-    ]
-  },
-  "component_rules": {
-    "product_cards": {
-      "surface": "bg-white border border-slate-200 rounded-xl overflow-hidden",
-      "image_container": "bg-slate-50 p-4 flex justify-center items-center aspect-square",
-      "content": "p-4 flex flex-col gap-1",
-      "interaction": "transition-all duration-200 hover:-translate-y-1 hover:shadow-lg hover:border-blue-300"
-    },
-    "buttons": {
-      "primary": "bg-blue-600 text-white hover:bg-blue-700 rounded-lg font-semibold px-4 py-2 transition-colors",
-      "outline": "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 rounded-lg px-4 py-2"
-    },
-    "badges": {
-      "auction": "bg-purple-100 text-purple-700 text-xs font-bold px-2 py-1 rounded",
-      "discount": "bg-red-100 text-red-700 text-xs font-bold px-2 py-1 rounded",
-      "qc_passed": "bg-emerald-100 text-emerald-700 text-xs font-bold px-2 py-1 rounded"
-    }
-  },
-  "motion": {
-    "hover": "Subtle transform (-translate-y-1) for product cards and tiles.",
-    "buttons": "Active state scale-95 for tactile feedback.",
-    "page_transitions": "Fade in on mount."
-  },
-  "accessibility": {
-    "contrast": "Ensure all text meets minimum 4.5:1 against backgrounds.",
-    "focus": "focus:ring-2 focus:ring-blue-500 focus:outline-none focus:ring-offset-2",
-    "testing": "All interactive elements MUST include data-testid (e.g., data-testid='add-to-cart-btn')."
+    "background": "#050505",
+    "surface": "rgba(255, 255, 255, 0.05)",
+    "surface_border": "rgba(255, 255, 255, 0.1)",
+    "primary": "#06B6D4",
+    "primary_hover": "#0891B2",
+    "text_primary": "#FFFFFF",
+    "text_secondary": "#A1A1AA",
+    "archetype": "ARCHETYPE 5: LUXURY & ARCHETYPE 7: ELECTRIC & NEON (Professional Tech/Marketplace)"
   },
   "visual_enhancers": {
-    "borders": "Use strict 1px borders everywhere to create a clean, dense, structured look (border-slate-200).",
-    "shadows": "Minimal default shadows. Use shadows only for hover states or floating elements like modals/dropdowns (shadow-xl).",
-    "icons": "Use lucide-react with a stroke-width of 1.5 for a clean, modern look."
+    "glassmorphism": "backdrop-blur-xl bg-white/5 border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)]",
+    "glow": "Subtle box-shadows using the primary color to highlight active states and 3D depth. Use drop-shadow on 3D elements.",
+    "hover_states": "Use transform -translate-y-1 with increased surface opacity (bg-white/10) and border glow.",
+    "texture": "Add a subtle noise/grain overlay for a premium, non-flat dark mode feel."
+  },
+  "grids_and_layouts": {
+    "spacing": "Generous spacing. Use p-8, p-12, or p-16 for main containers. Keep internal padding p-6 for cards to avoid text collision.",
+    "storefront_grid": "The Bento Grid Protocol (MODE A): grid-cols-1 md:grid-cols-8 lg:grid-cols-12 with wide gap-8 for storefront product browsing, auctions, and QC reports.",
+    "admin_grid": "High Density Grid (MODE B): grid-cols-1 md:grid-cols-3 lg:grid-cols-4 with gap-4 for the existing Admin Panel. Preserve functionality."
+  },
+  "components": {
+    "header": "Sticky navigation with glassmorphism (backdrop-blur-xl bg-black/60). MUST have logo, links, responsive mobile hamburger menu, cart, and customer account actions. DO NOT use fully transparent background.",
+    "product_cards": "Glassmorphism for storefront products and auctions. No generic Shadcn cards for storefront.",
+    "admin_components": "Retain Shadcn standard dense design for the admin panel. Do not overwrite unless required for dark theme consistency.",
+    "buttons": "Pill-shaped (rounded-full) or crisp sharp edges with interaction animations & color relevant to the app style for the storefront. Admin uses standard Shadcn buttons.",
+    "forms": "Use Shadcn customized components (Inputs, Select) for Checkout, Account Hub, and Orders."
+  },
+  "3d_libraries_and_implementation": {
+    "libraries": [
+      "three",
+      "@react-three/fiber",
+      "@react-three/drei",
+      "framer-motion"
+    ],
+    "implementation_steps": [
+      "Hero Section: Embed a `<Canvas>` using `@react-three/fiber`. Render a professional, rotating 3D element (e.g., geometric abstraction or product placeholder).",
+      "Lighting: Ensure 3D scenes have adequate lighting. Use Drei's `<Environment>` and `<Float>` to make the object feel premium and alive.",
+      "Card Interactions: Implement 3D tilt/perspective effects on Storefront product and auction cards using `framer-motion` (e.g., tracking mouse position and applying `useTransform` to rotateX and rotateY).",
+      "Background: Use subtle floating particles or a 2.5D parallax scrolling effect to establish depth without clutter."
+    ]
+  },
+  "motion": {
+    "page_transitions": "Staggered fade-up for grid items. Entrance animations for hero text.",
+    "micro_interactions": "Hover states on all interactive elements. Button press scale down. Use Framer Motion for organic spring animations, not linear transitions."
+  },
+  "accessibility": {
+    "contrast": "Ensure all text against dark surfaces meets minimum 4.5:1 ratio. Provide high contrast hover states.",
+    "data_test_attributes": "All interactive and key informational elements MUST include a data-testid attribute (e.g., data-testid='checkout-button', data-testid='nav-cart-link', data-testid='auction-bid-btn').",
+    "focus_states": "Focus states must have higher contrast than default, using a 2px solid ring (e.g., focus:ring-2 focus:ring-cyan-500)."
   },
   "media": {
     "image_urls": [
       {
-        "url": "https://images.unsplash.com/photo-1640936343842-268f9d87e764?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzh8MHwxfHNlYXJjaHwzfHxzbWFydHBob25lcyUyMGxhdGVzdCUyMG1vYmlsZXxlbnwwfHx8fDE3OTAzNDc3Nzl8MA&ixlib=rb-4.1.0&q=85",
-        "category": "Hero Banner / Product Demo",
-        "description": "Two cell phones side by side on a white surface, great for hero or main promo."
+        "url": "https://images.unsplash.com/photo-1772949400107-f35fd026ab77?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2MTJ8MHwxfHNlYXJjaHwxfHxsdXh1cnklMjB3YXRjaCUyMGRhcmslMjBiYWNrZ3JvdW5kfGVufDB8fHx8MTc5MDM3NDkxOHww&ixlib=rb-4.1.0&q=85",
+        "description": "Rose gold luxury watch on dark textured surface",
+        "category": "Storefront Hero Product / Featured Auction"
       },
       {
-        "url": "https://images.unsplash.com/photo-1719945421298-f03d3d80c3e1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzh8MHwxfHNlYXJjaHwyfHxzbWFydHBob25lcyUyMGxhdGVzdCUyMG1vYmlsZXxlbnwwfHx8fDE3OTAzNDc3Nzl8MA&ixlib=rb-4.1.0&q=85",
-        "category": "Product Listing",
-        "description": "Group of modern cell phones in different colors."
+        "url": "https://images.unsplash.com/photo-1622737133809-d95047b9e673?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzd8MHwxfHNlYXJjaHwxfHxhYnN0cmFjdCUyMGRhcmslMjAzZCUyMGdlb21ldHJpY3xlbnwwfHx8fDE3OTAzNzQ5MTh8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Floating cubes and glowing yellow spheres",
+        "category": "Hero Background Layer / Placeholder for 3D elements"
       },
       {
-        "url": "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzV8MHwxfHNlYXJjaHwyfHxsYXB0b3AlMjBlbGVjdHJvbmljcyUyMGNvbXB1dGVyfGVufDB8fHx8MTc5MDM0Nzc3OXww&ixlib=rb-4.1.0&q=85",
-        "category": "Laptops Category / Banner",
-        "description": "MacBook Pro on a wooden table, clean look."
-      },
-      {
-        "url": "https://images.unsplash.com/photo-1541807084-5c52b6b3adef?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzV8MHwxfHNlYXJjaHwzfHxsYXB0b3AlMjBlbGVjdHJvbmljcyUyMGNvbXB1dGVyfGVufDB8fHx8MTc5MDM0Nzc3OXww&ixlib=rb-4.1.0&q=85",
-        "category": "Electronics category",
-        "description": "Open macbook air on desk."
+        "url": "https://images.unsplash.com/photo-1615655406736-b37c4fabf923?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1MDZ8MHwxfHNlYXJjaHwxfHxoaWdoJTIwdGVjaCUyMGdhZGdldCUyMGRhcmt8ZW58MHx8fHwxNzkwMzc0OTE4fDA&ixlib=rb-4.1.0&q=85",
+        "description": "High tech gadget setup on dark table",
+        "category": "Product Browsing Item / Tech Category"
       }
     ]
   },
+  "instructions_to_main_agent": [
+    "Install dependencies: `yarn add three @react-three/fiber @react-three/drei framer-motion @phosphor-icons/react`.",
+    "Implement a professional 'Future Glass' marketplace theme using deep dark colors (#050505) and glassmorphism (backdrop-blur-xl, border-white/10) for UI surfaces.",
+    "Storefront and Product Pages: Incorporate a 3D Canvas with @react-three/fiber for a premium, professional tech vibe in the hero area.",
+    "Add Framer Motion 3D tilt effects on product/auction cards to create interactive depth.",
+    "Maintain the existing Admin panel layout, ensuring it remains highly functional and dense, while styling it to match the overall dark mode.",
+    "Ensure the application covers Customer storefront, mobile navigation, product browsing, Cart, Orders, Auctions, QC reports, checkout, and account hub.",
+    "Never use purely transparent backgrounds on floating components like headers or dropdown menus.",
+    "Include 'data-testid' attributes on ALL interactive and key informational elements."
+  ],
   "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
-    "You tend to converge toward generic, 'on distribution' outputs. Avoid this by ensuring the light mode looks highly polished, structured, and premium.",
-    "Dark colors are BANNED for backgrounds, except for the very top trust strip.",
-    "Create depth through layered design elements with z-index hierarchy and crisp borders.",
-    "Use glass-morphism effects with backdrop filters (bg-white/80 backdrop-blur-md) for sticky headers.",
-    "NEVER use generic placeholder text for missing data; always style the empty states elegantly.",
-    "Every interaction needs micro-animations - hover states, transitions, scale effects.",
-    "Always use modern button styles, slightly rounded (rounded-lg or rounded-xl) with hover color changes."
+    "You tend to converge toward generic, 'on distribution' outputs. Avoid this: make creative, distinctive frontends that surprise and delight.",
+    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients.",
+    "Create depth through layered design elements with z-index hierarchy and glass-morphism effects (12-24px blur).",
+    "You MUST NOT apply universal transition (e.g., transition: all). This breaks transforms. Always add transitions for specific interactive elements excluding transforms.",
+    "You MUST NOT center align the app container, i.e., do not add `.App { text-align: center; }` in the css file.",
+    "Always use modern button styles like pill-shaped, or sharp buttons with interaction animations & color relevant to the app style.",
+    "NEVER use AI assistant Emoji characters (like 🤖🧠💭💡🔮🎯) for icons.",
+    "Every interaction needs micro-animations - hover states, transitions, parallax effects, and entrance animations. Static = dead.",
+    "Use 2-3x more spacing than feels comfortable. Cramped designs look cheap.",
+    "Subtle grain textures, noise overlays, custom cursors, selection states, and loading animations separate good from extraordinary.",
+    "Missing categories (especially sponsor logos) = main agent will use placeholder text which is FORBIDDEN. Use Unsplash URLs provided.",
+    "Use `sonner` for toasts. Sonner component is located in `/app/src/components/ui/sonner.tsx`."
   ]
 }

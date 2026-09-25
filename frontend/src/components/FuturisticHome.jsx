@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { Hero3DScene } from "@/components/Hero3DScene";
 import {
   Search, ShoppingCart, ChevronRight, Heart, Star, Gavel, Smartphone, Laptop, Watch, Tablet,
   Headphones, Gamepad2, Camera, LayoutGrid, Percent, Clock, ShieldCheck, Wallet,
@@ -407,6 +408,7 @@ export function FuturisticHome({ products, auctions, onAdd, onWish, common, anno
           {/* Hero + Side Cards */}
           <section className="hero-grid">
             <motion.div className="hero-banner" data-testid="hero-banner" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}>
+              <Hero3DScene />
               <div className="hero-copy">
                 <motion.span className="eyebrow" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.5 }}>{hero.eyebrow || "DMMobile Shop · 2080 → 2080"}</motion.span>
                 <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3, duration: 0.6 }}>
