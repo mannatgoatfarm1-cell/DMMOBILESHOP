@@ -137,6 +137,22 @@ Build a production-ready e-commerce platform "DMMobile Shop" (formerly MobileCar
 
 ## Pending Tasks (Prioritized)
 
+### Hostinger-Independent Production Plan
+
+#### Phase 1 — Production Portability MVP (DONE — Sept 25, 2026)
+- Completed a read-only runtime dependency assessment and documented all Hostinger independence blockers.
+- Added `docs/hostinger-portability-assessment.md`, `docs/hostinger-ubuntu24-runbook.md`, and `docs/hostinger-secrets.template.env`.
+- No Atlas data, runtime credentials, DNS, or production services were changed in this phase.
+
+#### Phase 2 — Independent Service Cutover (P0)
+1. Replace Emergent upload/object-storage proxy with VPS local media or owner-controlled S3-compatible storage.
+2. Add production seed/mutation guard so Atlas startup never inserts/reseeds/mutates existing production data.
+3. Remove preview URLs, Emergent browser/build tooling, and Emergent-hosted static media from runtime paths.
+4. Configure owner Google OAuth, Razorpay/webhooks, Atlas allowlist, transactional reset email, media backups, and Hostinger staging.
+
+#### Phase 3 — Production Launch & Operations (P1)
+1. Launch via Nginx, HTTPS, Gunicorn/systemd, monitoring, log rotation, backup jobs, and rollback validation.
+
 ### P1 — High Priority
 1. **Wallet Add Money Flow** — Razorpay top-up verification/credit workflow
 2. **Admin Live Control Board** — Unified dashboard (Pending Returns, Open Chats, Pending Payments, Active Carts)

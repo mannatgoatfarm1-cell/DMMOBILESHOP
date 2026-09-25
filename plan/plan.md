@@ -1,60 +1,59 @@
-# DMobileMart Payments, Wallet & Live Auction Experience
+# Hostinger-Independent Production App Plan
 
-DMobileMart mein secure checkout, wallet top-up aur premium live-auction journey ko ek consistent customer experience mein complete kiya jayega.
-Reference ki dark navy, electric blue-magenta aur QC-trust visual language desktop aur mobile dono par follow hogi.
+The complete DMobileMart application will run from a Hostinger Ubuntu VPS while retaining the existing MongoDB Atlas database in place.
+Emergent will remain a development workspace only; the production storefront, API, admin tools, login, uploads, payments, and background services will not require an active Emergent account.
 
 ## Who it's for
 
-- Customers jo verified refurbished mobile, laptops aur accessories ko fixed-price ya live auction mein khareedte hain.
-- Store admin jo payments, wallet credits, live auctions aur customer support ko ek jagah se manage karta hai.
+- Customers using the marketplace, Cart, Orders, Auctions, QC reports, account, and support features.
+- Administrators managing storefront content, products, payments, auctions, users, orders, and support.
+- The business owner operating the production domain, VPS, Atlas database, and third-party service accounts directly.
 
 ## Core features and experience
 
-- Razorpay checkout credentials ka secure handling: secret kabhi customer ko nahi dikhega; masked field dobara save hone par existing secret overwrite nahi hoga.
-- Customer checkout mein safe Razorpay order creation, payment completion ke baad verification, aur meaningful failure/retry state.
-- Wallet Add Money flow: customer amount choose karega, Razorpay checkout complete karega, aur verified payment ke baad hi wallet balance aur transaction history update hogi.
-- Admin Live Control Board: pending payment reviews, open support chats, pending returns aur active carts ke live counters aur direct actions.
-- Reference-inspired Auction hub: live hero, browsing categories, left-side filters, live auction product grid, timers, current/market price, bid count, QC status, and a ranked trending/leaderboard rail.
-- Auction detail and bidding journey: product trust details, current bid, required next bid, quick increment buttons, bid confirmation, highest-bidder live state, and auction-win payment handoff.
-- Auction win, payment, order tracking, QC report and post-purchase states will remain connected so customers can move from bid to delivery confidently.
+- Preserve the existing customer website, mobile experience, admin panel, APIs, authentication, payments, uploads, auctions, and data.
+- Keep the existing MongoDB Atlas database unchanged: no migration, deletion, reseed, or replacement of production data.
+- Make every production runtime service owner-controlled and portable, including authentication, storage, payment callbacks, HTTPS, logs, backups, and scheduled work.
+- Remove or replace any runtime dependency that requires Emergent infrastructure, credentials, credits, or subscription access.
 
 ## User flow
 
-1. Customer opens Auction, filters a category or brand, sees live timers and taps an item.
-2. Product auction detail shows QC status, pricing, bid history and minimum eligible bid; customer places a valid bid.
-3. During the auction, the highest bid and leaderboard refresh live. Winning customer receives a clear payment action and proceeds through the existing secure checkout.
-4. For wallet funding, customer chooses Add Money, enters an amount, completes Razorpay payment, and sees the updated available balance only after verification.
-5. Admin monitors urgent queues from the Live Control Board and opens the relevant payment, chat, return or cart item directly.
+1. Customers open the production domain over HTTPS and use the same storefront and mobile flows.
+2. The VPS serves the customer app and admin panel, while the API connects to the existing Atlas database.
+3. Login uses the app's own session system with owner-controlled Google OAuth and existing email/password accounts.
+4. Payments communicate directly with owner-controlled Razorpay settings; uploads use durable owner-controlled storage.
+5. Admins continue to manage the site through the existing admin panel with no Emergent runtime dependency.
 
 ## UI/UX feel
 
-- Supplied reference jaisa premium **Auction Command Center**: black-blue/navy base, luminous electric-blue borders, magenta-to-blue action gradients, and selective green for winning/success states.
-- Desktop page will use the same high-information composition: branded search/header and category rail, a wide Live Auction visual banner, process/trending side panels, filter column, dense live-bid cards, leaderboard and trusted-service footer strip.
-- Each auction card will make the live state instantly visible through countdown timers, red LIVE markers, large current bid, secondary market price, QC badges, bid totals and a strong gradient Place Bid action.
-- The mobile flow will mirror the supplied sequence: auction listing → auction detail → bid amount/increments → live bidder list → auction won → payment → order tracking → QC report → post-purchase confirmation.
-- Product images remain prominent, fully visible and carefully cropped; the interface will use real app product/QC/bid data rather than decorative placeholder tiles.
-- Interactions will feel responsive and premium: clear hover/pressed states, live-update emphasis, readable empty/loading/error states, and no unnecessary rounded-card clutter.
+- Keep the existing DMobileMart Future Glass customer design and current admin interface unchanged.
+- Preserve all responsive mobile navigation, Orders, Cart, Auctions, checkout, QC, and support experiences.
+- Production portability work remains invisible to customers except for more stable login, uploads, and payments.
 
 ## Implementation phases
 
-### Phase 1 — Build now
-- Fix Razorpay credential persistence and checkout authentication handling without exposing secrets.
-- Deliver verified wallet top-ups and balance/ledger updates using Razorpay Test Mode; automated verification will not execute a real charge.
-- Add the Admin Live Control Board with payment, chat, return and cart monitoring.
-- Rework the Auction hub and bid journey to match the supplied reference's desktop/mobile structure while preserving existing product, QC, bid and order information.
+### Phase 1 — Production portability MVP (built now)
+- Produce a read-only architecture and dependency assessment of the current project.
+- Identify every runtime dependency that would block independent Hostinger operation.
+- Prepare a complete Hostinger Ubuntu 24.04 + Nginx + HTTPS + Atlas deployment checklist, secret inventory, operational runbook, and rollback plan.
+- Specify the changes needed to remove Emergent runtime dependencies without modifying existing Atlas data.
 
-### Phase 2 — Next
-- Add auction-watch notifications, saved auctions and clear countdown alerts before an auction closes.
-- Add richer wallet transaction filters, downloadable receipts and dedicated payment reconciliation controls.
+### Phase 2 — Independent service cutover
+- Replace or reconfigure managed authentication, storage, uploads, emails/OTP if used, webhooks, scheduled work, and media delivery with owner-controlled alternatives.
+- Configure self-owned Google OAuth, Razorpay, durable storage, backups, monitoring, and production access controls.
+- Validate all customer and admin flows against a Hostinger staging deployment connected to Atlas only after backup confirmation.
 
-### Phase 3 — Later
-- Add AI deal discovery, Refer & Earn, Bulk Buy and Price Tracker experiences.
-- Add production Razorpay webhooks, refund reconciliation and stronger auction close automation after production credentials and approval are available.
+### Phase 3 — Production launch and operations
+- Deploy frontend and API behind Nginx with Let’s Encrypt HTTPS on the production domain.
+- Establish monitoring, backup schedules, Atlas IP access controls, log rotation, webhook verification, and rollback procedures.
+- Deliver an independent operations handover for future updates and incident recovery.
 
 ## Assumptions
 
-- The provided auction images are a visual reference; the implementation will use the app's existing live catalog, auctions, QC reports and customer data rather than copying static products or people from the images.
-- Razorpay Test Mode will be used for wallet top-up verification and all development validation, so no real customer charge is made.
-- An admin will enter valid active Razorpay Test Key ID and Key Secret in Admin → Payments before a real provider-order verification can succeed.
-- Existing auction rules, current bid data and customer checkout flow will be retained; the requested work enhances their visual hierarchy and end-to-end clarity.
-- The preview-gateway external CORS limitation remains outside this scope because same-origin website flows continue to work.
+- Production runs on Hostinger VPS with Ubuntu 24.04 LTS.
+- MongoDB Atlas remains the production database and existing data must not be changed, moved, deleted, or reseeded.
+- A production domain is available for Nginx and Let’s Encrypt HTTPS.
+- The owner will retain direct ownership of MongoDB Atlas, Google OAuth, Razorpay, email/OTP if required, and storage credentials.
+- Google sign-in will use a self-owned Google Cloud OAuth client rather than a managed Emergent sign-in service in production.
+- Uploaded media will use durable VPS-backed storage with backups unless an owner-controlled S3-compatible storage account is selected later.
+- Existing UI, customer flows, admin functions, and database schema are preserved; this work changes deployment ownership, not product behavior.
