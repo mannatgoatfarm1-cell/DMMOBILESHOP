@@ -1857,7 +1857,7 @@ async def get_customer_chat(user: Annotated[dict[str, Any], Depends(require_cust
 @api.post("/chat/messages", response_model=ChatMessage)
 async def send_customer_chat(input: ChatMessageInput, user: Annotated[dict[str, Any], Depends(require_customer)]) -> ChatMessage:
     thread = await customer_chat_thread(user)
-    message = {"id": str(uuid.uuid4()), "thread_id": thread["id"], "sender_role": "customer", "sender_name": user["name"], "message": input.message.strip(), "created_at": now()}
+    message = {"id": str(uuid.uuid4()), "thread_id": thread["id"], "sender_role": "customer", "sender_name": user["name"], "message": input.message.strip(), "read_by_admin": False, "created_at": now()}
     await db.chat_messages.insert_one(message.copy())
     await db.chat_threads.update_one({"id": thread["id"]}, {"$set": {"updated_at": message["created_at"], "status": "open"}})
     return ChatMessage(**message)
@@ -1867,7 +1867,7 @@ async def send_customer_chat(input: ChatMessageInput, user: Annotated[dict[str, 
 async def list_admin_chats(_: Annotated[dict[str, Any], Depends(admin_user)]) -> list[dict[str, Any]]:
     threads = await db.chat_threads.find({}, {"_id": 0}).sort("updated_at", -1).to_list(200)
     for thread in threads:
-        thread["unread_customer"] = await db.chat_messages.count_documents({"thread_id": thread["id"], "sender_role": "customer"})
+        thread["unread_customer"] = await db.chat_messages.count_documents({"thread_id": thread["id"], "sender_role": "customer", "read_by_admin": {"$ne": True}})
     return threads
 
 
@@ -1876,6 +1876,7 @@ async def get_admin_chat(thread_id: str, _: Annotated[dict[str, Any], Depends(ad
     thread = await db.chat_threads.find_one({"id": thread_id}, {"_id": 0})
     if not thread:
         raise HTTPException(404, "Chat thread not found")
+    await db.chat_messages.update_many({"thread_id": thread_id, "sender_role": "customer", "read_by_admin": {"$ne": True}}, {"$set": {"read_by_admin": True}})
     messages = await db.chat_messages.find({"thread_id": thread_id}, {"_id": 0}).sort("created_at", 1).to_list(200)
     return {"thread": thread, "messages": [ChatMessage(**message) for message in messages]}
 

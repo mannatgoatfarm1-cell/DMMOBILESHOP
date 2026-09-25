@@ -60,6 +60,11 @@ Build a production-ready e-commerce platform "DMMobile Shop" (formerly MobileCar
 - Reordered all six shelves directly below the customer hero banner in this sequence: Flash Deals, Mobile Parts Deals, Today's Deals, Deal of the Day, New Stock, Stock Clearance Sale.
 - Moved Top Brands directly below the hero banner and converted its visible brand-label pills into an icon-only rail.
 
+### Live Chat Experience (DONE — Sept 25, 2026)
+- Customer live support no longer opens automatically; signed-in customers must manually open the support button.
+- Reduced the Admin Support Tickets live-chat workspace to a compact 400px panel with scrollable conversation threads.
+- Added accurate unread customer-message badges, clearing the count when an admin opens that conversation.
+
 ## Pending Tasks (Prioritized)
 
 ### P1 — High Priority

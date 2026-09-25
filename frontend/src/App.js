@@ -773,7 +773,7 @@ function App() {
         <Route path="/category" element={<CategoryPage products={products} onAdd={add} onWish={wish} common={common} categories={categories} />} />
         <Route path="*" element={<FuturisticHome products={products} auctions={auctions} announcements={announcements} onAdd={add} onWish={wish} common={common} Topbar={Topbar} FooterBar={FooterBar} BottomNav={BottomNav} Loading={Loading} />} />
       </Routes>
-      <CustomerLiveChat user={user} hidden={location.pathname === "/login" || location.pathname === "/register"} collapsed={location.pathname === "/auctions"} />
+      <CustomerLiveChat user={user} hidden={location.pathname === "/login" || location.pathname === "/register"} />
     </>
   );
 }
