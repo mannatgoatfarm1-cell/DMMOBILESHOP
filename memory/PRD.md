@@ -65,6 +65,12 @@ Build a production-ready e-commerce platform "DMMobile Shop" (formerly MobileCar
 - Reduced the Admin Support Tickets live-chat workspace to a compact 400px panel with scrollable conversation threads.
 - Added accurate unread customer-message badges, clearing the count when an admin opens that conversation.
 
+### Storefront Content Management (DONE — Sept 25, 2026)
+- Added a dedicated Admin → Storefront workspace for homepage banner copy, banner image upload/preview, and publishing website changes.
+- Admin can edit headings/labels and show or hide each of 16 customer-facing homepage sections; the public homepage syncs these settings live.
+- Reused the configured secure media upload flow and verified an admin publish updates the customer hero and section visibility, then restores correctly.
+- Moved the admin chat reply composer above the message thread for faster support replies.
+
 ## Pending Tasks (Prioritized)
 
 ### P1 — High Priority

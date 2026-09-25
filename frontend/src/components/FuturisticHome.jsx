@@ -85,7 +85,7 @@ function SaleShelf({ id, title, eyebrow, icon: Icon, products, onAdd, to, tone =
   );
 }
 
-function MajorSaleSections({ products, onAdd }) {
+function MajorSaleSections({ products, onAdd, sections = [] }) {
   const sales = [
     { id: "mobile-parts-deals", title: "Mobile Parts Deals", eyebrow: "REPAIR ESSENTIALS", icon: Wrench, category: "accessories", tone: "blue" },
     { id: "today-deals", title: "Today's Deals", eyebrow: "ENDS TONIGHT", icon: Flame, category: "mobiles", tone: "orange", showTimer: true },
@@ -100,7 +100,11 @@ function MajorSaleSections({ products, onAdd }) {
   };
   return (
     <div className="major-sale-sections" data-testid="major-sale-sections">
-      {sales.map((sale, index) => <SaleShelf key={sale.id} {...sale} products={shelfProducts(sale.category, index)} onAdd={onAdd} to={sale.category ? `/category?category=${sale.category}` : "/category?sort=price_desc"} />)}
+      {sales.map((sale, index) => {
+        const setting = sections.find((section) => section.id === sale.id) || {};
+        if (setting.active === false) return null;
+        return <SaleShelf key={sale.id} {...sale} title={setting.title || sale.title} eyebrow={setting.eyebrow || sale.eyebrow} products={shelfProducts(sale.category, index)} onAdd={onAdd} to={sale.category ? `/category?category=${sale.category}` : "/category?sort=price_desc"} />;
+      })}
     </div>
   );
 }
@@ -151,10 +155,10 @@ function TrustStrip() {
 }
 
 /* ========== Hot Selling Categories ========== */
-function HotSellingCategories() {
+function HotSellingCategories({ title = "Hot Selling Categories" }) {
   return (
     <motion.section {...fadeUp} style={{ margin: "30px 0" }} data-testid="hot-selling-categories">
-      <div className="section-title"><h2><Flame size={20} style={{ color: "var(--gold)", marginRight: 8 }} />Hot Selling Categories</h2></div>
+      <div className="section-title"><h2><Flame size={20} style={{ color: "var(--gold)", marginRight: 8 }} />{title}</h2></div>
       <div className="f-hot-cats">
         {HOT_CATEGORIES.map(c => {
           const Icon = c.icon;
@@ -206,10 +210,10 @@ function QuadPromo() {
 }
 
 /* ========== Top Brands ========== */
-function BrandsSection() {
+function BrandsSection({ title = "Top Brands" }) {
   return (
     <motion.section {...fadeUp} style={{ margin: "28px 0" }} data-testid="top-brands-section">
-      <div className="section-title"><h2><Star size={18} style={{ color: "var(--gold)", marginRight: 8 }} />Top Brands</h2></div>
+      <div className="section-title"><h2><Star size={18} style={{ color: "var(--gold)", marginRight: 8 }} />{title}</h2></div>
       <div className="f-brands-row">
         {BRANDS.map(({ label, icon: Icon }) => (
           <motion.div key={label} whileHover={{ y: -3, scale: 1.02 }}>
@@ -380,12 +384,16 @@ function FuturisticFooter() {
 }
 
 /* ========== MAIN HOMEPAGE EXPORT ========== */
-export function FuturisticHome({ products, auctions, onAdd, onWish, common, announcements = [], Topbar, FooterBar, BottomNav, Loading }) {
+export function FuturisticHome({ products, auctions, onAdd, onWish, common, announcements = [], homeConfig = null, Topbar, FooterBar, BottomNav, Loading }) {
   const navigate = useNavigate();
   const [slide, setSlide] = useState(0);
   const display = useMemo(() => [...products].sort((a, b) => (FEATURED_ORDER.indexOf(a.id) + 99) % 99 - (FEATURED_ORDER.indexOf(b.id) + 99) % 99), [products]);
   const primary = display[0] || null;
   const heroDeals = display.slice(0, 3);
+  const sections = homeConfig?.sections || [];
+  const section = (id) => sections.find((item) => item.id === id) || {};
+  const isVisible = (id) => section(id).active !== false;
+  const hero = homeConfig?.hero || {};
 
   useEffect(() => { const t = setInterval(() => setSlide(v => (v + 1) % 4), 5000); return () => clearInterval(t); }, []);
 
@@ -420,11 +428,11 @@ export function FuturisticHome({ products, auctions, onAdd, onWish, common, anno
           <section className="hero-grid">
             <motion.div className="hero-banner" data-testid="hero-banner" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}>
               <div className="hero-copy">
-                <motion.span className="eyebrow" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.5 }}>DMMobile Shop · 2080 → 2080</motion.span>
+                <motion.span className="eyebrow" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.5 }}>{hero.eyebrow || "DMMobile Shop · 2080 → 2080"}</motion.span>
                 <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3, duration: 0.6 }}>
-                  {primary?.name || "Premium Tech"}<br /><span className="grad">Bigger. Brighter. Smarter.</span>
+                  {hero.title || primary?.name || "Premium Tech"}<br /><span className="grad">{hero.highlight || "Bigger. Brighter. Smarter."}</span>
                 </motion.h1>
-                <motion.p className="hero-sub" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}>Smarter Deals | Bigger Savings | Future Ready</motion.p>
+                <motion.p className="hero-sub" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}>{hero.description || "Smarter Deals | Bigger Savings | Future Ready"}</motion.p>
                 <motion.div className="hero-badge" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
                   <b>Starting at</b><span style={{ fontSize: 22, fontWeight: 800 }}>{money(primary?.price || 79999)}</span>
                 </motion.div>
@@ -436,7 +444,7 @@ export function FuturisticHome({ products, auctions, onAdd, onWish, common, anno
                   {[[ShieldCheck, "100% Original"], [Wallet, "Secure Pay"], [RotateCcw, "Easy Return"], [BadgeCheck, "Trusted"]].map(([Icon, l]) => <span key={l}><Icon size={14} /> {l}</span>)}
                 </motion.div>
               </div>
-              {primary?.image && <img src={primary.image} alt="Featured device" className="hero-phone" />}
+              {(hero.image_url || primary?.image) && <img src={hero.image_url || primary?.image} alt="Featured device" className="hero-phone" />}
               <div className="hero-dots">{[0, 1, 2, 3].map(d => <i key={d} className={d === slide ? "on" : ""} />)}</div>
             </motion.div>
 
@@ -466,23 +474,23 @@ export function FuturisticHome({ products, auctions, onAdd, onWish, common, anno
         </div>
 
         {/* Top Brands — directly below the hero banner */}
-        <BrandsSection />
+        {isVisible("top-brands") && <BrandsSection title={section("top-brands").title || "Top Brands"} />}
 
         {/* Sale Shelves — directly below the hero banner */}
-        <SaleShelf id="flash-deals" title="Flash Deals" eyebrow="LIMITED TIME" icon={Flame} products={display.slice(0, 6)} onAdd={onAdd} to="/category?sort=price_desc" tone="pink" showTimer />
-        <MajorSaleSections products={display} onAdd={onAdd} />
+        {isVisible("flash-deals") && <SaleShelf id="flash-deals" title={section("flash-deals").title || "Flash Deals"} eyebrow={section("flash-deals").eyebrow || "LIMITED TIME"} icon={Flame} products={display.slice(0, 6)} onAdd={onAdd} to="/category?sort=price_desc" tone="pink" showTimer />}
+        <MajorSaleSections products={display} onAdd={onAdd} sections={sections} />
 
         {/* Trust Strip */}
-        <TrustStrip />
+        {isVisible("trust-strip") && <TrustStrip />}
 
         {/* Hot Selling Categories */}
-        <HotSellingCategories />
+        {isVisible("hot-categories") && <HotSellingCategories title={section("hot-categories").title || "Hot Selling Categories"} />}
 
         {/* Quad Promo: Auction, Wholesale, Trade-In, Price Drop */}
-        <QuadPromo />
+        {isVisible("marketplace-services") && <QuadPromo />}
 
         {/* Category Circles */}
-        <motion.section {...fadeUp} className="circle-row" data-testid="category-circles">
+        {isVisible("category-navigation") && <motion.section {...fadeUp} className="circle-row" data-testid="category-circles">
           {CATEGORIES.slice(0, 10).map(c => {
             const Icon = c.icon;
             return (
@@ -492,10 +500,10 @@ export function FuturisticHome({ products, auctions, onAdd, onWish, common, anno
               </Link>
             );
           })}
-        </motion.section>
+        </motion.section>}
 
         {/* Promo Banners */}
-        <motion.section {...fadeUp} className="promo-row" data-testid="promo-banners">
+        {isVisible("promo-banners") && <motion.section {...fadeUp} className="promo-row" data-testid="promo-banners">
           <div className="promo promo-a" data-testid="promo-iphone">
             <div><b>Biggest iPhone Deals</b><span>Up to <em>40% OFF</em></span><Link to="/category?category=mobiles" className="promo-btn">Shop iPhones <ChevronRight size={13} /></Link></div>
             {primary?.image && <img src={primary.image} alt="iPhone deals" />}
@@ -506,13 +514,13 @@ export function FuturisticHome({ products, auctions, onAdd, onWish, common, anno
           <div className="promo promo-c" data-testid="promo-preowned">
             <div><b>Certified Pre-Owned</b><span>Same Performance. Better Value.</span><Link to="/category" className="promo-btn">Shop Pre-Owned <ChevronRight size={13} /></Link></div>
           </div>
-        </motion.section>
+        </motion.section>}
 
         {/* Trending + Why Choose + Reviews */}
-        <TrendingReviewsSection products={display} onAdd={onAdd} onWish={onWish} />
+        {isVisible("product-insights") && <TrendingReviewsSection products={display} onAdd={onAdd} onWish={onWish} />}
 
         {/* Auction Teaser */}
-        {auctions[0] && (
+        {isVisible("auction-teaser") && auctions[0] && (
           <motion.section {...fadeScale} className="auction-teaser" data-testid="auction-teaser">
             <div className="auction-teaser-copy">
               <span className="live-pill">LIVE AUCTION</span>
@@ -526,10 +534,10 @@ export function FuturisticHome({ products, auctions, onAdd, onWish, common, anno
         )}
 
         {/* Blog */}
-        <BlogSection />
+        {isVisible("blog") && <BlogSection />}
 
         {/* Community + WhatsApp + Newsletter */}
-        <BottomSections />
+        {isVisible("customer-community") && <BottomSections />}
       </main>
 
       <FuturisticFooter />

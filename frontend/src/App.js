@@ -698,6 +698,7 @@ function App() {
   const [categories, setCategories] = useState([]);
   const [auctions, setAuctions] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
+  const [storefront, setStorefront] = useState(null);
   const [cart, setCart] = useState([]);
   const [wishCount, setWishCount] = useState(0);
   const [user, setUser] = useState(null);
@@ -717,12 +718,13 @@ function App() {
   const refreshProducts = useCallback(async (params) => { const activeParams = params === undefined ? catalogParamsRef.current : params; if (params !== undefined) catalogParamsRef.current = params; try { const connector = activeParams ? "&" : "?"; const { data } = await api.get(`/api/products${activeParams}${connector}_live=${Date.now()}`); setProducts(data.items.map(cardProduct)); } catch (error) { toast.error(apiError(error)); } }, []);
   const refreshAuctions = useCallback(async () => { try { const { data } = await api.get(`/api/auctions?_live=${Date.now()}`); setAuctions(data.map((entry) => ({ ...entry, product: entry.product ? cardProduct(entry.product) : null }))); } catch (error) { toast.error(apiError(error)); } }, []);
   const refreshAnnouncements = useCallback(async () => { try { const { data } = await api.get(`/api/content/announcements?_live=${Date.now()}`); setAnnouncements(data); } catch { setAnnouncements([]); } }, []);
+  const refreshStorefront = useCallback(async () => { try { const { data } = await api.get(`/api/storefront?_live=${Date.now()}`); setStorefront(data); } catch { setStorefront(null); } }, []);
   const refreshCart = useCallback(async () => { if (!user) { setCart([]); return; } try { const { data } = await api.get("/api/cart"); setCart(data.items.map((item) => ({ ...cardProduct(item.product), quantity: item.quantity, variant_sku: item.variant_sku }))); } catch (error) { if (error.response?.status === 401) setUser(null); else toast.error(apiError(error)); } }, [user]);
   const refreshWish = useCallback(async () => { if (!user) { setWishCount(0); return; } try { const { data } = await api.get("/api/wishlist"); setWishCount(data.length); } catch { setWishCount(0); } }, [user]);
   const refreshUser = useCallback(async () => { try { const { data } = await api.get("/api/auth/me"); setUser(data); return data; } catch { return null; } }, []);
   useEffect(() => { document.body.dataset.theme = "dark"; localStorage.setItem("mobilecart-theme", "dark"); }, []);
   useEffect(() => { const clearExpiredSession = () => { setUser(null); setCart([]); setWishCount(0); }; window.addEventListener("mobilecart:session-expired", clearExpiredSession); return () => window.removeEventListener("mobilecart:session-expired", clearExpiredSession); }, []);
-  useEffect(() => { api.get("/api/auth/me").then(({ data }) => setUser(data)).catch(() => setUser(null)).finally(() => setAuthLoading(false)); api.get(`/api/categories?_live=${Date.now()}`).then(({ data }) => setCategories(data)).catch(() => setCategories([])); refreshAuctions(); refreshAnnouncements(); }, [refreshAuctions, refreshAnnouncements]);
+  useEffect(() => { api.get("/api/auth/me").then(({ data }) => setUser(data)).catch(() => setUser(null)).finally(() => setAuthLoading(false)); api.get(`/api/categories?_live=${Date.now()}`).then(({ data }) => setCategories(data)).catch(() => setCategories([])); refreshAuctions(); refreshAnnouncements(); refreshStorefront(); }, [refreshAuctions, refreshAnnouncements, refreshStorefront]);
   useEffect(() => { refreshProducts(catalogParams); }, [catalogParams, refreshProducts]);
   useEffect(() => {
     let refreshQueued = false;
@@ -732,7 +734,7 @@ function App() {
       liveRefreshInFlight.current = true;
       try {
         await Promise.all([
-          refreshProducts(), refreshAuctions(), refreshAnnouncements(),
+          refreshProducts(), refreshAuctions(), refreshAnnouncements(), refreshStorefront(),
           api.get(`/api/categories?_live=${Date.now()}`).then(({ data }) => setCategories(data)).catch(() => {}),
         ]);
       } finally {
@@ -745,7 +747,7 @@ function App() {
     window.addEventListener("mobilecart:live-update", liveRefresh);
     window.addEventListener("storage", storageSync);
     return () => { disposed = true; clearInterval(liveSync); window.removeEventListener("mobilecart:live-update", liveRefresh); window.removeEventListener("storage", storageSync); };
-  }, [refreshProducts, refreshAuctions, refreshAnnouncements]);
+  }, [refreshProducts, refreshAuctions, refreshAnnouncements, refreshStorefront]);
   useEffect(() => { if (!authLoading) { refreshCart(); refreshWish(); } }, [authLoading, user, refreshCart, refreshWish]);
   const add = async (product, buyNow = false) => { if (product.stock <= 0) { toast.error("This product is out of stock"); return; } if (!user) { toast.error("Please sign in to save your cart"); navigate("/login?next=/cart"); return; } try { await api.post("/api/cart/items", { product_id: product.id, quantity: 1 }); await refreshCart(); toast.success(`${product.name} added to cart`); speakHindi(`${product.name} कार्ट में जोड़ दिया गया`); if (buyNow) navigate("/cart"); } catch (error) { toast.error(apiError(error)); } };
   const setQuantity = async (item, quantity) => { try { if (quantity < 1) await api.delete(`/api/cart/items/${item.id}`); else await api.patch(`/api/cart/items/${item.id}`, { product_id: item.id, quantity }); await refreshCart(); } catch (error) { toast.error(apiError(error)); } };
@@ -771,7 +773,7 @@ function App() {
         <Route path="/account" element={user ? <Account user={user} setUser={setUser} common={common} theme={theme} onThemeChange={() => {}} refreshUser={refreshUser} onAdd={add} refreshWish={refreshWish} /> : <Navigate to="/login?next=/account" replace />} />
         <Route path="/policies/:policy" element={<PolicyPage common={common} />} />
         <Route path="/category" element={<CategoryPage products={products} onAdd={add} onWish={wish} common={common} categories={categories} />} />
-        <Route path="*" element={<FuturisticHome products={products} auctions={auctions} announcements={announcements} onAdd={add} onWish={wish} common={common} Topbar={Topbar} FooterBar={FooterBar} BottomNav={BottomNav} Loading={Loading} />} />
+        <Route path="*" element={<FuturisticHome products={products} auctions={auctions} announcements={announcements} homeConfig={storefront} onAdd={add} onWish={wish} common={common} Topbar={Topbar} FooterBar={FooterBar} BottomNav={BottomNav} Loading={Loading} />} />
       </Routes>
       <CustomerLiveChat user={user} hidden={location.pathname === "/login" || location.pathname === "/register"} />
     </>

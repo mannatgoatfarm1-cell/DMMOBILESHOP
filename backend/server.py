@@ -310,6 +310,55 @@ class ManagedRecordList(BaseModel):
     page_size: int
 
 
+class StorefrontHero(BaseModel):
+    eyebrow: str = Field(default="DMMobile Shop · 2080 → 2080", max_length=100)
+    title: str = Field(default="Premium Tech", max_length=100)
+    highlight: str = Field(default="Bigger. Brighter. Smarter.", max_length=120)
+    description: str = Field(default="Smarter Deals | Bigger Savings | Future Ready", max_length=220)
+    image_url: str = Field(default="", max_length=500)
+
+
+class StorefrontSection(BaseModel):
+    id: str = Field(min_length=2, max_length=48, pattern=r"^[a-z0-9-]+$")
+    label: str = Field(default="", max_length=100)
+    title: str = Field(default="", max_length=100)
+    eyebrow: str = Field(default="", max_length=100)
+    active: bool = True
+
+
+class StorefrontConfig(BaseModel):
+    hero: StorefrontHero = Field(default_factory=StorefrontHero)
+    sections: list[StorefrontSection] = Field(default_factory=list)
+
+
+STOREFRONT_SECTION_DEFAULTS = [
+    {"id": "top-brands", "label": "Top Brands", "title": "Top Brands", "eyebrow": "", "active": True},
+    {"id": "flash-deals", "label": "Flash Deals", "title": "Flash Deals", "eyebrow": "LIMITED TIME", "active": True},
+    {"id": "mobile-parts-deals", "label": "Mobile Parts Deals", "title": "Mobile Parts Deals", "eyebrow": "REPAIR ESSENTIALS", "active": True},
+    {"id": "today-deals", "label": "Today's Deals", "title": "Today's Deals", "eyebrow": "ENDS TONIGHT", "active": True},
+    {"id": "deal-of-the-day", "label": "Deal of the Day", "title": "Deal of the Day", "eyebrow": "FEATURED PICK", "active": True},
+    {"id": "new-stock", "label": "New Stock", "title": "New Stock", "eyebrow": "JUST LANDED", "active": True},
+    {"id": "stock-clearance", "label": "Stock Clearance Sale", "title": "Stock Clearance Sale", "eyebrow": "LAST CHANCE", "active": True},
+    {"id": "trust-strip", "label": "Trust Strip", "title": "", "eyebrow": "", "active": True},
+    {"id": "hot-categories", "label": "Hot Selling Categories", "title": "Hot Selling Categories", "eyebrow": "", "active": True},
+    {"id": "marketplace-services", "label": "Marketplace Services", "title": "", "eyebrow": "", "active": True},
+    {"id": "category-navigation", "label": "Category Navigation", "title": "", "eyebrow": "", "active": True},
+    {"id": "promo-banners", "label": "Promo Banners", "title": "", "eyebrow": "", "active": True},
+    {"id": "product-insights", "label": "Trending, Reviews & Why Choose", "title": "", "eyebrow": "", "active": True},
+    {"id": "auction-teaser", "label": "Auction Teaser", "title": "", "eyebrow": "", "active": True},
+    {"id": "blog", "label": "Blog", "title": "", "eyebrow": "", "active": True},
+    {"id": "customer-community", "label": "Community & Newsletter", "title": "", "eyebrow": "", "active": True},
+]
+
+
+def storefront_payload(document: dict[str, Any] | None) -> StorefrontConfig:
+    saved = document or {}
+    hero = {**StorefrontHero().model_dump(), **(saved.get("hero") or {})}
+    saved_sections = {item.get("id"): item for item in saved.get("sections", []) if item.get("id")}
+    sections = [{**default, **{key: value for key, value in saved_sections.get(default["id"], {}).items() if key in default}} for default in STOREFRONT_SECTION_DEFAULTS]
+    return StorefrontConfig(hero=StorefrontHero(**hero), sections=[StorefrontSection(**section) for section in sections])
+
+
 class UserManagementUpdate(BaseModel):
     active: bool
 
@@ -1441,6 +1490,26 @@ async def public_content(resource: str) -> list[ManagedRecord]:
     collection = managed_collection(resource)
     rows = await collection.find({"status": {"$in": ["active", "published"]}}, {"_id": 0}).sort("updated_at", -1).to_list(100)
     return [managed_payload(row) for row in rows]
+
+
+@api.get("/storefront", response_model=StorefrontConfig)
+async def get_storefront() -> StorefrontConfig:
+    document = await db.storefront_settings.find_one({"key": "homepage"}, {"_id": 0})
+    return storefront_payload(document)
+
+
+@api.get("/admin/storefront", response_model=StorefrontConfig)
+async def get_admin_storefront(_: Annotated[dict[str, Any], Depends(admin_user)]) -> StorefrontConfig:
+    document = await db.storefront_settings.find_one({"key": "homepage"}, {"_id": 0})
+    return storefront_payload(document)
+
+
+@api.put("/admin/storefront", response_model=StorefrontConfig)
+async def update_storefront(input: StorefrontConfig, _: Annotated[dict[str, Any], Depends(admin_user)]) -> StorefrontConfig:
+    normalized = storefront_payload(input.model_dump()).model_dump()
+    update = {"key": "homepage", **normalized, "updated_at": now()}
+    await db.storefront_settings.update_one({"key": "homepage"}, {"$set": update.copy()}, upsert=True)
+    return StorefrontConfig(**normalized)
 
 
 @api.get("/admin/categories", response_model=list[Category])
