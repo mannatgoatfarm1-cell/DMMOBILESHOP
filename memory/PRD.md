@@ -90,6 +90,11 @@ Build a production-ready e-commerce platform "DMMobile Shop" (formerly MobileCar
 - Added refresh-cookie session bootstrap and `/auth/me` retry recovery to prevent access-token expiry from forcing re-authentication; verified signed-in session restoration after an invalid access token.
 - Locked customer identity updates and address deletion at the API layer (423 Locked) so user data cannot be changed or removed through standard flows.
 
+### Auction Detail & QC Flow (DONE — Sept 25, 2026)
+- Refined the auction journey with explicit Choose Device → Review QC → Place Live Bid → Win & Pay steps.
+- Added a clickable QC Report action inside every auction bid detail, presenting grade, real inspection checks, pass/fail/unknown state, device image, and verification messaging.
+- Verified customer flow: auction card → bid detail → QC report → back to active live-bidding panel.
+
 ## Pending Tasks (Prioritized)
 
 ### P1 — High Priority
