@@ -636,7 +636,8 @@ function Login({ setUser }) {
       const payload = mode === "register" ? { name: form.name, email: form.identifier, password: form.password, confirm_password: form.confirmPassword } : { identifier: form.identifier, password: form.password };
       const { data } = await api.post(endpoint, payload);
       setUser(data); toast.success(mode === "register" ? "Account created" : "Welcome back");
-      navigate(data.role === "admin" ? "/admin" : new URLSearchParams(location.search).get("next") || "/");
+      const nextPath = new URLSearchParams(location.search).get("next");
+      navigate(data.role === "admin" ? (nextPath?.startsWith("/admin") ? nextPath : "/admin") : nextPath || "/");
     } catch (error) { const message = error.message === "Passwords do not match" ? error.message : apiError(error); setAuthError(message); toast.error(message); } finally { setBusy(false); }
   };
   const heading = mode === "register" ? "Create your account" : mode === "forgot" ? "Reset your password" : mode === "reset" ? "Choose a new password" : isAdminLogin ? "Admin sign in" : "Welcome back";

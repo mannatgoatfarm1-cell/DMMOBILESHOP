@@ -80,7 +80,16 @@ Build a production-ready MobileCart storefront and web admin panel with product 
 - Authentication toast-spam fix: Admin Support Tickets polling now suppresses expected 401 notifications after logout/session expiry, while preserving non-401 error feedback. QA Iteration 20 confirmed customer/admin login, session cookies, roles, chat, logout, lockout and requested UX checks; no repeated customer-facing authentication toast appears.
 - Remaining auth infrastructure note: direct FastAPI localhost credentialed preflight succeeds (200) but the public preview ingress responds 400 `Disallowed CORS origin` before it reaches the app. Same-origin website session flows pass; platform ingress origin propagation needs remediation for third-party cross-origin calls.
 
+## Implemented — 2026-09-25
+- Hardened Razorpay payment-settings persistence: empty and known masked secret placeholders (`***`, bullets, asterisks, saved-securely copy) now preserve the stored Key Secret/Webhook Secret instead of replacing it. Admin GET/PUT responses continue to omit raw secrets.
+- Added payment-settings secret guard regression coverage and verified safe authenticated masked-save behavior against MongoDB without exposing any secret value.
+- Improved the provider failure feedback: when Razorpay rejects credentials, checkout now directs the admin to re-save a matching Key ID/Key Secret for the selected Test/Live mode.
+- Fixed admin post-login deep links: `/login?next=/admin/razorpay-settings` now opens Razorpay & Payments directly.
+- QA Iteration 21: payment-settings secrecy, masked save preservation, admin session, and admin UI passed. **MOCKED:** no Razorpay provider order, checkout, or live charge was run.
+- Current payment configuration state: the stored secret is not a masking placeholder, but Razorpay previously returned `Authentication failed` for the saved live Key ID/Secret pair. A matching pair must be re-saved by the administrator before online checkout can create provider orders.
+
 ## Prioritized Backlog
+- P0: Re-save a valid matching Razorpay Key ID and Key Secret in Admin → Razorpay & Payments for the selected Live/Test mode, then validate a provider order using Razorpay test credentials before accepting real payments. Current provider order creation is blocked by Razorpay credential authentication failure.
 - P0: Preview gateway rejects credentialed `OPTIONS /api/auth/login` before FastAPI even for the configured preview origin. App-side CORS is configured and same-origin login works; ingress/gateway configuration needs an explicit allowlist change for third-party cross-origin clients.
 - P0: Configure outbound email delivery for customer-facing password-reset links; reset tokens are generated securely but currently logged by the backend because no email provider is configured.
 - P0: Preview ingress currently rejects credentialed `OPTIONS /api/auth/login` requests before FastAPI; application-level CORS and same-origin login work. Ingress configuration needs an explicit preview-origin allowlist or CORS disabled at gateway.
@@ -90,9 +99,10 @@ Build a production-ready MobileCart storefront and web admin panel with product 
 - P2: Add auction closing scheduler and live bid synchronization.
 
 ## Next Tasks
-1. Redesign payment settings with Hindi-first status feedback and connect Razorpay once Key ID, Key Secret, and Webhook Secret are supplied.
-2. Add outbound email delivery for production password-reset links.
-3. Add AI Assistant / Deal Engine through the approved LLM integration flow.
-4. Add referrals, bulk-buy and price tracking.
-5. Add auction closing scheduler and real-time bid synchronization.
-6. Keep QA-created inactive test products cleaned periodically; admin delete currently soft-unpublishes products for audit safety.
+1. Admin: replace the current rejected Razorpay Key ID/Secret with a matching pair for the selected mode; then run a non-charging Razorpay test-mode order validation.
+2. Redesign the customer auction experience according to the supplied desktop/mobile references after payment checkout is unblocked.
+3. Add outbound email delivery for production password-reset links.
+4. Add AI Assistant / Deal Engine through the approved LLM integration flow.
+5. Add referrals, bulk-buy and price tracking.
+6. Add auction closing scheduler and real-time bid synchronization.
+7. Keep QA-created inactive test products cleaned periodically; admin delete currently soft-unpublishes products for audit safety.

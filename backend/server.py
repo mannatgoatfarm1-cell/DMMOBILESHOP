@@ -359,6 +359,15 @@ class PaymentSettingsInput(BaseModel):
         return value
 
 
+MASKED_PAYMENT_SECRETS = frozenset({"***", "********", "••••••••", "Saved securely — enter only to replace"})
+
+
+def retained_payment_secret(submitted: str, existing: str) -> str:
+    """Keep the stored secret when an admin form submits an empty or masked value."""
+    value = submitted.strip()
+    return existing if not value or value in MASKED_PAYMENT_SECRETS else value
+
+
 class RazorpayOrderInput(BaseModel):
     order_id: str = Field(min_length=1, max_length=80)
 
@@ -1636,11 +1645,8 @@ async def admin_get_payment_settings(_: Annotated[dict[str, Any], Depends(admin_
 async def admin_save_payment_settings(input: PaymentSettingsInput, _: Annotated[dict[str, Any], Depends(admin_user)]) -> dict[str, Any]:
     existing = await get_payment_settings()
     payload = input.model_dump()
-    # Preserve stored secrets when the admin submits the masked (empty) field.
-    if not payload["razorpay_key_secret"]:
-        payload["razorpay_key_secret"] = existing.get("razorpay_key_secret", "")
-    if not payload["razorpay_webhook_secret"]:
-        payload["razorpay_webhook_secret"] = existing.get("razorpay_webhook_secret", "")
+    payload["razorpay_key_secret"] = retained_payment_secret(payload["razorpay_key_secret"], existing.get("razorpay_key_secret", ""))
+    payload["razorpay_webhook_secret"] = retained_payment_secret(payload["razorpay_webhook_secret"], existing.get("razorpay_webhook_secret", ""))
     payload["updated_at"] = now()
     await db.app_settings.update_one({"id": "payment"}, {"$set": {"id": "payment", **payload}}, upsert=True)
     saved = await get_payment_settings()
@@ -1682,7 +1688,7 @@ async def create_razorpay_order(input: RazorpayOrderInput, user: Annotated[dict[
         rz_order = await asyncio.to_thread(client.order.create, {"amount": payable * 100, "currency": "INR", "receipt": order["order_number"][:40], "payment_capture": 1})
     except Exception as error:
         logger.warning("Razorpay order creation failed: %s", error)
-        raise HTTPException(502, "Razorpay order बनाने में समस्या आई। Keys जांचें") from error
+        raise HTTPException(502, "Razorpay credentials reject हो गए। Admin → Razorpay & Payments में same Test/Live mode की matching Key ID और Key Secret फिर से save करें।") from error
     await db.orders.update_one({"id": order["id"]}, {"$set": {"payment.provider_order_id": rz_order["id"], "payment.amount_due": payable, "updated_at": now()}})
     return {"razorpay_order_id": rz_order["id"], "key_id": settings["razorpay_key_id"], "amount": payable * 100, "currency": "INR", "order_number": order["order_number"], "name": user.get("name", ""), "email": user.get("email", "")}
 
