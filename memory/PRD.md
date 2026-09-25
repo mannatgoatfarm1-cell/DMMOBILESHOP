@@ -80,6 +80,10 @@ Build a production-ready e-commerce platform "DMMobile Shop" (formerly MobileCar
 - Converted every sale shelf—including New Stock and Stock Clearance—into a manual touch-swipe rail with snap alignment; disabled automatic hero-dot movement.
 - Verified at 390px: document width remains 390px and the New Stock rail scrolls from a 338px viewport across 1012px of products.
 
+### Hero Rendering Fix (DONE — Sept 25, 2026)
+- Fixed the hero accent line that was rendering as cyan/purple blank blocks on desktop and mobile.
+- Replaced unstable gradient-text clipping with a compact neon accent treatment; verified heading height reduced to 154px with no background block.
+
 ## Pending Tasks (Prioritized)
 
 ### P1 — High Priority

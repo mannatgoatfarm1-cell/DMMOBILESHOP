@@ -195,8 +195,10 @@ body::before {
 }
 .hero-copy .eyebrow { color: var(--neon-cyan) !important; letter-spacing: 2px; }
 .hero-copy .grad {
-  background: linear-gradient(90deg, #22d3ee, #a78bfa) !important;
-  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  display: block; width: max-content; max-width: 100%;
+  background: none !important; color: #a78bfa !important;
+  -webkit-text-fill-color: #a78bfa !important;
+  font-size: 0.46em; line-height: 1.15; white-space: nowrap;
 }
 .hero-badge {
   background: rgba(10, 18, 37, 0.7) !important;
