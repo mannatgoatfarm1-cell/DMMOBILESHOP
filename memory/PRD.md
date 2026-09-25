@@ -95,6 +95,11 @@ Build a production-ready e-commerce platform "DMMobile Shop" (formerly MobileCar
 - Added a clickable QC Report action inside every auction bid detail, presenting grade, real inspection checks, pass/fail/unknown state, device image, and verification messaging.
 - Verified customer flow: auction card → bid detail → QC report → back to active live-bidding panel.
 
+### Auction Winner Payment (IN PROGRESS — Sept 25, 2026)
+- Added a protected winner-only order endpoint: only the confirmed winner of a closed auction can create an order; it supports Razorpay, DMobileMart Wallet, or personal UPI proof payment states.
+- Wallet payment debits the existing wallet atomically; personal UPI requires the existing Admin-configured UPI ID; Razorpay uses the existing order verification endpoints.
+- Remaining: expose this protected winner order flow in the customer Auction UI with dedicated win/payment screen and personal-QR proof form.
+
 ## Pending Tasks (Prioritized)
 
 ### P1 — High Priority

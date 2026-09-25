@@ -275,6 +275,11 @@ class BidInput(BaseModel):
     amount: int = Field(gt=0)
 
 
+class AuctionWinnerOrderInput(BaseModel):
+    address_id: str = Field(min_length=1, max_length=80)
+    payment_method: Literal["upi", "card", "net_banking", "wallet", "bank_transfer"] = "upi"
+
+
 class Bid(BaseModel):
     id: str
     auction_id: str
@@ -1246,6 +1251,52 @@ async def place_bid(auction_id: str, input: BidInput, user: Annotated[dict[str, 
 async def bid_history(auction_id: str) -> list[Bid]:
     rows = await db.bids.find({"auction_id": auction_id}, {"_id": 0}).sort("created_at", -1).limit(50).to_list(50)
     return [Bid(**row) for row in rows]
+
+
+@api.post("/auctions/{auction_id}/winner-order", response_model=Order, status_code=201)
+async def create_auction_winner_order(auction_id: str, input: AuctionWinnerOrderInput, user: Annotated[dict[str, Any], Depends(require_customer)]) -> Order:
+    await reconcile_expired_auctions()
+    auction = await db.auctions.find_one({"id": auction_id}, {"_id": 0})
+    if not auction or auction.get("status") != "closed" or auction.get("winner_user_id") != user["id"]:
+        raise HTTPException(403, "Only the confirmed auction winner can create this payment order")
+    existing = await db.orders.find_one({"auction_id": auction_id, "user_id": user["id"]}, {"_id": 0})
+    if existing:
+        return Order(**existing)
+    product = await db.products.find_one({"id": auction["product_id"], "active": True}, {"_id": 0})
+    if not product:
+        raise HTTPException(404, "Auction product is unavailable")
+    address = next((row for row in user.get("addresses", []) if row["id"] == input.address_id), None)
+    if not address:
+        raise HTTPException(404, "Delivery address not found")
+    settings = await get_payment_settings()
+    enabled = {"upi": settings.get("upi_enabled", True), "card": settings.get("card_enabled", True), "net_banking": settings.get("netbanking_enabled", True), "wallet": settings.get("wallet_enabled", True), "bank_transfer": settings.get("bank_transfer_enabled", True)}
+    if not enabled.get(input.payment_method, False):
+        raise HTTPException(422, "This payment method is unavailable")
+    timestamp = now()
+    result = await db.products.update_one({"id": product["id"], "stock": {"$gte": 1}}, {"$inc": {"stock": -1}, "$set": {"updated_at": timestamp}})
+    if result.modified_count == 0:
+        raise HTTPException(409, "Auction product is no longer available")
+    total = int(auction["current_bid"]) + 99
+    status = "payment_pending"; payment_status = "pending"
+    if input.payment_method == "wallet":
+        debit = await db.wallets.update_one({"user_id": user["id"], "balance": {"$gte": total}}, {"$inc": {"balance": -total}, "$set": {"updated_at": timestamp}})
+        if debit.modified_count == 0:
+            await db.products.update_one({"id": product["id"]}, {"$inc": {"stock": 1}, "$set": {"updated_at": timestamp}})
+            raise HTTPException(409, "Your DMobileMart Wallet balance is insufficient")
+        wallet = await db.wallets.find_one({"user_id": user["id"]}, {"_id": 0})
+        await db.wallet_transactions.insert_one({"id": str(uuid.uuid4()), "user_id": user["id"], "kind": "debit", "amount": total, "balance_after": wallet["balance"], "note": f"Auction win {auction_id}", "created_at": timestamp})
+        status = "confirmed"; payment_status = "captured"
+    manual = input.payment_method == "bank_transfer"
+    if manual and not settings.get("upi_id"):
+        await db.products.update_one({"id": product["id"]}, {"$inc": {"stock": 1}, "$set": {"updated_at": timestamp}})
+        raise HTTPException(422, "Admin must configure a Personal UPI ID first")
+    number = f"AUC-{secrets.randbelow(900000) + 100000}"
+    payment = {"provider": "manual_upi" if manual else ("mobilecart_wallet" if input.payment_method == "wallet" else "razorpay"), "method": input.payment_method, "status": payment_status, "provider_order_id": None, "transaction_id": None}
+    if manual:
+        status = "payment_proof_required"; payment.update({"manual_request_ref": f"UPI-{number}", "payment_reference": None})
+    order = {"id": str(uuid.uuid4()), "order_number": number, "auction_id": auction_id, "user_id": user["id"], "items": [{"product_id": product["id"], "name": product["name"], "image": product["images"][0], "price": int(auction["current_bid"]), "quantity": 1, "variant_sku": None, "imei_number": product.get("imei_number", ""), "barcode": product.get("barcode", ""), "warranty_days": product.get("warranty_days", 0)}], "delivery_address": address, "subtotal": int(auction["current_bid"]), "discount": 0, "coupon_code": None, "platform_fee": 99, "total": total, "status": status, "tracking": {"status": "Auction won", "events": [{"status": "Auction won", "at": timestamp}]}, "payment": payment, "created_at": timestamp, "updated_at": timestamp}
+    await db.orders.insert_one(order.copy())
+    return Order(**order)
 
 
 @api.get("/admin/dashboard", response_model=Dashboard)
