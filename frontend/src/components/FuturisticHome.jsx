@@ -364,7 +364,7 @@ function FuturisticFooter() {
 /* ========== MAIN HOMEPAGE EXPORT ========== */
 export function FuturisticHome({ products, auctions, onAdd, onWish, common, announcements = [], homeConfig = null, Topbar, FooterBar, BottomNav, Loading }) {
   const navigate = useNavigate();
-  const [slide, setSlide] = useState(0);
+  const [slide] = useState(0);
   const display = useMemo(() => [...products].sort((a, b) => (FEATURED_ORDER.indexOf(a.id) + 99) % 99 - (FEATURED_ORDER.indexOf(b.id) + 99) % 99), [products]);
   const primary = display[0] || null;
   const heroDeals = display.slice(0, 3);
@@ -372,8 +372,6 @@ export function FuturisticHome({ products, auctions, onAdd, onWish, common, anno
   const section = (id) => sections.find((item) => item.id === id) || {};
   const isVisible = (id) => section(id).active !== false;
   const hero = homeConfig?.hero || {};
-
-  useEffect(() => { const t = setInterval(() => setSlide(v => (v + 1) % 4), 5000); return () => clearInterval(t); }, []);
 
   if (!display.length) return <><Topbar {...common} /><main className="store-page"><Loading /></main><FooterBar /></>;
 

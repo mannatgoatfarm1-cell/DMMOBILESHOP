@@ -75,6 +75,11 @@ Build a production-ready e-commerce platform "DMMobile Shop" (formerly MobileCar
 - Removed the Top Brands rail and its obsolete CMS control.
 - Moved customer category navigation directly below the hero banner, ahead of Flash Deals and the remaining sale shelves.
 
+### Mobile Storefront Polish (DONE — Sept 25, 2026)
+- Removed mobile horizontal page overflow and tightened hero/category sizing for a true viewport-fit layout.
+- Converted every sale shelf—including New Stock and Stock Clearance—into a manual touch-swipe rail with snap alignment; disabled automatic hero-dot movement.
+- Verified at 390px: document width remains 390px and the New Stock rail scrolls from a 338px viewport across 1012px of products.
+
 ## Pending Tasks (Prioritized)
 
 ### P1 — High Priority

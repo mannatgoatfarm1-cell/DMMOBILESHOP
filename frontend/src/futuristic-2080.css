@@ -1089,6 +1089,41 @@ body::before {
   .f-footer-grid { grid-template-columns: 1fr; }
 }
 
+/* Touch-first storefront layout: fixed viewport, manually swipeable shelves */
+@media (max-width: 640px) {
+  html, body { overflow-x: hidden; }
+  .marketplace-home { min-width: 0; overflow-x: clip; }
+  .marketplace-stage, .hero-grid, .hero-banner, .sale-shelf { min-width: 0; max-width: 100%; }
+  .hero-banner { min-height: 330px; }
+  .hero-copy { max-width: min(100%, 265px); }
+  .hero-copy h1 { font-size: 30px; line-height: 1.05; }
+  .hero-phone { max-width: 58%; }
+  .circle-row {
+    display: flex; gap: 12px; margin: 18px 0; padding: 4px 2px 10px;
+    overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory;
+    scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  }
+  .circle-row::-webkit-scrollbar, .sale-shelf .flash-grid::-webkit-scrollbar { display: none; }
+  .circle-cat { flex: 0 0 62px; scroll-snap-align: start; }
+  .circle-icon { width: 48px; height: 48px; }
+  .sale-shelf { padding: 13px 11px; margin-bottom: 16px; border-radius: 12px; }
+  .sale-shelf-title { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
+  .sale-shelf-title .sale-heading { min-width: 0; }
+  .sale-shelf-title .sale-heading h2 { font-size: 19px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sale-shelf-title .flash-timer { grid-column: 1 / -1; justify-self: start; margin: 0; }
+  .sale-shelf-title > a { font-size: 10px; white-space: nowrap; }
+  .sale-shelf .flash-grid {
+    display: flex !important; grid-template-columns: none !important; gap: 12px;
+    width: 100%; margin: 0; padding: 2px 2px 10px; overflow-x: auto;
+    overscroll-behavior-x: contain; scroll-snap-type: x mandatory;
+    scrollbar-width: none; -webkit-overflow-scrolling: touch; touch-action: pan-x;
+  }
+  .sale-shelf .flash-card { flex: 0 0 158px; min-width: 158px; scroll-snap-align: start; }
+  .sale-shelf .flash-card img { height: 126px; }
+  .sale-shelf .flash-card b { min-height: 30px; font-size: 11px; }
+  .sale-shelf .flash-card button { min-height: 34px; }
+}
+
 /* Ensure admin panel is NOT affected */
 .admin-shell, .admin-sidebar, .admin-main, .admin-panel,
 .admin-product-card, .auction-admin, .auction-panel,
