@@ -100,6 +100,11 @@ Build a production-ready e-commerce platform "DMMobile Shop" (formerly MobileCar
 - Wallet payment debits the existing wallet atomically; personal UPI requires the existing Admin-configured UPI ID; Razorpay uses the existing order verification endpoints.
 - Remaining: expose this protected winner order flow in the customer Auction UI with dedicated win/payment screen and personal-QR proof form.
 
+### Suspended Account Enforcement (DONE — Sept 25, 2026)
+- Admin suspension is checked against MongoDB on every protected request, not only at login or through the frontend.
+- Suspended users can browse public catalog data, but receive clear `403 ACCOUNT_SUSPENDED` responses for cart, bids, wallet/payment, and order actions.
+- Verified using a temporary admin suspension: catalog returned 200, while cart and auction bid returned 403; the test customer was reactivated afterward.
+
 ## Pending Tasks (Prioritized)
 
 ### P1 — High Priority

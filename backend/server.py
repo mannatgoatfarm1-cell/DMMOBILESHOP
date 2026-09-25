@@ -617,8 +617,10 @@ async def current_user(request: Request) -> dict[str, Any]:
     except (jwt.InvalidTokenError, ValueError):
         raise HTTPException(401, "Invalid or expired session")
     user = await db.users.find_one({"id": payload["sub"]}, {"_id": 0})
-    if not user or not user.get("active", True) or user.get("role") != payload.get("role"):
+    if not user or user.get("role") != payload.get("role"):
         raise HTTPException(401, "Session is no longer valid")
+    if not user.get("active", True):
+        raise HTTPException(403, "ACCOUNT_SUSPENDED: browsing is available, but bids, cart, wallet and order actions are blocked")
     return user
 
 
@@ -845,8 +847,10 @@ async def refresh(request: Request, response: Response) -> UserPublic:
     except (jwt.InvalidTokenError, ValueError):
         raise HTTPException(401, "Invalid or expired refresh session")
     user = await db.users.find_one({"id": payload["sub"]}, {"_id": 0})
-    if not user or not user.get("active", True) or user.get("role") != payload.get("role"):
+    if not user or user.get("role") != payload.get("role"):
         raise HTTPException(401, "Session is no longer valid")
+    if not user.get("active", True):
+        raise HTTPException(403, "ACCOUNT_SUSPENDED: browsing is available, but bids, cart, wallet and order actions are blocked")
     set_session(response, user)
     return public_user(user)
 
